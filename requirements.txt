@@ -1,6 +1,7 @@
 # Core dependencies
 selenium==4.15.2
-pandas==1.5.3
+numpy==1.24.3 
+pandas==2.0.3
 openpyxl
 python-dotenv==1.0.0
 
@@ -31,3 +32,4 @@ pytest-mock==3.12.0
 # black==23.11.0
 # flake8==6.1.0
 # mypy==1.7.1
+requests
