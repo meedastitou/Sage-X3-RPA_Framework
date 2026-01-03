@@ -1,0 +1,20 @@
+[
+  {
+    "id": "6076a846-a791-4028-93d5-7bffbfc7b7e8",
+    "status": "completed",
+    "file": "data\\input\\excel\\demandes_achat_complet.xlsx",
+    "email": "astitoumd@gmail.com",
+    "created_at": "2026-01-03T21:04:24.237453",
+    "started_at": "2026-01-03T21:04:32.507681",
+    "completed_at": "2026-01-03T21:05:45.318066"
+  },
+  {
+    "id": "51433ecc-abd2-44b9-806f-4e08389ff534",
+    "status": "completed",
+    "file": "data\\input\\excel\\demandes_achat_complet.xlsx",
+    "email": "astitoumd@gmail.com",
+    "created_at": "2026-01-03T21:07:30.913224",
+    "started_at": "2026-01-03T21:07:40.431112",
+    "completed_at": "2026-01-03T21:08:24.025608"
+  }
+]
