@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Data
+data/input/*
+data/output/*
+!data/input/.gitkeep
+!data/output/.gitkeep
+
+# Logs
+*.log
+logs/
+
+# Credentials
+.env
+config/credentials.json
+credentials.json
+
+# Chrome
+chrome_profile/
+
+# OS
+.DS_Store
+Thumbs.db
