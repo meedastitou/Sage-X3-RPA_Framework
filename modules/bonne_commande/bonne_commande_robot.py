@@ -59,6 +59,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             excel_file: Chemin du fichier Excel
             url: URL (non utilisé, gardé pour compatibilité)
         """
+        email_achteur=""
         try:
             # 1. LIRE ET VALIDER L'EXCEL
             df = self._lire_et_valider_excel(excel_file)
@@ -75,7 +76,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
 
             # 5. TRAITER CHAQUE FOURNISSEUR SÉPARÉMENT
             for idx_fournisseur, (code_fournisseur, data_fournisseur) in enumerate(fournisseurs.items(), 1):
-                self.logger.info("\n" + "="*80)
+                self.logger.info("" + "="*80)
                 self.logger.info(f"🏢 TRAITEMENT FOURNISSEUR {idx_fournisseur}/{len(fournisseurs)}: {code_fournisseur}")
                 self.logger.info("="*80)
 
@@ -86,13 +87,13 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                 self.das_echec = 0
 
                 # PHASE 1 : TRAITER LES ARTICLES DE CE FOURNISSEUR
-                self.logger.info("\n" + "="*80)
+                self.logger.info("="*80)
                 self.logger.info(f"🔧 PHASE 1 : TRAITEMENT DES ARTICLES - Fournisseur {code_fournisseur}")
                 self.logger.info("="*80)
                 articles_ok = self._traiter_tous_articles(data_fournisseur)
 
                 if not articles_ok:
-                    self.logger.error("\n" + "="*80)
+                    self.logger.error("" + "="*80)
                     self.logger.error(f"❌ ÉCHEC PHASE 1 pour fournisseur {code_fournisseur}")
                     self.logger.error("❌ ARRÊT DU PROCESSUS - BC NON GÉNÉRÉ pour ce fournisseur")
                     self.logger.error("="*80)
@@ -114,13 +115,13 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                     continue  # Passer au fournisseur suivant
 
                 # PHASE 2 : TRAITER LES DEMANDES D'ACHAT DE CE FOURNISSEUR
-                self.logger.info("\n" + "="*80)
+                self.logger.info("" + "="*80)
                 self.logger.info(f"📋 PHASE 2 : TRAITEMENT DES DEMANDES D'ACHAT - Fournisseur {code_fournisseur}")
                 self.logger.info("="*80)
                 das_ok = self._traiter_toutes_das(data_fournisseur)
 
                 if not das_ok:
-                    self.logger.error("\n" + "="*80)
+                    self.logger.error("" + "="*80)
                     self.logger.error(f"❌ ÉCHEC PHASE 2 pour fournisseur {code_fournisseur}")
                     self.logger.error("❌ ARRÊT DU PROCESSUS - BC NON GÉNÉRÉ pour ce fournisseur")
                     self.logger.error("="*80)
@@ -142,7 +143,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                     continue  # Passer au fournisseur suivant
 
                 # PHASE 3 : GÉNÉRER LE BON DE COMMANDE POUR CE FOURNISSEUR
-                self.logger.info("\n" + "="*80)
+                self.logger.info("" + "="*80)
                 self.logger.info(f"✅ VALIDATION COMPLÈTE RÉUSSIE - Fournisseur {code_fournisseur}")
                 self.logger.info("="*80)
                 self.logger.info(f"✅ Articles traités avec succès: {self.articles_traites}/{self.articles_traites + self.articles_echec}")
@@ -166,12 +167,12 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
 
                 self.save_report()
 
-                self.logger.info("\n" + "="*80)
+                self.logger.info("" + "="*80)
                 self.logger.info(f"🎉 FOURNISSEUR {code_fournisseur} TRAITÉ AVEC SUCCÈS")
                 self.logger.info("="*80)
 
             # FIN DU TRAITEMENT DE TOUS LES FOURNISSEURS
-            self.logger.info("\n" + "="*80)
+            self.logger.info("" + "="*80)
             self.logger.info("🎉 TOUS LES FOURNISSEURS ONT ÉTÉ TRAITÉS")
             self.logger.info("="*80)
 
@@ -186,7 +187,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                 self.logger.warning(f"⚠️ Échec envoi web: {web_result.get('message')}")
 
         except Exception as e:
-            self.logger.error(f"\n❌ ERREUR CRITIQUE: {e}")
+            self.logger.error(f"❌ ERREUR CRITIQUE: {e}")
             import traceback
             self.logger.error(traceback.format_exc())
 
@@ -312,24 +313,24 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
         self.logger.info("📊 RÉSUMÉ DU TRAITEMENT")
         self.logger.info("="*80)
 
-        self.logger.info(f"\n🏢 Nombre de fournisseurs: {len(fournisseurs)}")
+        self.logger.info(f"🏢 Nombre de fournisseurs: {len(fournisseurs)}")
 
         for code_fournisseur, data in fournisseurs.items():
-            self.logger.info(f"\n{'─'*80}")
+            self.logger.info(f"{'─'*80}")
             self.logger.info(f"🏢 Fournisseur: {code_fournisseur}")
             self.logger.info(f"   Email: {data['email']}")
             self.logger.info(f"   Tél: {data['tel']}")
 
-            self.logger.info(f"\n📦 {len(data['tous_articles'])} Article(s) unique(s) à traiter:")
+            self.logger.info(f"📦 {len(data['tous_articles'])} Article(s) unique(s) à traiter:")
             for article, info in data['tous_articles'].items():
                 self.logger.info(f"   • {article}: {info['montant']} MAD")
 
-            self.logger.info(f"\n📋 {len(data['das'])} Demande(s) d'Achat à traiter:")
+            self.logger.info(f"📋 {len(data['das'])} Demande(s) d'Achat à traiter:")
             for da_num, da_info in data['das'].items():
                 self.logger.info(f"   • {da_num} ({da_info['acheteur']}): {len(da_info['articles'])} article(s)")
 
-        self.logger.info(f"\n{'─'*80}")
-        self.logger.info("\n⚠️  MODE STRICT ACTIVÉ:")
+        self.logger.info(f"{'─'*80}")
+        self.logger.info("⚠️  MODE STRICT ACTIVÉ:")
         self.logger.info("   ✅ TOUS les articles doivent réussir")
         self.logger.info("   ✅ TOUTES les DAs doivent réussir")
         self.logger.info("   ❌ Un seul échec = Arrêt complet")
@@ -344,7 +345,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
 
         try: 
             for idx, (code_article, info_article) in enumerate(structure['tous_articles'].items(), 1):
-                self.logger.info(f"\n{'─'*80}")
+                self.logger.info(f"{'─'*80}")
                 self.logger.info(f"📦 Article {idx}/{total_articles}: {code_article}")
                 self.logger.info(f"{'─'*80}")
                 
@@ -375,7 +376,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             self.save_report(incremental=True)
             return False
         finally:
-            self.logger.info(f"\n✅ Articles traités: {self.articles_traites}, Échecs: {self.articles_echec}")
+            self.logger.info(f"✅ Articles traités: {self.articles_traites}, Échecs: {self.articles_echec}")
             driver = self.driver_manager.driver
 
             driver.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
@@ -386,7 +387,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             s_page_close.click()
             time.sleep(2)
 
-        self.logger.info(f"\n✅ PHASE 1 RÉUSSIE: {self.articles_traites}/{total_articles} articles traités")
+        self.logger.info(f"✅ PHASE 1 RÉUSSIE: {self.articles_traites}/{total_articles} articles traités")
         self.save_report(incremental=True)
         return True
     
@@ -398,7 +399,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
         total_das = len(structure['das'])
         try:
             for idx, (numero_da, info_da) in enumerate(structure['das'].items(), 1):
-                self.logger.info(f"\n{'─'*80}")
+                self.logger.info(f"{'─'*80}")
                 self.logger.info(f"📋 DA {idx}/{total_das}: {numero_da}")
                 self.logger.info(f"   Acheteur: {info_da['acheteur']}")
                 self.logger.info(f"   Articles: {len(info_da['articles'])}")
@@ -428,7 +429,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             self.save_report(incremental=True)
             return False
         finally:
-            self.logger.info(f"\n✅ DAs traitées: {self.das_traitees}, Échecs: {self.das_echec}")
+            self.logger.info(f"✅ DAs traitées: {self.das_traitees}, Échecs: {self.das_echec}")
             driver = self.driver_manager.driver
 
             driver.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
@@ -439,7 +440,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             s_page_close.click()
             time.sleep(2)
         
-        self.logger.info(f"\n✅ PHASE 2 RÉUSSIE: {self.das_traitees}/{total_das} DAs traitées")
+        self.logger.info(f"✅ PHASE 2 RÉUSSIE: {self.das_traitees}/{total_das} DAs traitées")
         self.save_report(incremental=True)
         return True
     
