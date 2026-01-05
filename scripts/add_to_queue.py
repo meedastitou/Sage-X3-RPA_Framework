@@ -8,6 +8,8 @@ import sys
 import argparse
 from pathlib import Path
 
+sys.stdout.reconfigure(encoding='utf-8')
+
 # Ajouter le dossier sage-x3-rpa au path
 script_dir = Path(__file__).resolve().parent
 project_root = script_dir.parent  # Remonte d'un niveau

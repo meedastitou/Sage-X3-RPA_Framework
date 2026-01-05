@@ -30,7 +30,7 @@ class WebResultMixin:
             if hasattr(self, 'logger'):
                 self.logger.info(f"🌐 Envoi web activé: {self.web_endpoint_config['url']}")
     
-    def send_results_to_web(self, force: bool = False) -> Optional[Dict[str, Any]]:
+    def send_results_to_web(self, email_f:str = "astitoumd@gmail.com", force: bool = False) -> Optional[Dict[str, Any]]:
         """
         Envoyer les résultats vers l'endpoint web
         
@@ -61,8 +61,8 @@ class WebResultMixin:
         
         try:
             # Formater les données selon le type de robot
-            data = self._format_results_for_web()
-            
+            data = self._format_results_for_web(email_f)
+
             # Récupérer le chemin du rapport si disponible
             file_path = str(self.rapport_path) if hasattr(self, 'rapport_path') and self.rapport_path else None
             
@@ -132,27 +132,36 @@ class WebResultMixin:
                 'message': f'Erreur critique: {str(e)}'
             }
     
-    def _format_results_for_web(self) -> Dict[str, Any]:
+    def _format_results_for_web(self, email_f: str = None) -> Dict[str, Any]:
         """
         Formater les résultats pour l'envoi web
         À surcharger dans les robots si nécessaire
-        
+
+        Args:
+            email_f: Email du fournisseur
+
         Returns:
             Dictionnaire de données
         """
         # Détecter le type de robot
         class_name = self.__class__.__name__
-        
+
         if 'BonneCommande' in class_name:
-            return self.result_sender.format_bonne_commande_result(self)
+            data = self.result_sender.format_bonne_commande_result(self)
         elif 'Lettrage' in class_name:
-            return self.result_sender.format_lettrage_result(self)
+            data = self.result_sender.format_lettrage_result(self)
         else:
             # Format générique
             summary = self.generate_summary() if hasattr(self, 'generate_summary') else {}
-            return {
+            data = {
                 'module': getattr(self, 'module_name', 'unknown'),
                 'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
                 'summary': summary,
                 'rapport_path': str(self.rapport_path) if hasattr(self, 'rapport_path') else None
             }
+
+        # Ajouter email_f dans les données si fourni
+        if email_f:
+            data['email_f'] = email_f
+
+        return data
