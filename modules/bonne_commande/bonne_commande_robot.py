@@ -59,6 +59,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             excel_file: Chemin du fichier Excel
             url: URL (non utilisé, gardé pour compatibilité)
         """
+        email_achteur=""
         try:
             # 1. LIRE ET VALIDER L'EXCEL
             df = self._lire_et_valider_excel(excel_file)

@@ -52,6 +52,7 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
             # 1. LIRE ET VALIDER L'EXCEL
             df = self._lire_et_valider_excel(excel_file)
             email_f = df.iloc[0]['email_expediteur']
+            
             # 2. REGROUPER PAR FOURNISSEUR → BC → ARTICLES
             structure = self._regrouper_donnees(df)
             
