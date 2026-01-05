@@ -6,7 +6,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
-from config.settings import SAGE_CONFIG
+from config.settings import SAGE_CONFIG, SAGE_CONFIG_TEST
 from core.driver_manager import DriverManager
 from core.logger import Logger
 
@@ -38,7 +38,7 @@ class SageConnector:
                 self.driver = self.driver_manager.start()
             
             # Naviguer vers Sage X3
-            self.logger.info(f"🔗 Connexion à: {SAGE_CONFIG['url']}")
+            self.logger.info(f"🔗 Connexion à:  {SAGE_CONFIG['url']}")
             self.driver.get(SAGE_CONFIG['url'])
             time.sleep(2)
             

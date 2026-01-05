@@ -54,7 +54,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
     def execute(self, excel_file: str, url: str = None):
         """
         Exécuter le traitement des bons de commande avec validation stricte
-        
+
         Args:
             excel_file: Chemin du fichier Excel
             url: URL (non utilisé, gardé pour compatibilité)
@@ -62,122 +62,133 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
         try:
             # 1. LIRE ET VALIDER L'EXCEL
             df = self._lire_et_valider_excel(excel_file)
-            
-            # 2. REGROUPER LES DONNÉES PAR STRUCTURE
-            structure_donnees = self._regrouper_donnees(df)
-            
+
+            # 2. REGROUPER LES DONNÉES PAR FOURNISSEUR
+            fournisseurs = self._regrouper_donnees(df)
+
             # 3. AFFICHER LE RÉSUMÉ
-            self._afficher_resume(structure_donnees)
-            
+            self._afficher_resume(fournisseurs)
+
             # 4. CONNEXION SAGE
             self.connect_sage()
-            
-            # 5. PHASE 1 : TRAITER LES ARTICLES (VALIDATION STRICTE)
-            self.logger.info("\n" + "="*80)
-            self.logger.info("🔧 PHASE 1 : TRAITEMENT DES ARTICLES (MODE STRICT)")
-            self.logger.info("="*80)
-            articles_ok = self._traiter_tous_articles(structure_donnees)
-            
-            if not articles_ok:
-                self.logger.error("\n" + "="*80)
-                self.logger.error("❌ ÉCHEC PHASE 1 : Au moins un article en erreur")
-                self.logger.error("❌ ARRÊT DU PROCESSUS - BC NON GÉNÉRÉ")
-                self.logger.error("="*80)
-                
-                # Ajouter un résultat final d'échec
+
+            # 5. TRAITER CHAQUE FOURNISSEUR SÉPARÉMENT
+            for idx_fournisseur, (code_fournisseur, data_fournisseur) in enumerate(fournisseurs.items(), 1):
+                self.logger.info("\n" + "="*80)
+                self.logger.info(f"🏢 TRAITEMENT FOURNISSEUR {idx_fournisseur}/{len(fournisseurs)}: {code_fournisseur}")
+                self.logger.info("="*80)
+
+                # Réinitialiser les compteurs pour ce fournisseur
+                self.articles_traites = 0
+                self.articles_echec = 0
+                self.das_traitees = 0
+                self.das_echec = 0
+
+                # PHASE 1 : TRAITER LES ARTICLES DE CE FOURNISSEUR
+                self.logger.info("\n" + "="*80)
+                self.logger.info(f"🔧 PHASE 1 : TRAITEMENT DES ARTICLES - Fournisseur {code_fournisseur}")
+                self.logger.info("="*80)
+                articles_ok = self._traiter_tous_articles(data_fournisseur)
+
+                if not articles_ok:
+                    self.logger.error("\n" + "="*80)
+                    self.logger.error(f"❌ ÉCHEC PHASE 1 pour fournisseur {code_fournisseur}")
+                    self.logger.error("❌ ARRÊT DU PROCESSUS - BC NON GÉNÉRÉ pour ce fournisseur")
+                    self.logger.error("="*80)
+
+                    # Ajouter un résultat final d'échec pour ce fournisseur
+                    self.add_result({
+                        'type': 'BILAN_FINAL',
+                        'fournisseur': code_fournisseur,
+                        'phase': 'Articles',
+                        'statut': 'ECHEC',
+                        'articles_traites': self.articles_traites,
+                        'articles_echec': self.articles_echec,
+                        'das_traitees': 0,
+                        'das_echec': 0,
+                        'bc_genere': False,
+                        'message': f'Échec lors du traitement des articles pour fournisseur {code_fournisseur} ({self.articles_echec} échec(s)). BC non généré.'
+                    })
+                    self.save_report()
+                    continue  # Passer au fournisseur suivant
+
+                # PHASE 2 : TRAITER LES DEMANDES D'ACHAT DE CE FOURNISSEUR
+                self.logger.info("\n" + "="*80)
+                self.logger.info(f"📋 PHASE 2 : TRAITEMENT DES DEMANDES D'ACHAT - Fournisseur {code_fournisseur}")
+                self.logger.info("="*80)
+                das_ok = self._traiter_toutes_das(data_fournisseur)
+
+                if not das_ok:
+                    self.logger.error("\n" + "="*80)
+                    self.logger.error(f"❌ ÉCHEC PHASE 2 pour fournisseur {code_fournisseur}")
+                    self.logger.error("❌ ARRÊT DU PROCESSUS - BC NON GÉNÉRÉ pour ce fournisseur")
+                    self.logger.error("="*80)
+
+                    # Ajouter un résultat final d'échec pour ce fournisseur
+                    self.add_result({
+                        'type': 'BILAN_FINAL',
+                        'fournisseur': code_fournisseur,
+                        'phase': 'Demandes_Achat',
+                        'statut': 'ECHEC',
+                        'articles_traites': self.articles_traites,
+                        'articles_echec': self.articles_echec,
+                        'das_traitees': self.das_traitees,
+                        'das_echec': self.das_echec,
+                        'bc_genere': False,
+                        'message': f'Échec lors du traitement des DAs pour fournisseur {code_fournisseur} ({self.das_echec} échec(s)). BC non généré.'
+                    })
+                    self.save_report()
+                    continue  # Passer au fournisseur suivant
+
+                # PHASE 3 : GÉNÉRER LE BON DE COMMANDE POUR CE FOURNISSEUR
+                self.logger.info("\n" + "="*80)
+                self.logger.info(f"✅ VALIDATION COMPLÈTE RÉUSSIE - Fournisseur {code_fournisseur}")
+                self.logger.info("="*80)
+                self.logger.info(f"✅ Articles traités avec succès: {self.articles_traites}/{self.articles_traites + self.articles_echec}")
+                self.logger.info(f"✅ DAs traitées avec succès: {self.das_traitees}/{self.das_traitees + self.das_echec}")
+
+                bc_genere = self._generer_bon_de_commande(data_fournisseur)
+
+                # Ajouter un résultat final de succès pour ce fournisseur
                 self.add_result({
                     'type': 'BILAN_FINAL',
-                    'phase': 'Articles',
-                    'statut': 'ECHEC',
-                    'articles_traites': self.articles_traites,
-                    'articles_echec': self.articles_echec,
-                    'das_traitees': 0,
-                    'das_echec': 0,
-                    'bc_genere': False,
-                    'message': f'Échec lors du traitement des articles ({self.articles_echec} échec(s)). BC non généré.'
-                })
-                self.save_report()
-                
-                # ✨ ENVOYER LES RÉSULTATS VERS LE WEB
-                self.send_results_to_web()
-                
-                return
-            
-            # 6. PHASE 2 : TRAITER LES DEMANDES D'ACHAT (VALIDATION STRICTE)
-            self.logger.info("\n" + "="*80)
-            self.logger.info("📋 PHASE 2 : TRAITEMENT DES DEMANDES D'ACHAT (MODE STRICT)")
-            self.logger.info("="*80)
-            das_ok = self._traiter_toutes_das(structure_donnees)
-            
-            if not das_ok:
-                self.logger.error("\n" + "="*80)
-                self.logger.error("❌ ÉCHEC PHASE 2 : Au moins une DA en erreur")
-                self.logger.error("❌ ARRÊT DU PROCESSUS - BC NON GÉNÉRÉ")
-                self.logger.error("="*80)
-                
-                # Ajouter un résultat final d'échec
-                self.add_result({
-                    'type': 'BILAN_FINAL',
-                    'phase': 'Demandes_Achat',
-                    'statut': 'ECHEC',
+                    'fournisseur': code_fournisseur,
+                    'phase': 'Complete',
+                    'statut': 'SUCCES',
                     'articles_traites': self.articles_traites,
                     'articles_echec': self.articles_echec,
                     'das_traitees': self.das_traitees,
                     'das_echec': self.das_echec,
-                    'bc_genere': False,
-                    'message': f'Échec lors du traitement des DAs ({self.das_echec} échec(s)). BC non généré.'
+                    'bc_genere': bc_genere,
+                    'message': f'Tous les traitements réussis pour fournisseur {code_fournisseur}. BC généré avec succès.' if bc_genere else f'Traitements réussis pour fournisseur {code_fournisseur} mais erreur génération BC.'
                 })
+
                 self.save_report()
-                
-                # ✨ ENVOYER LES RÉSULTATS VERS LE WEB
-                self.send_results_to_web()
-                
-                return
-            
-            # 7. TOUT EST OK → GÉNÉRER LE BON DE COMMANDE
+
+                self.logger.info("\n" + "="*80)
+                self.logger.info(f"🎉 FOURNISSEUR {code_fournisseur} TRAITÉ AVEC SUCCÈS")
+                self.logger.info("="*80)
+
+            # FIN DU TRAITEMENT DE TOUS LES FOURNISSEURS
             self.logger.info("\n" + "="*80)
-            self.logger.info("✅ VALIDATION COMPLÈTE RÉUSSIE")
+            self.logger.info("🎉 TOUS LES FOURNISSEURS ONT ÉTÉ TRAITÉS")
             self.logger.info("="*80)
-            self.logger.info(f"✅ Articles traités avec succès: {self.articles_traites}/{self.articles_traites + self.articles_echec}")
-            self.logger.info(f"✅ DAs traitées avec succès: {self.das_traitees}/{self.das_traitees + self.das_echec}")
-            
-            # TODO: Ajouter ici la logique de génération de BC
-            bc_genere = self._generer_bon_de_commande(structure_donnees)
-            
-            # Ajouter un résultat final de succès
-            self.add_result({
-                'type': 'BILAN_FINAL',
-                'phase': 'Complete',
-                'statut': 'SUCCES',
-                'articles_traites': self.articles_traites,
-                'articles_echec': self.articles_echec,
-                'das_traitees': self.das_traitees,
-                'das_echec': self.das_echec,
-                'bc_genere': bc_genere,
-                'message': 'Tous les traitements réussis. BC généré avec succès.' if bc_genere else 'Traitements réussis mais erreur génération BC.'
-            })
-            
-            self.save_report()
-            
-            self.logger.info("\n" + "="*80)
-            self.logger.info("🎉 PROCESSUS TERMINÉ AVEC SUCCÈS")
-            self.logger.info("="*80)
-            
+
             self.validation_passed = True
-            
+
             # ✨ ENVOYER LES RÉSULTATS VERS LE WEB
             web_result = self.send_results_to_web()
-            
+
             if web_result and web_result.get('success'):
                 self.logger.info("✅ Résultats envoyés vers l'endpoint web avec succès")
             elif web_result and not web_result.get('success'):
                 self.logger.warning(f"⚠️ Échec envoi web: {web_result.get('message')}")
-            
+
         except Exception as e:
             self.logger.error(f"\n❌ ERREUR CRITIQUE: {e}")
             import traceback
             self.logger.error(traceback.format_exc())
-            
+
             # Ajouter un résultat d'erreur critique
             self.add_result({
                 'type': 'BILAN_FINAL',
@@ -190,9 +201,9 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                 'bc_genere': False,
                 'message': f'Erreur critique: {str(e)}'
             })
-            
+
             self.save_report()
-            
+
             # ✨ ENVOYER LES RÉSULTATS (même en cas d'erreur)
             self.send_results_to_web()
     
@@ -241,73 +252,82 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
     def _regrouper_donnees(self, df: pd.DataFrame) -> Dict[str, Any]:
         """Regrouper les données par Fournisseur → DA → Articles"""
         self.logger.info("="*80)
-        self.logger.info("🔄 REGROUPEMENT DES DONNÉES")
+        self.logger.info("🔄 REGROUPEMENT DES DONNÉES PAR FOURNISSEUR")
         self.logger.info("="*80)
-        
-        fournisseur = df['Code_Fournisseur'].iloc[0]
-        email = df['Email_Fournisseur'].iloc[0]
-        tel = df['TEL_Fournisseu'].iloc[0]
-        
-        das = {}
-        tous_articles = {}
-        
+
+        # Structure: {code_fournisseur: {email, tel, das, tous_articles}}
+        fournisseurs = {}
+
         for _, row in df.iterrows():
+            code_fournisseur = str(row['Code_Fournisseur'])
+            email = str(row['Email_Fournisseur'])
+            tel = str(row['TEL_Fournisseu'])
             numero_da = str(row['Numero_DA'])
             acheteur = str(row['Acheteur'])
             code_article = str(row['Code_Article'])
             montant = str(row['Montant'])
             marque = str(row['Marque'])
             affaire = str(row['Affaire'])
-            
-            if numero_da not in das:
-                das[numero_da] = {
+
+            # Initialiser le fournisseur s'il n'existe pas
+            if code_fournisseur not in fournisseurs:
+                fournisseurs[code_fournisseur] = {
+                    'fournisseur': code_fournisseur,
+                    'email': email,
+                    'tel': tel,
+                    'das': {},
+                    'tous_articles': {}
+                }
+
+            # Ajouter la DA si elle n'existe pas pour ce fournisseur
+            if numero_da not in fournisseurs[code_fournisseur]['das']:
+                fournisseurs[code_fournisseur]['das'][numero_da] = {
                     'acheteur': acheteur,
                     'articles': []
                 }
-            
-            das[numero_da]['articles'].append({
+
+            # Ajouter l'article à la DA
+            fournisseurs[code_fournisseur]['das'][numero_da]['articles'].append({
                 'code': code_article,
                 'montant': montant,
                 'marque': marque,
                 'affaire': affaire
             })
-            
-            if code_article not in tous_articles:
-                tous_articles[code_article] = {
+
+            # Ajouter l'article unique pour ce fournisseur
+            if code_article not in fournisseurs[code_fournisseur]['tous_articles']:
+                fournisseurs[code_fournisseur]['tous_articles'][code_article] = {
                     'montant': montant,
-                    'fournisseur': fournisseur,
+                    'fournisseur': code_fournisseur,
                     'marque': marque,
                     'affaire': affaire
                 }
-        
-        structure = {
-            'fournisseur': fournisseur,
-            'email': email,
-            'tel': tel,
-            'das': das,
-            'tous_articles': tous_articles
-        }
-        
-        return structure
+
+        return fournisseurs
     
-    def _afficher_resume(self, structure: Dict[str, Any]):
-        """Afficher un résumé de la structure"""
+    def _afficher_resume(self, fournisseurs: Dict[str, Any]):
+        """Afficher un résumé de la structure par fournisseur"""
         self.logger.info("="*80)
         self.logger.info("📊 RÉSUMÉ DU TRAITEMENT")
         self.logger.info("="*80)
-        
-        self.logger.info(f"\n🏢 Fournisseur: {structure['fournisseur']}")
-        self.logger.info(f"   Email: {structure['email']}")
-        self.logger.info(f"   Tél: {structure['tel']}")
-        
-        self.logger.info(f"\n📦 {len(structure['tous_articles'])} Article(s) unique(s) à traiter:")
-        for article, info in structure['tous_articles'].items():
-            self.logger.info(f"   • {article}: {info['montant']} MAD")
-        
-        self.logger.info(f"\n📋 {len(structure['das'])} Demande(s) d'Achat à traiter:")
-        for da_num, da_info in structure['das'].items():
-            self.logger.info(f"   • {da_num} ({da_info['acheteur']}): {len(da_info['articles'])} article(s)")
-        
+
+        self.logger.info(f"\n🏢 Nombre de fournisseurs: {len(fournisseurs)}")
+
+        for code_fournisseur, data in fournisseurs.items():
+            self.logger.info(f"\n{'─'*80}")
+            self.logger.info(f"🏢 Fournisseur: {code_fournisseur}")
+            self.logger.info(f"   Email: {data['email']}")
+            self.logger.info(f"   Tél: {data['tel']}")
+
+            self.logger.info(f"\n📦 {len(data['tous_articles'])} Article(s) unique(s) à traiter:")
+            for article, info in data['tous_articles'].items():
+                self.logger.info(f"   • {article}: {info['montant']} MAD")
+
+            self.logger.info(f"\n📋 {len(data['das'])} Demande(s) d'Achat à traiter:")
+            for da_num, da_info in data['das'].items():
+                self.logger.info(f"   • {da_num} ({da_info['acheteur']}): {len(da_info['articles'])} article(s)")
+
+        self.logger.info(f"\n{'─'*80}")
         self.logger.info("\n⚠️  MODE STRICT ACTIVÉ:")
         self.logger.info("   ✅ TOUS les articles doivent réussir")
         self.logger.info("   ✅ TOUTES les DAs doivent réussir")
