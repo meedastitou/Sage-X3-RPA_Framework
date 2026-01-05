@@ -62,6 +62,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
         try:
             # 1. LIRE ET VALIDER L'EXCEL
             df = self._lire_et_valider_excel(excel_file)
+            email_achteur = df.iloc[0]['email_expediteur']
 
             # 2. REGROUPER LES DONNÉES PAR FOURNISSEUR
             fournisseurs = self._regrouper_donnees(df)
@@ -177,7 +178,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             self.validation_passed = True
 
             # ✨ ENVOYER LES RÉSULTATS VERS LE WEB
-            web_result = self.send_results_to_web()
+            web_result = self.send_results_to_web(email_achteur)
 
             if web_result and web_result.get('success'):
                 self.logger.info("✅ Résultats envoyés vers l'endpoint web avec succès")
@@ -205,7 +206,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             self.save_report()
 
             # ✨ ENVOYER LES RÉSULTATS (même en cas d'erreur)
-            self.send_results_to_web()
+            self.send_results_to_web(email_achteur)
     
     def _lire_et_valider_excel(self, excel_file: str) -> pd.DataFrame:
         """Lire et valider le fichier Excel"""
