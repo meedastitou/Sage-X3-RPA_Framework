@@ -30,7 +30,7 @@ class WebResultMixin:
             if hasattr(self, 'logger'):
                 self.logger.info(f"🌐 Envoi web activé: {self.web_endpoint_config['url']}")
     
-    def send_results_to_web(self, email_f:str, force: bool = False) -> Optional[Dict[str, Any]]:
+    def send_results_to_web(self, email_f:str = "astitoumd@gmail.com", force: bool = False) -> Optional[Dict[str, Any]]:
         """
         Envoyer les résultats vers l'endpoint web
         
