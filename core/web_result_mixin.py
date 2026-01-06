@@ -164,4 +164,12 @@ class WebResultMixin:
         if email_f:
             data['email_f'] = email_f
 
+        # Ajouter le screenshot d'erreur si disponible
+        if hasattr(self, 'error_screenshot') and self.error_screenshot:
+            data['error_screenshot'] = self.error_screenshot
+
+        # Ajouter les messages popup si disponibles
+        if hasattr(self, 'popup_messages') and self.popup_messages:
+            data['popup_messages'] = self.popup_messages
+
         return data
