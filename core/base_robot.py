@@ -4,9 +4,10 @@ Classe de base pour tous les robots RPA
 """
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Dict, Any
+from typing import Dict, Any, Optional, List
 import pandas as pd
 from pathlib import Path
+import base64
 
 from core.sage_connector import SageConnector
 from core.driver_manager import DriverManager
@@ -34,7 +35,11 @@ class BaseRobot(ABC):
         self.resultats = []
         self.rapport_path = None
         self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        
+
+        # Gestion des erreurs (optionnel)
+        self.error_screenshot = None
+        self.popup_messages = []
+
         self.logger.info(f"🤖 Initialisation robot: {self.__class__.__name__}")
     
     @abstractmethod
@@ -197,3 +202,108 @@ class BaseRobot(ABC):
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager: sortie"""
         self.cleanup()
+
+    def capture_error_screenshot(self) -> Optional[str]:
+        """
+        Capturer une capture d'écran en cas d'erreur et la convertir en base64
+
+        Returns:
+            Screenshot en base64 ou None
+        """
+        try:
+            driver = self.driver_manager.driver
+            if driver:
+                # Prendre le screenshot
+                screenshot_png = driver.get_screenshot_as_png()
+                # Convertir en base64
+                screenshot_b64 = base64.b64encode(screenshot_png).decode('utf-8')
+                self.error_screenshot = screenshot_b64
+                self.logger.info("📸 Screenshot capturé avec succès")
+                return screenshot_b64
+        except Exception as e:
+            self.logger.error(f"❌ Erreur lors de la capture screenshot: {e}")
+            return None
+
+    def read_popup_message(self) -> Optional[str]:
+        """
+        Lire le message d'une popup si elle existe (format Sage X3)
+
+        Returns:
+            Message de la popup ou None
+        """
+        try:
+            driver = self.driver_manager.driver
+            popup_message = None
+
+            # Essayer de trouver une popup avec le message d'erreur (format Sage)
+            try:
+                from selenium.webdriver.common.by import By
+                pre_elements = driver.find_elements(By.CSS_SELECTOR, "pre.s_alertbox_msg")
+                if pre_elements and len(pre_elements) > 0:
+                    popup_message = pre_elements[0].text
+                    self.logger.info(f"📋 Message popup trouvé: {popup_message}")
+            except:
+                pass
+
+            # Essayer d'autres sélecteurs de popup
+            if not popup_message:
+                try:
+                    from selenium.webdriver.common.by import By
+                    alert_elements = driver.find_elements(By.CSS_SELECTOR, "article.s_alertbox_content")
+                    if alert_elements and len(alert_elements) > 0:
+                        popup_message = alert_elements[0].text
+                        self.logger.info(f"📋 Message popup trouvé (alertbox): {popup_message}")
+                except:
+                    pass
+
+            # Essayer les alertes JavaScript
+            if not popup_message:
+                try:
+                    alert = driver.switch_to.alert
+                    popup_message = alert.text
+                    self.logger.info(f"📋 Message alert JavaScript trouvé: {popup_message}")
+                except:
+                    pass
+
+            if popup_message:
+                self.popup_messages.append({
+                    'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    'message': popup_message
+                })
+
+            return popup_message
+
+        except Exception as e:
+            self.logger.error(f"❌ Erreur lors de la lecture popup: {e}")
+            return None
+
+    def handle_error_with_screenshot(self, error_message: str, context: str = "") -> Dict[str, Any]:
+        """
+        Gérer une erreur en capturant le screenshot et en lisant la popup
+
+        Args:
+            error_message: Message d'erreur
+            context: Contexte de l'erreur (article, DA, etc.)
+
+        Returns:
+            Dictionnaire avec les informations d'erreur
+        """
+        # Capturer le screenshot
+        screenshot = self.capture_error_screenshot()
+
+        # Lire le message popup
+        popup_msg = self.read_popup_message()
+
+        error_info = {
+            'error_message': error_message,
+            'context': context,
+            'screenshot': screenshot,
+            'popup_message': popup_msg,
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        }
+
+        self.logger.error(f"❌ Erreur capturée - Contexte: {context}")
+        if popup_msg:
+            self.logger.error(f"📋 Message popup: {popup_msg}")
+
+        return error_info

@@ -55,7 +55,6 @@ def main():
         logger.info("✅ TRAITEMENT TERMINÉ AVEC SUCCÈS")
         logger.info("="*80)
         
-        input("\n⏸️ Appuyez sur Entrée pour fermer...")
         
     except KeyboardInterrupt:
         logger.warning("\n⚠️ Interruption par l'utilisateur")
@@ -65,7 +64,6 @@ def main():
         logger.error(f"❌ Erreur: {e}")
         import traceback
         logger.error(traceback.format_exc())
-        input("\n⏸️ Appuyez sur Entrée...")
         sys.exit(1)
 
 if __name__ == '__main__':

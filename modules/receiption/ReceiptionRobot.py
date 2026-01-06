@@ -52,7 +52,7 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
             # 1. LIRE ET VALIDER L'EXCEL
             df = self._lire_et_valider_excel(excel_file)
             email_f = df.iloc[0]['email_expediteur']
-            
+
             # 2. REGROUPER PAR FOURNISSEUR → BC → ARTICLES
             structure = self._regrouper_donnees(df)
             
@@ -116,7 +116,7 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
             })
             
             self.save_report()
-            self.send_results_to_web(email_f)
+            # self.send_results_to_web(email_f)
     
     def _lire_et_valider_excel(self, excel_file: str) -> pd.DataFrame:
         """Lire et valider le fichier Excel"""
@@ -315,7 +315,7 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
             resultat['message'] = f'Erreur: {str(e)}'
             self.logger.error(f"❌ Erreur fournisseur {code_frs}: {e}")
         finally:
-            self.logger.info(f"\n✅ Articles traités: {self.articles_traites}, Échecs: {self.articles_echec}")
+            
             driver = self.driver_manager.driver
 
             driver.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
@@ -324,6 +324,14 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
 
             s_page_close = driver.find_element(By.CSS_SELECTOR, "a.s_page_close")
             s_page_close.click()
+            time.sleep(0.5)
+            dialog = WebDriverWait(driver, 1).until(
+                EC.visibility_of_element_located((By.XPATH, "//pre[@class='s_alertbox_msg' and contains(text(), 'Continuer et abandonner votre création ?')]"))
+            )
+            # Cliquer sur "Oui"
+            oui_button = driver.find_element(By.XPATH, "//a[@aria-label='Oui']")
+            oui_button.click()
+
             time.sleep(20)
         return resultat
     
@@ -395,7 +403,6 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
                 resultat['message'] = f'Aucun article sélectionné pour BC {n_bc}'
                 return resultat
             
-            input("test")
             # 3. TRAITER CHAQUE ARTICLE
             for idx, article in enumerate(articles, 1):
                 self.logger.info(f"   📦 Article {idx}/{len(articles)}: {article['code']}")
@@ -501,8 +508,8 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
         en s'assurant qu'ils appartiennent au bon BC
         
         Args:
-            n_bc: Numéro du bon de commande (ex: 'BC167784')
-            articles: Liste des articles à sélectionner [{'code': 'A13254', ...}, ...]
+            n_bc: Numéro du bon de commande (ex: 'BC190771')
+            articles: Liste des articles à sélectionner [{'code': 'A05198', ...}, ...]
         
         Returns:
             True si au moins un article sélectionné, False sinon
@@ -512,71 +519,97 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
         try:
             self.logger.info(f"🔍 Sélection articles pour BC: {n_bc}")
             
-            # Attendre le tableau
+            # 1. Cliquer sur "Sélection commandes" pour ouvrir la section
+            try:
+                commandes_btn = WebDriverWait(driver, 10).until(
+                    EC.element_to_be_clickable((By.XPATH, "//a[@title='Sélection commandes']"))
+                )
+                commandes_btn.click()
+                self.logger.info("✅ Section 'Sélection commandes' ouverte")
+                time.sleep(1)
+            except:
+                self.logger.warning("⚠️ Bouton 'Sélection commandes' non trouvé, tableau déjà ouvert")
+            
+            # 2. Attendre le tableau
             WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, ".s-grid-table-body"))
             )
             time.sleep(1)
             
-            # Récupérer toutes les lignes
+            # 3. Récupérer toutes les lignes
             rows = driver.find_elements(By.CSS_SELECTOR, ".s-grid-table-body tr.s-grid-row")
+            self.logger.info(f"📊 {len(rows)} ligne(s) trouvée(s) dans le tableau")
             
-            # Structure hiérarchique : BC → Articles
+            # Variables de suivi
             bc_trouve = False
-            bc_ouvert = False
+            bc_row = None
             articles_trouves = 0
+            articles_attendus = {art['code'].strip(): False for art in articles}
             
-            for row in rows:
+            # 4. Parcourir toutes les lignes
+            for idx, row in enumerate(rows):
                 try:
                     # Vérifier si ligne visible
-                    if row.get_attribute('style') and 'display: none' in row.get_attribute('style'):
+                    style = row.get_attribute('style') or ''
+                    if 'display: none' in style or 'display:none' in style:
                         continue
+                    
+                    # Récupérer le padding-left pour déterminer le niveau
+                    td = row.find_element(By.CSS_SELECTOR, "td.s-tree-cell")
+                    padding_left = td.get_attribute('style')
+                    
+                    # Extraire la valeur de padding-left
+                    if 'padding-left: 0px' in padding_left:
+                        niveau = 0  # BC parent
+                    elif 'padding-left: 22px' in padding_left:
+                        niveau = 1  # Article enfant
+                    else:
+                        niveau = 2  # Autre
                     
                     # Récupérer le texte de la ligne
                     desc_div = row.find_element(By.CSS_SELECTOR, ".s-tree-node-desc-value")
                     ligne_text = desc_div.text.strip()
                     
-                    # Détecter le niveau (BC parent ou Article enfant)
-                    tree_node = row.find_element(By.CSS_SELECTOR, ".s-tree-node")
-                    niveau = tree_node.get_attribute("aria-level")
-                    
-                    # NIVEAU 0 ou 1 = Ligne BC (parent)
-                    if niveau in ['0', '1']:
+                    # NIVEAU 0 = Ligne BC (parent)
+                    if niveau == 0:
+                        # Si on était dans un BC et qu'on en trouve un autre, on arrête
+                        if bc_trouve and bc_row is not None:
+                            self.logger.info(f"🛑 Fin du BC {n_bc}, autre BC détecté")
+                            break
+                        
                         # Vérifier si c'est notre BC
                         if n_bc in ligne_text:
                             bc_trouve = True
+                            bc_row = row
                             self.logger.info(f"✅ BC trouvé: {ligne_text}")
                             
-                            # Vérifier si le BC est déplié (expanded)
+                            # Vérifier si le BC a un bouton expand (plier/déplier)
                             try:
-                                expand_btn = row.find_element(By.CSS_SELECTOR, ".s-tree-node-expand")
-                                aria_expanded = expand_btn.get_attribute("aria-expanded")
+                                expand_btn = row.find_element(By.CSS_SELECTOR, "a.s-tree-node-picker")
+                                btn_class = expand_btn.get_attribute('class')
                                 
-                                if aria_expanded == "false":
-                                    # Déplier le BC pour voir les articles
+                                # Si bouton "up" = BC plié, il faut le déplier
+                                if 's-btn-dir_up' in btn_class:
                                     self.logger.info("📂 Dépliage du BC...")
                                     expand_btn.click()
-                                    time.sleep(0.5)
-                                
-                                bc_ouvert = True
+                                    time.sleep(0.8)
+                                    
+                                    # Recharger les lignes après le dépliage
+                                    rows = driver.find_elements(By.CSS_SELECTOR, ".s-grid-table-body tr.s-grid-row")
+                                    self.logger.info(f"📊 {len(rows)} ligne(s) après dépliage")
+                                else:
+                                    self.logger.info("✅ BC déjà déplié")
                             except:
-                                # Pas de bouton expand = déjà déplié
-                                bc_ouvert = True
-                        else:
-                            # C'est un autre BC, on arrête si on était dans le bon
-                            if bc_trouve:
-                                break
+                                self.logger.info("✅ BC sans bouton expand (déjà ouvert)")
                     
-                    # NIVEAU 2+ = Ligne Article (enfant)
-                    elif int(niveau) >= 2:
+                    # NIVEAU 1 = Ligne Article (enfant)
+                    elif niveau == 1:
                         # On traite seulement si on est dans le bon BC
-                        if not bc_trouve or not bc_ouvert:
+                        if not bc_trouve:
                             continue
                         
                         # Chercher si cet article correspond à notre liste
-                        for article in articles:
-                            code_article = article['code'].strip()
-                            
+                        for code_article in articles_attendus.keys():
                             # Vérifier si la ligne commence par le code article
                             if ligne_text.startswith(code_article):
                                 self.logger.info(f"   ✅ Article trouvé: {ligne_text}")
@@ -589,39 +622,55 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
                                 if not checkbox.is_selected():
                                     label = row.find_element(By.CSS_SELECTOR, f"label[for='{checkbox_id}']")
                                     
-                                    # Scroll
+                                    # Scroll vers l'élément
                                     driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", label)
                                     time.sleep(0.3)
                                     
-                                    # Cliquer
-                                    label.click()
+                                    # Cliquer sur le label
+                                    try:
+                                        label.click()
+                                    except:
+                                        # Si le clic normal échoue, utiliser JavaScript
+                                        driver.execute_script("arguments[0].click();", label)
+                                    
                                     time.sleep(0.5)
                                     
                                     self.logger.info(f"   ☑️ Article {code_article} coché")
                                     articles_trouves += 1
+                                    articles_attendus[code_article] = True
                                 else:
                                     self.logger.info(f"   ⚪ Article {code_article} déjà coché")
                                     articles_trouves += 1
+                                    articles_attendus[code_article] = True
                                 
-                                # Ne pas chercher les autres articles pour cette ligne
+                                # Passer à la ligne suivante
                                 break
                 
                 except Exception as e:
+                    self.logger.debug(f"⚠️ Erreur ligne {idx}: {e}")
                     continue
             
+            # 5. Vérifier si le BC a été trouvé
             if not bc_trouve:
                 self.logger.error(f"❌ BC {n_bc} non trouvé dans le tableau")
                 return False
             
-            # Gérer la popup de confirmation
+            # 6. Afficher les articles manquants
+            articles_manquants = [code for code, trouve in articles_attendus.items() if not trouve]
+            if articles_manquants:
+                self.logger.warning(f"⚠️ Articles non trouvés dans {n_bc}: {', '.join(articles_manquants)}")
+            
+            # 7. Gérer la popup de confirmation "Voulez-vous remplacer..."
             time.sleep(1)
             try:
-                oui_btn = driver.find_element(By.XPATH, "//a[@aria-label='Oui']")
+                oui_btn = WebDriverWait(driver, 3).until(
+                    EC.element_to_be_clickable((By.XPATH, "//a[@aria-label='Oui']"))
+                )
                 oui_btn.click()
                 self.logger.info("✅ Popup 'Oui' cliquée")
                 time.sleep(1)
             except:
-                pass
+                self.logger.debug("ℹ️ Pas de popup de confirmation")
             
             self.logger.info(f"✅ {articles_trouves}/{len(articles)} article(s) sélectionné(s) pour BC {n_bc}")
             
@@ -629,22 +678,29 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
             
         except Exception as e:
             self.logger.error(f"❌ Erreur sélection articles: {e}")
-            driver.save_screenshot("error_selection_articles.png")
+            import traceback
+            self.logger.error(traceback.format_exc())
+            driver.save_screenshot(f"error_selection_bc_{n_bc}.png")
             return False
-
+    
     def _remplir_article_dans_ligne(self, article: Dict, ligne_num: int) -> bool:
         """Remplir les données d'un article dans le tableau des lignes"""
-        driver = self.driver_manager.driver
         
+        driver = self.driver_manager.driver
+
+        self.logger.info(f"🖊️ Remplissage article {article} dans la ligne {ligne_num}")
         try:
             # Attendre le tableau
             WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, ".s-grid-table-body"))
             )
-            
+
+            table = driver.find_element(By.XPATH, 
+                "//section[contains(@class, 's-h1')]//div[contains(text(), 'Lignes')]/ancestor::section//table[contains(@class, 's-grid-table-body')]"
+            )
             # Trouver toutes les lignes
-            rows = driver.find_elements(By.CSS_SELECTOR, ".s-grid-table-body tr.s-grid-row")
-            
+            rows = table.find_elements(By.CSS_SELECTOR, ".s-grid-table-body tr.s-grid-row")
+            self.logger.info(f"📊 {len(rows)} ligne(s) dans le tableau pour remplissage")
             # Chercher la ligne avec cet article
             target_row = None
             for row in rows:
@@ -668,9 +724,10 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
             cells = target_row.find_elements(By.CSS_SELECTOR, ".s-inplace-input")
             
             # Quantité (adapter l'index selon ton tableau)
-            if article['quantite'] and len(cells) > 2:
-                qte_cell = cells[2]  # À ADAPTER
-                driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", qte_cell)
+            if article['quantite'] and len(cells) > 5:
+                self.logger.info("Remplissage quantité...")
+                qte_cell = cells[5]
+                # driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", qte_cell)
                 qte_cell.click()
                 time.sleep(0.3)
                 qte_cell.clear()
@@ -679,8 +736,8 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
                 time.sleep(0.3)
             
             # N° Bon de transport
-            if article['n_b_transport'] and len(cells) > 3:
-                transport_cell = cells[3]  # À ADAPTER
+            if article['n_b_transport'] and len(cells) > 9:
+                transport_cell = cells[9]  
                 transport_cell.click()
                 time.sleep(0.3)
                 transport_cell.clear()
@@ -689,8 +746,8 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
                 time.sleep(0.3)
             
             # Matricule
-            if article['matricule'] and len(cells) > 4:
-                matricule_cell = cells[4]  # À ADAPTER
+            if article['matricule'] and len(cells) > 10:
+                matricule_cell = cells[10] 
                 matricule_cell.click()
                 time.sleep(0.3)
                 matricule_cell.clear()
@@ -699,8 +756,8 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
                 time.sleep(0.3)
             
             # Poids
-            if article['poids'] and len(cells) > 5:
-                poids_cell = cells[5]  # À ADAPTER
+            if article['poids'] and len(cells) > 11:
+                poids_cell = cells[11] 
                 poids_cell.click()
                 time.sleep(0.3)
                 poids_cell.clear()
@@ -709,8 +766,8 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
                 time.sleep(0.3)
             
             # Marque
-            if article['marque'] and len(cells) > 6:
-                marque_cell = cells[6]  # À ADAPTER
+            if article['marque'] and len(cells) > 12:
+                marque_cell = cells[12] 
                 marque_cell.click()
                 time.sleep(0.3)
                 marque_cell.clear()
