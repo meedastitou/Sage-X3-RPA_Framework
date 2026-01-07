@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from utils.queue_manager import get_next_task, update_task
 from modules.bonne_commande.bonne_commande_robot import BonneCommandeRobot
+from modules.receiption.ReceiptionRobot import ReceiptionRobot
 from core.logger import Logger
 
 logger = Logger.get_logger('WorkerRPA', 'workers')
@@ -27,22 +28,32 @@ def main():
             task = get_next_task()
             
             if task:
+                task_type = task.get('task_type', 'bon_commande')  # Par défaut: bon_commande
                 logger.info(f"\n{'='*80}")
                 logger.info(f"📋 Tâche trouvée: {task['id']}")
+                logger.info(f"🤖 Type: {task_type}")
                 logger.info(f"📧 Email: {task['email']}")
                 logger.info(f"📄 Fichier: {task['file']}")
                 logger.info(f"{'='*80}")
-                
+
                 update_task(task['id'], "processing")
-                
+
                 try:
-                    # Lancer le robot
-                    robot = BonneCommandeRobot()
-                    robot.run(excel_file=task['file'])
-                    
+                    # Lancer le robot approprié selon le type de tâche
+                    if task_type == "bon_commande":
+                        logger.info("🚀 Lancement du BonneCommandeRobot...")
+                        robot = BonneCommandeRobot()
+                        robot.run(excel_file=task['file'])
+                    elif task_type == "receiption":
+                        logger.info("🚀 Lancement du ReceiptionRobot...")
+                        robot = ReceiptionRobot()
+                        robot.run(excel_file=task['file'])
+                    else:
+                        raise ValueError(f"Type de tâche inconnu: {task_type}")
+
                     update_task(task['id'], "completed")
                     logger.info(f"✅ Tâche {task['id']} terminée avec succès")
-                    
+
                 except Exception as e:
                     update_task(task['id'], "failed", error=str(e))
                     logger.error(f"❌ Tâche {task['id']} échouée: {e}")

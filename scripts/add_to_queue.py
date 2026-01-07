@@ -22,15 +22,17 @@ def main():
     parser = argparse.ArgumentParser(description='Ajouter une tâche RPA à la file')
     parser.add_argument('--file', required=True, help='Chemin du fichier Excel')
     parser.add_argument('--email', required=True, help='Email de l\'expéditeur')
-    
+    parser.add_argument('--task_type', required=False, default='bon_commande', help='Type de tâche (bon_commande ou receiption)')
+
     args = parser.parse_args()
     
     # Ajouter la tâche
-    task_id = add_task(args.file, args.email)
+    task_id = add_task(args.file, args.email, task_type=args.task_type)
     
     print(f"✅ Tâche ajoutée à la file: {task_id}")
     print(f"📄 Fichier: {args.file}")
     print(f"📧 Email: {args.email}")
+    print(f"🤖 Type de tâche: {args.task_type}")
     
     return 0
 
