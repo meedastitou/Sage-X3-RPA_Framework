@@ -6,9 +6,10 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
-from config.settings import SAGE_CONFIG
+from config.settings import SAGE_CONFIG, SAGE_CONFIG_TEST
 from core.driver_manager import DriverManager
 from core.logger import Logger
+from selenium.webdriver.common.keys import Keys
 
 class SageConnector:
     """Gestion de la connexion à Sage X3"""
@@ -161,6 +162,10 @@ class SageConnector:
     def disconnect(self):
         """Se déconnecter et fermer le navigateur"""
         driver = self.driver_manager.driver
+
+        driver.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
+        time.sleep(0.5)
+        driver.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
         time.sleep(1)
         logout_button = driver.find_element(By.XPATH, f"//a[contains(text(), '{SAGE_CONFIG['titular']}')]")
         logout_button.click()
@@ -168,11 +173,31 @@ class SageConnector:
         logout_button = driver.find_element(By.XPATH, "//a[contains(text(), 'Déconnexion')]")
         logout_button.click()
         time.sleep(2)
+
+        self.click_oui_if_popup(driver)        
+
         if self.driver_manager:
             self.driver_manager.stop()
         self.is_connected = False
         self.logger.info("✅ Déconnexion Sage X3")
     
+    def click_oui_if_popup(self,driver, timeout=3):
+        """Clique sur Oui si un popup avec bouton Oui apparaît"""
+        try:
+            # Vérifier d'abord si le popup est présent
+            popup = WebDriverWait(driver, timeout).until(
+                EC.presence_of_element_located((By.CLASS_NAME, "s_alertbox_footer"))
+            )
+            
+            # Chercher le bouton Oui dans le popup
+            oui_button = popup.find_element(By.XPATH, ".//a[@aria-label='Oui']")
+            oui_button.click()
+            
+        except:
+            # Si le popup n'est pas trouvé, ne rien faire
+            pass
+
+
     def __enter__(self):
         """Context manager: entrée"""
         self.connect()
