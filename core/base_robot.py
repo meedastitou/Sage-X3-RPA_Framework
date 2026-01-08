@@ -60,7 +60,16 @@ class BaseRobot(ABC):
             True si connexion réussie
         """
         return self.sage_connector.connect()
-    
+
+    def disconnect_sage(self) -> bool:
+        """
+        Connexion à Sage X3
+        
+        Returns:
+            True si déconnexion réussie
+        """
+        return self.sage_connector.disconnect()
+
     def navigate_to_module(self, url: str) -> bool:
         """
         Naviguer vers un module Sage

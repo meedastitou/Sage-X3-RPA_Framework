@@ -30,7 +30,7 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
         self.driver_manager.headless = headless
         
         # URL du module réceptions d'achat
-        self.url_receiption = "http://192.168.1.252:8124/syracuse-main/html/main.html?url=%2Ftrans%2Fx3%2Ferp%2FPREPROD%2F%24sessions%3Ff%3DGESPTH2%252F2%252F%252FM%252F%26profile%3D~(loc~%27fr-FR~role~%2765059cf7-11e9-4b40-bac9-66ef183fb4e1~ep~%2764a56978-56ab-46f1-8d83-ed18f7fa6484~appConn~())"
+        self.url_receiption = "http://192.168.1.241:8124/syracuse-main/html/main.html?url=%2Ftrans%2Fx3%2Ferp%2FPREPROD%2F%24sessions%3Ff%3DGESPTH2%252F2%252F%252FM%252F%26profile%3D~(loc~%27fr-FR~role~%2765059cf7-11e9-4b40-bac9-66ef183fb4e1~ep~%2764a56978-56ab-46f1-8d83-ed18f7fa6484~appConn~())"
         
         # Compteurs
         self.fournisseurs_traites = 0
@@ -61,7 +61,7 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
             
             # 4. CONNEXION SAGE
             self.connect_sage()
-            
+
             # 5. NAVIGUER VERS MODULE
             self.navigate_to_module(self.url_receiption)
             time.sleep(3)
@@ -82,27 +82,27 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
                     self.logger.warning(f"⚠️ Échec fournisseur {code_frs}, mais on continue...")
             
             # # 7. BILAN FINAL
-            # self.add_result({
-            #     'type': 'BILAN_FINAL',
-            #     'statut': 'SUCCES' if self.fournisseurs_echec == 0 else 'PARTIEL',
-            #     'fournisseurs_traites': self.fournisseurs_traites,
-            #     'fournisseurs_echec': self.fournisseurs_echec,
-            #     'total_articles': self.total_articles,
-            #     'message': f'{self.fournisseurs_traites} fournisseur(s) traité(s), {self.total_articles} article(s)'
-            # })
+            self.add_result({
+                'type': 'BILAN_FINAL',
+                'statut': 'SUCCES' if self.fournisseurs_echec == 0 else 'PARTIEL',
+                'fournisseurs_traites': self.fournisseurs_traites,
+                'fournisseurs_echec': self.fournisseurs_echec,
+                'total_articles': self.total_articles,
+                'message': f'{self.fournisseurs_traites} fournisseur(s) traité(s), {self.total_articles} article(s)'
+            })
             
             # # 8. SAUVEGARDER RAPPORT
-            # self.save_report()
+            self.save_report()
             
             # # 9. ENVOYER RÉSULTATS WEB
-            # self.send_results_to_web()
+            self.send_results_to_web(email_f)
             
-            # self.logger.info("\n" + "="*80)
-            # self.logger.info("🎉 PROCESSUS TERMINÉ")
-            # self.logger.info(f"✅ {self.fournisseurs_traites} fournisseur(s) traité(s)")
-            # self.logger.info(f"❌ {self.fournisseurs_echec} fournisseur(s) en échec")
-            # self.logger.info(f"📦 {self.total_articles} article(s) traité(s)")
-            # self.logger.info("="*80)
+            self.logger.info("\n" + "="*80)
+            self.logger.info("🎉 PROCESSUS TERMINÉ")
+            self.logger.info(f"✅ {self.fournisseurs_traites} fournisseur(s) traité(s)")
+            self.logger.info(f"❌ {self.fournisseurs_echec} fournisseur(s) en échec")
+            self.logger.info(f"📦 {self.total_articles} article(s) traité(s)")
+            self.logger.info("="*80)
             
         except Exception as e:
             self.logger.error(f"\n❌ ERREUR CRITIQUE: {e}")
@@ -116,7 +116,11 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
             })
             
             self.save_report()
-            # self.send_results_to_web(email_f)
+            self.send_results_to_web(email_f)
+        
+        finally:
+            self.logger.info("Deconnexion du robot...")
+            self.disconnect_sage()
     
     def _lire_et_valider_excel(self, excel_file: str) -> pd.DataFrame:
         """Lire et valider le fichier Excel"""
@@ -354,14 +358,16 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
             if self._cree_reception():
                 self.logger.info(f"✅ Réception créée pour BC {n_bc}")
             else:
+                self.logger.warning(f"❌ Échec création réception pour BC {n_bc}")
                 resultat['message'] = 'Erreur création réception'
                 return resultat
             
 
             # 1. REMPLIR LES CHAMPS HEADER
             self.logger.info("📝 Remplissage header...")
+
             # Fournisseur
-            fournisseur = driver.find_element(By.ID, "3-75-input")  
+            fournisseur = driver.find_element(By.ID, "2-75-input")  
             fournisseur.click()
             time.sleep(0.5)
             fournisseur.clear()
@@ -373,7 +379,7 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
             self._gere_popup_fournisseur()
 
             # Date BC
-            date_input = driver.find_element(By.ID, "3-76-input")
+            date_input = driver.find_element(By.ID, "2-76-input")
             date_input.click()
             time.sleep(0.5)
             date_input.clear()
@@ -382,7 +388,7 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
             time.sleep(0.5)
             
             # BL Fournisseur
-            bl_input = driver.find_element(By.ID, "3-77-input")
+            bl_input = driver.find_element(By.ID, "2-77-input")
             bl_input.click()
             time.sleep(0.5)
             bl_input.clear()
@@ -394,10 +400,6 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
             
             # 2. SÉLECTIONNER LE BC
             self.logger.info(f"🔍 Sélection BC: {n_bc}")
-
-            # if not self._selectionner_bc(n_bc):
-            #     resultat['message'] = f'BC {n_bc} non trouvé'
-            #     return resultat
 
             if not self._selectionner_articles_par_bc(n_bc, articles):
                 resultat['message'] = f'Aucun article sélectionné pour BC {n_bc}'

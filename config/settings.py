@@ -20,6 +20,7 @@ LOGS_DIR = OUTPUT_DIR / 'logs'
 SAGE_CONFIG = {
     'url': os.getenv('SAGE_URL', 'http://192.168.1.241:8124/'),
     'username': os.getenv('SAGE_USERNAME', 'CPT02'),
+    'titular': os.getenv('SAGE_TITULAR', 'CPT02'),
     'password': os.getenv('SAGE_PASSWORD', 'ZAINAB@2023'),
     'environment': os.getenv('SAGE_ENVIRONMENT', 'PREPROD'),
     'timeout': int(os.getenv('SAGE_TIMEOUT', '10')),
@@ -29,6 +30,7 @@ SAGE_CONFIG_TEST = {
     'url': os.getenv('SAGE_URL_TEST', 'http://192.168.1.252:8124/'),
     'username': os.getenv('SAGE_USERNAME_TEST', 'dev'),
     'password': os.getenv('SAGE_PASSWORD_TEST', '123456789'),
+    'titular': os.getenv('SAGE_TITULAR', 'dev'),
     'environment': os.getenv('SAGE_ENVIRONMENT_TEST', 'PREPROD'),
     'timeout': int(os.getenv('SAGE_TIMEOUT_TEST', '10')),
 }
