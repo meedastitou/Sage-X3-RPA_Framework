@@ -38,3 +38,6 @@ chrome_profile/
 # OS
 .DS_Store
 Thumbs.db
+
+
+data/queue/*

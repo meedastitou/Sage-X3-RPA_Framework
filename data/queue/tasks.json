@@ -16,5 +16,163 @@
     "created_at": "2026-01-03T21:07:30.913224",
     "started_at": "2026-01-03T21:07:40.431112",
     "completed_at": "2026-01-03T21:08:24.025608"
+  },
+  {
+    "id": "fdfecc35-7b41-423a-8f76-840e6c45fd35",
+    "status": "completed",
+    "file": "C:\\Users\\x3admin\\Desktop\\RPA\\data\\input\\excel\\fileName_20260103151814.xlsx",
+    "email": "cyber.analyst@jbel-annour.ma",
+    "created_at": "2026-01-03T12:21:03.728213",
+    "started_at": "2026-01-03T12:21:05.236563",
+    "completed_at": "2026-01-03T12:21:06.571816"
+  },
+  {
+    "id": "5878c6a6-c096-43a9-8373-ef78b5795805",
+    "status": "completed",
+    "file": "C:\\Users\\x3admin\\Desktop\\Sage_x3_rpa\\data\\input\\excel\\fileName_20260105075520.xlsx",
+    "email": "acheteuse@jbel-annour.ma",
+    "created_at": "2026-01-05T04:58:11.768848",
+    "started_at": "2026-01-05T04:58:19.438486",
+    "completed_at": "2026-01-05T04:59:27.107626"
+  },
+  {
+    "id": "e0841b50-4392-492f-aefd-05cbd0a008f3",
+    "status": "completed",
+    "file": "C:\\Users\\x3admin\\Desktop\\Sage_x3_rpa\\data\\input\\excel\\fileName_20260105075520.xlsx",
+    "email": "acheteuse@jbel-annour.ma",
+    "created_at": "2026-01-05T05:27:45.121240",
+    "started_at": "2026-01-05T05:27:52.200374",
+    "completed_at": "2026-01-05T05:29:03.506505"
+  },
+  {
+    "id": "7f2d9d85-4f54-467e-a089-45607f8fd36f",
+    "status": "completed",
+    "file": "C:\\Users\\x3admin\\Desktop\\Sage_x3_rpa\\data\\input\\excel\\fileName_20260105082902.xlsx",
+    "email": "cyber.analyst@jbel-annour.ma",
+    "created_at": "2026-01-05T05:29:02.483499",
+    "started_at": "2026-01-05T05:29:08.511171",
+    "completed_at": "2026-01-05T05:32:15.993788"
+  },
+  {
+    "id": "75f3af6b-8b60-4276-b164-120d8a65a635",
+    "status": "completed",
+    "file": "C:\\Users\\x3admin\\Desktop\\Sage_x3_rpa\\data\\input\\excel\\fileName_20260105083809.xlsx",
+    "email": "astitoumd@gmail.com",
+    "created_at": "2026-01-05T05:38:09.651897",
+    "started_at": "2026-01-05T05:40:02.157791",
+    "completed_at": "2026-01-05T05:44:10.165780"
+  },
+  {
+    "id": "207fbf03-2080-4d08-8e83-adcf08a1ab31",
+    "status": "completed",
+    "file": "C:\\Users\\x3admin\\Desktop\\Sage_x3_rpa\\data\\input\\excel\\fileName_20260105133114.xlsx",
+    "email": "astitoumd@gmail.com",
+    "created_at": "2026-01-05T10:31:14.336774",
+    "started_at": "2026-01-05T10:31:15.792084",
+    "completed_at": "2026-01-05T10:31:59.067155"
+  },
+  {
+    "id": "29e238a9-c54b-41f0-9d38-afc57c020357",
+    "status": "completed",
+    "file": "C:\\Users\\x3admin\\Desktop\\Sage_x3_rpa\\data\\input\\excel\\fileName_20260105141657.xlsx",
+    "email": "astitoumd@gmail.com",
+    "created_at": "2026-01-05T11:16:57.481303",
+    "started_at": "2026-01-05T11:17:04.219087",
+    "completed_at": "2026-01-05T11:20:11.426020"
+  },
+  {
+    "id": "3804fde9-122e-4fd1-aa80-1ffdb23705fd",
+    "status": "completed",
+    "file": "C:\\Users\\x3admin\\Desktop\\Sage_x3_rpa\\data\\input\\excel\\fileName_20260106034501.xlsx",
+    "email": "astitoumd@gmail.com",
+    "created_at": "2026-01-06T00:45:02.084668",
+    "started_at": "2026-01-06T00:45:08.976647",
+    "completed_at": "2026-01-06T00:45:49.588521"
+  },
+  {
+    "id": "5d7556c9-7562-4dc9-bf8c-0307caf939c9",
+    "status": "completed",
+    "file": "C:\\Users\\x3admin\\Desktop\\Sage_x3_rpa\\data\\input\\excel\\fileName_20260106051811.xlsx",
+    "email": "astitoumd@gmail.com",
+    "created_at": "2026-01-06T02:18:11.393465",
+    "started_at": "2026-01-06T02:18:14.878234",
+    "completed_at": "2026-01-06T02:21:20.898253"
+  },
+  {
+    "id": "e2d18088-432f-4b11-8c02-683b28603033",
+    "status": "completed",
+    "file": "C:\\Users\\x3admin\\Desktop\\Sage_x3_rpa\\data\\input\\excel\\fileName_20260106061631.xlsx",
+    "email": "astitoumd@gmail.com",
+    "created_at": "2026-01-06T03:16:31.992157",
+    "started_at": "2026-01-06T03:16:36.115764",
+    "completed_at": "2026-01-06T03:17:41.834266"
+  },
+  {
+    "id": "8159cc9c-0136-42d5-a450-9f8f17efb6c0",
+    "status": "completed",
+    "file": "C:\\Users\\x3admin\\Desktop\\Sage_x3_rpa\\data\\input\\excel\\fileName_20260106104818.xlsx",
+    "email": "astitoumd@gmail.com",
+    "created_at": "2026-01-06T07:48:18.577039",
+    "started_at": "2026-01-06T07:48:27.709366",
+    "completed_at": "2026-01-06T07:51:36.591660"
+  },
+  {
+    "id": "109104c9-a42a-4f1d-8813-2ccf32eb94ae",
+    "status": "completed",
+    "file": "C:\\Users\\x3admin\\Desktop\\Sage_x3_rpa\\data\\input\\excel\\fileName_20260106133053.xlsx",
+    "email": "astitoumd@gmail.com",
+    "created_at": "2026-01-06T10:30:53.667976",
+    "started_at": "2026-01-06T10:30:56.778852",
+    "completed_at": "2026-01-06T10:31:29.351313"
+  },
+  {
+    "id": "78d0fc9c-c0a7-4ec8-9adc-fa0f39b6c499",
+    "status": "completed",
+    "file": "C:\\Users\\x3admin\\Desktop\\Sage_x3_rpa\\data\\input\\excel\\fileName_20260107093339.xlsx",
+    "email": "astitoumd@gmail.com",
+    "created_at": "2026-01-07T06:33:39.390816",
+    "started_at": "2026-01-07T06:33:48.297077",
+    "completed_at": "2026-01-07T06:37:46.078131"
+  },
+  {
+    "id": "e4423b07-6f80-494d-a4e2-de0cacafedf0",
+    "status": "failed",
+    "task_type": "bon_commande",
+    "file": "C:\\Users\\x3admin\\Desktop\\Sage_x3_rpa\\data\\input\\excel\\fileName_20260108042913.xlsx",
+    "email": "astitoumd@gmail.com",
+    "created_at": "2026-01-08T01:29:13.167019",
+    "started_at": "2026-01-08T01:29:14.148953",
+    "completed_at": "2026-01-08T01:29:46.618690",
+    "error": "Message: no such element: Unable to locate element: {\"method\":\"xpath\",\"selector\":\"//a[contains(text(), 'CPT02')]\"}\n  (Session info: chrome=143.0.7499.170); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#no-such-element-exception\nStacktrace:\nSymbols not available. Dumping unresolved backtrace:\n\t0x7ff6309988d5\n\t0x7ff630998930\n\t0x7ff63077165d\n\t0x7ff6307c9a33\n\t0x7ff6307c9d3c\n\t0x7ff63081df67\n\t0x7ff63081ac97\n\t0x7ff6307bac29\n\t0x7ff6307bba93\n\t0x7ff630cb0620\n\t0x7ff630caaf60\n\t0x7ff630cc96c6\n\t0x7ff6309b5dd4\n\t0x7ff6309bed7c\n\t0x7ff6309a1ff4\n\t0x7ff6309a21a5\n\t0x7ff630987ed2\n\t0x7ffd50b47ac4\n\t0x7ffd51b7a8c1\n"
+  },
+  {
+    "id": "a2a1b87a-4ce8-4bf5-96b9-fbccc5c188fd",
+    "status": "completed",
+    "task_type": "bon_commande",
+    "file": ".\\data\\input\\excel\\fileName_20260108042913.xlsx",
+    "email": "astitoumd@gmail.com",
+    "created_at": "2026-01-08T01:34:27.432984",
+    "started_at": "2026-01-08T01:34:34.203199",
+    "completed_at": "2026-01-08T01:35:44.291829"
+  },
+  {
+    "id": "0b9969fa-8fb3-431e-bce4-860c1c401cc3",
+    "status": "completed",
+    "task_type": "bon_commande",
+    "file": ".\\data\\input\\excel\\fileName_20260107093339.xlsx",
+    "email": "astitoumd@gmail.com",
+    "created_at": "2026-01-08T01:41:12.789703",
+    "started_at": "2026-01-08T01:41:19.313726",
+    "completed_at": "2026-01-08T01:49:02.644432"
+  },
+  {
+    "id": "64b80b19-c875-49a9-8805-0d72143c1a08",
+    "status": "completed",
+    "task_type": "bon_commande",
+    "file": "C:\\Users\\x3admin\\Desktop\\Sage_x3_rpa\\data\\input\\excel\\fileName_20260108050157.xlsx",
+    "email": "astitoumd@gmail.com",
+    "created_at": "2026-01-08T02:01:57.811599",
+    "started_at": "2026-01-08T02:02:07.697059",
+    "completed_at": "2026-01-08T02:02:58.937759"
   }
 ]
