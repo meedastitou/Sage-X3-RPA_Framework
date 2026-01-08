@@ -16,7 +16,7 @@ build/
 .idea/
 *.swp
 *.swo
-
+data/queue/tasks.json
 # Data
 data/input/*
 data/output/*
@@ -40,4 +40,3 @@ chrome_profile/
 Thumbs.db
 
 
-data/queue/*
