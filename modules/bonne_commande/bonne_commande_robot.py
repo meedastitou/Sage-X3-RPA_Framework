@@ -16,6 +16,7 @@ from collections import defaultdict
 from core.base_robot import BaseRobot
 from core.web_result_mixin import WebResultMixin
 from utils.excel_handler import ExcelHandler
+import re
 
 
 class BonneCommandeRobot(BaseRobot, WebResultMixin):
@@ -167,7 +168,8 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                 self.logger.info(f"✅ Articles traités avec succès: {self.articles_traites}/{self.articles_traites + self.articles_echec}")
                 self.logger.info(f"✅ DAs traitées avec succès: {self.das_traitees}/{self.das_traitees + self.das_echec}")
 
-                bc_genere = self._generer_bon_de_commande(data_fournisseur)
+                bc_numbers = self._generer_bon_de_commande(data_fournisseur)
+                bc_genere = len(bc_numbers) > 0
 
                 # Ajouter un résultat final de succès pour ce fournisseur
                 self.add_result({
@@ -180,7 +182,8 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                     'das_traitees': self.das_traitees,
                     'das_echec': self.das_echec,
                     'bc_genere': bc_genere,
-                    'message': f'Tous les traitements réussis pour fournisseur {code_fournisseur}. BC généré avec succès.' if bc_genere else f'Traitements réussis pour fournisseur {code_fournisseur} mais erreur génération BC.'
+                    'bc_numbers': bc_numbers,
+                    'message': f'Tous les traitements réussis pour fournisseur {code_fournisseur}. BC généré avec succès: {bc_numbers}' if bc_genere else f'Traitements réussis pour fournisseur {code_fournisseur} mais erreur génération BC.'
                 })
 
                 self.save_report()
@@ -476,32 +479,37 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
         self.save_report(incremental=True)
         return True
     
-    def _generer_bon_de_commande(self, structure: Dict[str, Any]) -> bool:
-        """Générer la bonne de commande"""
+    def _generer_bon_de_commande(self, structure: Dict[str, Any]) -> List[str]:
+        """Générer la bonne de commande et retourner la liste des numéros de BC"""
         self.logger.info("="*80)
         self.logger.info("🧾 GÉNÉRATION DE LA BONNE DE COMMANDE")
         self.logger.info("="*80)
-        
+
         driver = self.driver_manager.driver
-        
+
         try:
             # Naviguer vers le module bonne de commande
             self.navigate_to_module(self.url_bonne_commande)
             # generation automatique de la BC
             time.sleep(60)
-            # input("Appuyez sur Entrée après la génération automatique de la BC...")
-            # bc_genereted = driver.find_element(By.ID, '2-75-input')
-            # text_bc_generated = bc_genereted.text
+            bc_inputs = driver.find_elements(By.CSS_SELECTOR, ".s-inplace-input.s-readonly")
+            self.logger.info(f"Nombre d'inputs BC trouvés: {len(bc_inputs)}")
+            bc_numbers = []
+            for input_field in bc_inputs:
+                value = input_field.get_attribute("value")
+                self.logger.info(f"Valeur trouvée dans input BC: '{value}'")
+                if value:
+                    # Chercher le motif BC suivi de chiffres
+                    match = re.search(r'BC(\d+)', value)
+                    if match:
+                        bc_number = match.group(1)  # Juste les chiffres
+                        bc_numbers.append(bc_number)
+                        self.logger.info(f"BC trouvé: {bc_number} dans: '{value}'")
 
-            # numero_bc = text_bc_generated.split()[-1]
+            self.logger.info(f"Total BC trouvés: {len(bc_numbers)}")
+            self.logger.info(f"Liste: {bc_numbers}")
 
-            # Télécharger la bonne de commande
-            # button_telecharge = driver.find_element(By.CSS_SELECTOR, "div.s_tracker_btn_i.s_btn_i.s_sagearmonyeicon")
-            # button_telecharge.click()
-
-            # self.logger.info(f"✅ Bonne de commande générée: {numero_bc}")
-            
-            return True
+            return bc_numbers
 
         except Exception as e:
             self.logger.error(f"❌ Erreur génération bonne de commande: {e}")
@@ -513,7 +521,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             )
 
             driver.save_screenshot("error_generation_bonne_commande.png")
-            return False
+            return []
         finally:
             self.logger.info("="*80)
             self.logger.info("🔒 Fermeture du module Bonne de Commande")
