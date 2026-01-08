@@ -488,6 +488,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
         driver = self.driver_manager.driver
 
         try:
+            
             # Naviguer vers le module bonne de commande
             self.navigate_to_module(self.url_bonne_commande)
             # generation automatique de la BC
