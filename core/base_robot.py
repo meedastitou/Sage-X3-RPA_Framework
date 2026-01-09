@@ -13,6 +13,9 @@ from core.sage_connector import SageConnector
 from core.driver_manager import DriverManager
 from core.logger import Logger
 from config.settings import OUTPUT_DIR
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 class BaseRobot(ABC):
     """Classe de base abstraite pour tous les robots"""
@@ -168,6 +171,24 @@ class BaseRobot(ABC):
         
         self.logger.info("="*80)
     
+    def wait_for_spinner_to_disappear(self, driver, timeout: int = 60):
+        """
+        Attendre que le spinner de chargement disparaisse
+        
+        Args:
+            driver: Instance du driver Selenium
+            timeout: Temps maximum d'attente en secondes
+        """
+        
+        
+        try:
+            self.logger.info("⏳ Attente disparition du spinner...")
+            WebDriverWait(driver, timeout).until(
+                EC.invisibility_of_element_located((By.ID, "s_lock_long_spin"))
+            )
+        except Exception as e:
+            pass
+
     def cleanup(self):
         """Nettoyage et déconnexion"""
         try:

@@ -513,7 +513,9 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             # Naviguer vers le module bonne de commande
             self.navigate_to_module(self.url_bonne_commande)
             # generation automatique de la BC
-            time.sleep(60)
+            # time.sleep(500)
+            self.wait_for_spinner_to_disappear(driver, timeout=9000)
+
             bc_inputs = driver.find_elements(By.CSS_SELECTOR, ".s-inplace-input.s-readonly")
             self.logger.info(f"Nombre d'inputs BC trouvés: {len(bc_inputs)}")
             bc_numbers = []
@@ -777,13 +779,8 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             save_btn.click()
 
             time.sleep(2)
-            s_lock_long_spinners = len(driver.find_elements(By.CSS_SELECTOR, "div.s_lock_long_spin")) > 0
-            if s_lock_long_spinners:
-                WebDriverWait(driver, 30).until(
-                    EC.invisibility_of_element_located((By.CSS_SELECTOR, "div.s_lock_long_spin"))
-                )
-                self.logger.info("⏳ Attente de la fin du chargement...")
-            # time.sleep(30)
+
+            self.wait_for_spinner_to_disappear(driver, timeout=60)
             
             self.logger.info("💾 Enregistrement article...")
             return True
@@ -809,9 +806,10 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             time.sleep(0.5)
             
             save_btn.click()
-            self.logger.info("💾 Enregistrement DA...")
             time.sleep(2)
-
+            self.wait_for_spinner_to_disappear(driver, timeout=60)
+            self.logger.info("💾 Enregistrement DA...")
+            
             return True
         except Exception as e:
             self.logger.error(f"❌ Erreur enregistrement DA: {e}")
