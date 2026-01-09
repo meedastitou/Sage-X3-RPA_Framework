@@ -62,7 +62,6 @@ class WebResultMixin:
         try:
             # Formater les données selon le type de robot
             data = self._format_results_for_web(email_f)
-
             # Récupérer le chemin du rapport si disponible
             file_path = str(self.rapport_path) if hasattr(self, 'rapport_path') and self.rapport_path else None
             

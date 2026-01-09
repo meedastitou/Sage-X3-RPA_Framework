@@ -81,11 +81,19 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                 self.logger.info(f"🏢 TRAITEMENT FOURNISSEUR {idx_fournisseur}/{len(fournisseurs)}: {code_fournisseur}")
                 self.logger.info("="*80)
 
-                # Réinitialiser les compteurs pour ce fournisseur
+                # Réinitialiser les compteurs et résultats pour ce fournisseur
                 self.articles_traites = 0
                 self.articles_echec = 0
                 self.das_traitees = 0
                 self.das_echec = 0
+                self.validation_passed = False
+
+                # IMPORTANT: Vider les résultats précédents pour ce nouveau fournisseur
+                self.results = []
+
+                # IMPORTANT: Réinitialiser les erreurs du fournisseur précédent
+                self.error_screenshot = None
+                self.popup_messages = []
 
                 # PHASE 1 : TRAITER LES ARTICLES DE CE FOURNISSEUR
                 self.logger.info("="*80)
@@ -171,19 +179,26 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                 bc_numbers = self._generer_bon_de_commande(data_fournisseur)
                 bc_genere = len(bc_numbers) > 0
 
-                # Ajouter un résultat final de succès pour ce fournisseur
+                # Déterminer le statut final basé sur la génération de BC
+                statut_final = 'SUCCES' if bc_genere else 'ECHEC'
+                message_final = f'Tous les traitements réussis pour fournisseur {code_fournisseur}. BC généré avec succès: {bc_numbers}' if bc_genere else f'Articles et DAs traités avec succès pour fournisseur {code_fournisseur} mais échec de génération BC.'
+
+                # Mettre à jour validation_passed pour ce fournisseur
+                self.validation_passed = bc_genere
+
+                # Ajouter un résultat final pour ce fournisseur
                 self.add_result({
                     'type': 'BILAN_FINAL',
                     'fournisseur': code_fournisseur,
                     'phase': 'Complete',
-                    'statut': 'SUCCES',
+                    'statut': statut_final,
                     'articles_traites': self.articles_traites,
                     'articles_echec': self.articles_echec,
                     'das_traitees': self.das_traitees,
                     'das_echec': self.das_echec,
                     'bc_genere': bc_genere,
                     'bc_numbers': bc_numbers,
-                    'message': f'Tous les traitements réussis pour fournisseur {code_fournisseur}. BC généré avec succès: {bc_numbers}' if bc_genere else f'Traitements réussis pour fournisseur {code_fournisseur} mais erreur génération BC.'
+                    'message': message_final
                 })
 
                 self.save_report()

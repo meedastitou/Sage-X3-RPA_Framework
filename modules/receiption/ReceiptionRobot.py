@@ -97,7 +97,7 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
             # # 9. ENVOYER RÉSULTATS WEB
             self.send_results_to_web(email_f)
             
-            self.logger.info("\n" + "="*80)
+            self.logger.info("="*80)
             self.logger.info("🎉 PROCESSUS TERMINÉ")
             self.logger.info(f"✅ {self.fournisseurs_traites} fournisseur(s) traité(s)")
             self.logger.info(f"❌ {self.fournisseurs_echec} fournisseur(s) en échec")
@@ -105,7 +105,7 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
             self.logger.info("="*80)
             
         except Exception as e:
-            self.logger.error(f"\n❌ ERREUR CRITIQUE: {e}")
+            self.logger.error(f"❌ ERREUR CRITIQUE: {e}")
             import traceback
             self.logger.error(traceback.format_exc())
             
@@ -365,6 +365,8 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
 
             # 1. REMPLIR LES CHAMPS HEADER
             self.logger.info("📝 Remplissage header...")
+            
+            input("Appuyez sur Entrée pour continuer après avoir ouvert la nouvelle réception...")
 
             # Fournisseur
             fournisseur = driver.find_element(By.ID, "2-75-input")  
