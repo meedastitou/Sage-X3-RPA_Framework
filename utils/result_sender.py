@@ -179,16 +179,16 @@ class ResultSender:
     def format_bonne_commande_result(self, robot) -> Dict[str, Any]:
         """
         Formater les résultats du robot Bonne de Commande pour l'envoi
-        
+
         Args:
             robot: Instance de BonneCommandeRobot
-        
+
         Returns:
             Dictionnaire formaté
         """
         summary = robot.generate_summary()
-        
-        return {
+
+        data = {
             'module': 'bonne_commande',
             'timestamp': datetime.now().isoformat(),
             'statut': 'succes' if robot.validation_passed else 'echec',
@@ -205,6 +205,16 @@ class ResultSender:
             'rapport_path': str(robot.rapport_path) if robot.rapport_path else None,
             'details': summary
         }
+
+        # Ajouter bc_numbers si disponible
+        if hasattr(robot, 'bc_numbers') and robot.bc_numbers:
+            data['bc_numbers'] = robot.bc_numbers
+
+        # Ajouter message_final si disponible
+        if hasattr(robot, 'message_final') and robot.message_final:
+            data['message'] = robot.message_final
+
+        return data
     
     def format_lettrage_result(self, robot) -> Dict[str, Any]:
         """

@@ -87,6 +87,8 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                 self.das_traitees = 0
                 self.das_echec = 0
                 self.validation_passed = False
+                self.bc_numbers = []
+                self.message_final = ""
 
                 # IMPORTANT: Vider les résultats précédents pour ce nouveau fournisseur
                 self.results = []
@@ -185,6 +187,10 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
 
                 # Mettre à jour validation_passed pour ce fournisseur
                 self.validation_passed = bc_genere
+
+                # Stocker bc_numbers et message_final pour l'envoi web
+                self.bc_numbers = bc_numbers
+                self.message_final = message_final
 
                 # Ajouter un résultat final pour ce fournisseur
                 self.add_result({
