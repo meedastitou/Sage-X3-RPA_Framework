@@ -255,7 +255,7 @@ class BaseRobot(ABC):
         driver = self.driver_manager.driver
         try:
             input_element = driver.find_element(By.XPATH,
-                f"//label[contains(@class, 's-field-title') and text()='{label_name}']/following::input[1]"
+                f"//label[contains(@class, 's-field-title') and contains(text(), '{label_name}')]/following::input[1]"
             )
             return input_element
         except Exception as e:
