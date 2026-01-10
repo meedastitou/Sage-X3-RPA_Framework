@@ -62,12 +62,13 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
             # 4. CONNEXION SAGE
             self.connect_sage()
 
-            # 5. NAVIGUER VERS MODULE
-            self.navigate_to_module(self.url_receiption)
-            time.sleep(3)
             
             # 6. TRAITER CHAQUE FOURNISSEUR
             for code_frs, frs_data in structure.items():
+                
+                # 5. NAVIGUER VERS MODULE
+                self.navigate_to_module(self.url_receiption)
+                time.sleep(3)
                 self.logger.info(f"{'='*80}")
                 self.logger.info(f"🏢 FOURNISSEUR: {code_frs}")
                 self.logger.info(f"{'='*80}")
@@ -117,10 +118,10 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
             
             self.save_report()
             self.send_results_to_web(email_f)
-        
+
         finally:
             self.logger.info("Deconnexion du robot...")
-            self.disconnect_sage()
+            self.disconnect_sage() 
     
     def _lire_et_valider_excel(self, excel_file: str) -> pd.DataFrame:
         """Lire et valider le fichier Excel"""
@@ -167,24 +168,69 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
     def _regrouper_donnees(self, df: pd.DataFrame) -> Dict[str, Any]:
         """
         Regrouper par Fournisseur → BC → Articles
-        
+        CodeFrs	    BLFrs	        DateBC	    N_BC	    CodeArticle	Quantite	N_B_transport	Matricule	Poids	Marque
+        T6664	    FN°0037/2025	23/05/2025	BC186553	A15007	    1	        FN°0037/2025	XX	        0,01	LEASING
+        T6664	    FN°0037/2025	23/05/2025	BC186553	A15884	    1	        FN°0037/2025	XX	        0,01	LEASING
+        T3581	    FN°0065/2025	01/11/2021	BC165170	A12585	    1	        FN°0065/2025	XX	        0,01	LEASING
+        T5700	    FN°0037/2025	06/01/2026	BC191348	A14495	    1	        FN°0037/2025	XX	        0,01	ETUDE 
+        T5700	    FN°0065/2025	06/01/2026	BC191349	A14495	    1	        FN°0065/2025	XX	        0,01	ETUDE 
+
         Structure:
         {
-            'T3775': {
-                'bl_frs': '2025-23',
-                'date_bc': '01/01/2026',
+            'T6664': {
+                'bl_frs': 'FN°0037/2025',
+                'date_bc': '23/05/2025',
                 'bons_commande': {
-                    'BC167784': {
+                    'BC186553': {
                         'articles': [
                             {
-                                'code': 'A13254',
-                                'quantite': '60',
-                                'n_b_transport': '265225',
-                                'matricule': '23-5656-a',
-                                'poids': '52',
-                                'marque': 'dds'
+                                'code': 'A15007',
+                                'quantite': '1',
+                                'n_b_transport': 'FN°0037/2025',
+                                'matricule': 'XX',
+                                'poids': '0,01',
+                                'marque': 'LEASING'
                             },
-                            ...
+                            {
+                                'code': 'A15884',
+                                'quantite': '1',
+                                'n_b_transport': 'FN°0037/2025',
+                                'matricule': 'XX',
+                                'poids': '0,01',
+                                'marque': 'LEASING'
+                            }
+                        ]
+                    }
+                }
+            },
+            'T3581': {
+                'bl_frs': 'FN°0065/2025',
+                'date_bc': '01/11/2021',
+                'bons_commande': {
+                    'BC165170': {
+                        'articles': [
+                            {
+                                'code': 'A12585',
+                                'quantite': '1',
+                                'n_b_transport': 'FN°0065/2025',
+                                'matricule': 'XX',
+                                'poids': '0,01',
+                                'marque': 'LEASING'
+                            }
+                        ]
+                    }
+                }
+            },
+            'T5700': {
+                'bl_frs': 'FN°0037/2025',
+                'date_bc': '06/01/2026',
+                'bons_commande': {
+                    'BC191348': {
+                        'articles': [
+                            {
+                                'code': '',
+                                ...
+                            }
                         ]
                     }
                 }
@@ -319,24 +365,10 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
             resultat['message'] = f'Erreur: {str(e)}'
             self.logger.error(f"❌ Erreur fournisseur {code_frs}: {e}")
         finally:
-            
-            driver = self.driver_manager.driver
+            # Fermer le module avec confirmation d'abandon
+            self.close_module(confirm_abandon=True)
+            time.sleep(2)
 
-            driver.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
-            time.sleep(0.5)
-            driver.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
-
-            s_page_close = driver.find_element(By.CSS_SELECTOR, "a.s_page_close")
-            s_page_close.click()
-            time.sleep(0.5)
-            dialog = WebDriverWait(driver, 1).until(
-                EC.visibility_of_element_located((By.XPATH, "//pre[@class='s_alertbox_msg' and contains(text(), 'Continuer et abandonner votre création ?')]"))
-            )
-            # Cliquer sur "Oui"
-            oui_button = driver.find_element(By.XPATH, "//a[@aria-label='Oui']")
-            oui_button.click()
-
-            time.sleep(20)
         return resultat
     
     def _traiter_bon_commande(self, code_frs: str, n_bc: str, bl_frs: str, 
@@ -366,7 +398,6 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
             # 1. REMPLIR LES CHAMPS HEADER
             self.logger.info("📝 Remplissage header...")
             
-            input("Appuyez sur Entrée pour continuer après avoir ouvert la nouvelle réception...")
 
             # Fournisseur
             fournisseur = driver.find_element(By.ID, "2-75-input")  
@@ -437,20 +468,36 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
     def _cree_reception(self) -> bool:
         """Cliquer sur le bouton 'Créer Réception'"""
         driver = self.driver_manager.driver
-        
         try:
-            creer_btn = WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable((By.CLASS_NAME, "s_page_action_i.s_page_action_i_add"))
-            )
-            creer_btn.click()
-            time.sleep(2)
-        
-            self.logger.info("✅ Nouvelle réception créée")
-            return True
-            
+            add_button = driver.find_element(By.CSS_SELECTOR, ".s_page_action_add")
+
+            if "s-disabled" in add_button.get_attribute("class"):
+                # Bouton désactivé 
+                self.logger.info("❌ Bouton Add désactivé, impossible de créer une nouvelle réception")
+                return False
+            else:
+                # Bouton activé
+                self.logger.info("✅ Nouvelle réception créée")
+                add_button.click()
+                time.sleep(2)
+                return True
         except Exception as e:
             self.logger.error(f"❌ Erreur création réception: {e}")
             return False
+
+        # try:
+        #     creer_btn = WebDriverWait(driver, 10).until(
+        #         EC.element_to_be_clickable((By.CLASS_NAME, "s_page_action_i.s_page_action_i_add"))
+        #     )
+        #     creer_btn.click()
+        #     time.sleep(2)
+        
+        #     self.logger.info("✅ Nouvelle réception créée")
+        #     return True
+            
+        # except Exception as e:
+        #     self.logger.error(f"❌ Erreur création réception: {e}")
+        #     return False
 
     def _selectionner_bc(self, n_bc: str) -> bool:
         """Sélectionner le BC dans la liste des réceptions"""
