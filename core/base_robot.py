@@ -76,15 +76,65 @@ class BaseRobot(ABC):
     def navigate_to_module(self, url: str) -> bool:
         """
         Naviguer vers un module Sage
-        
+
         Args:
             url: URL du module
-        
+
         Returns:
             True si navigation réussie
         """
         return self.sage_connector.navigate_to_module(url)
-    
+
+    def close_module(self, confirm_abandon: bool = False) -> bool:
+        """
+        Fermer le module actuel en cours (sortie propre)
+
+        Args:
+            confirm_abandon: Si True, gère la popup "Continuer et abandonner votre création ?"
+
+        Returns:
+            True si fermeture réussie
+        """
+        driver = self.driver_manager.driver
+
+        try:
+            from selenium.webdriver.common.keys import Keys
+            import time
+
+            self.logger.info("🔒 Fermeture du module en cours...")
+
+            # Envoyer ESCAPE pour sortir des formulaires/champs
+            driver.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
+            time.sleep(0.5)
+            driver.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
+
+            # Cliquer sur le bouton de fermeture de page
+            s_page_close = driver.find_element(By.CSS_SELECTOR, "a.s_page_close")
+            s_page_close.click()
+            time.sleep(1)
+
+            # Gérer la popup de confirmation si nécessaire
+            if confirm_abandon:
+                try:
+                    WebDriverWait(driver, 2).until(
+                        EC.visibility_of_element_located((By.XPATH, "//pre[@class='s_alertbox_msg' and contains(text(), 'Continuer et abandonner votre création ?')]"))
+                    )
+                    # Cliquer sur "Oui"
+                    oui_button = driver.find_element(By.XPATH, "//a[@aria-label='Oui']")
+                    oui_button.click()
+                    self.logger.info("✅ Confirmation abandon cliquée")
+                    time.sleep(1)
+                except:
+                    # Pas de popup ou autre type de popup
+                    self.logger.debug("ℹ️ Pas de popup d'abandon détectée")
+
+            self.logger.info("✅ Module fermé avec succès")
+            return True
+
+        except Exception as e:
+            self.logger.error(f"❌ Erreur fermeture module: {e}")
+            return False
+
     def add_result(self, result: Dict[str, Any]):
         """
         Ajouter un résultat à la liste
