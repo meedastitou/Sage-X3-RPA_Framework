@@ -126,7 +126,7 @@ class BaseRobot(ABC):
                     time.sleep(1)
                 except:
                     # Pas de popup ou autre type de popup
-                    self.logger.debug("ℹ️ Pas de popup d'abandon détectée")
+                    pass
 
             self.logger.info("✅ Module fermé avec succès")
             return True
@@ -224,13 +224,13 @@ class BaseRobot(ABC):
     def wait_for_spinner_to_disappear(self, driver, timeout: int = 60):
         """
         Attendre que le spinner de chargement disparaisse
-        
+
         Args:
             driver: Instance du driver Selenium
             timeout: Temps maximum d'attente en secondes
         """
-        
-        
+
+
         try:
             self.logger.info("⏳ Attente disparition du spinner...")
             WebDriverWait(driver, timeout).until(
@@ -238,6 +238,29 @@ class BaseRobot(ABC):
             )
         except Exception as e:
             pass
+
+    def get_input_by_label(self, label_name: str):
+        """
+        Retourne l'élément input associé à un label
+
+        Args:
+            label_name: Le texte du label à chercher
+
+        Returns:
+            WebElement: L'élément input trouvé
+
+        Raises:
+            Exception: Si le label ou l'input n'est pas trouvé
+        """
+        driver = self.driver_manager.driver
+        try:
+            input_element = driver.find_element(By.XPATH,
+                f"//label[contains(@class, 's-field-title') and text()='{label_name}']/following::input[1]"
+            )
+            return input_element
+        except Exception as e:
+            self.logger.error(f"❌ Erreur: impossible de trouver l'input pour le label '{label_name}': {e}")
+            raise
 
     def cleanup(self):
         """Nettoyage et déconnexion"""
