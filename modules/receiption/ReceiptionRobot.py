@@ -75,7 +75,7 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
                 
                 resultat_frs = self._traiter_fournisseur(code_frs, frs_data)
                 self.add_result(resultat_frs)
-                
+                input("Appuyez sur Entrée pour continuer...")
                 if resultat_frs['statut'] == 'Succes':
                     self.fournisseurs_traites += 1
                 else:
@@ -397,22 +397,20 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
 
             # 1. REMPLIR LES CHAMPS HEADER
             self.logger.info("📝 Remplissage header...")
-            
 
             # Fournisseur
-            fournisseur = driver.find_element(By.ID, "2-75-input")  
-            fournisseur.click()
+            fournisseur_input = self.get_input_by_label("Fournisseur")
+            fournisseur_input.click()
             time.sleep(0.5)
-            fournisseur.clear()
-            fournisseur.send_keys(code_frs)
-            fournisseur.send_keys(Keys.TAB)
+            fournisseur_input.clear()
+            fournisseur_input.send_keys(code_frs)
+            fournisseur_input.send_keys(Keys.TAB)
             time.sleep(1)
 
-            # driver.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
             self._gere_popup_fournisseur()
 
             # Date BC
-            date_input = driver.find_element(By.ID, "2-76-input")
+            date_input = self.get_input_by_label("Date réception")
             date_input.click()
             time.sleep(0.5)
             date_input.clear()
@@ -421,20 +419,21 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
             time.sleep(0.5)
             
             # BL Fournisseur
-            bl_input = driver.find_element(By.ID, "2-77-input")
+            bl_input = self.get_input_by_label("BL fournisseur")
             bl_input.click()
             time.sleep(0.5)
             bl_input.clear()
             bl_input.send_keys(bl_frs)
             bl_input.send_keys(Keys.TAB)
             time.sleep(0.5)
-            
+
             self.logger.info("✅ Header rempli")
-            
+
             # 2. SÉLECTIONNER LE BC
             self.logger.info(f"🔍 Sélection BC: {n_bc}")
 
             if not self._selectionner_articles_par_bc(n_bc, articles):
+                self.logger.warning(f"❌ Aucun article sélectionné pour BC {n_bc}")
                 resultat['message'] = f'Aucun article sélectionné pour BC {n_bc}'
                 return resultat
             
@@ -837,29 +836,29 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
         driver = self.driver_manager.driver
         
         try:
-            save_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i_save")
+            save_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_save")
             driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", save_btn)
             time.sleep(0.5)
-            
-            save_link = save_btn.find_element(By.XPATH, "./ancestor::a")
-            save_link.click()
-            self.logger.info("💾 Enregistrement...")
+            save_btn.click()
+
             time.sleep(2)
+
+            self.wait_for_spinner_to_disappear(driver, timeout=120)
             
-            try:
-                alert = driver.find_element(By.CSS_SELECTOR, ".s_alertbox_title")
-                msg = alert.text
+            # try:
+            #     alert = driver.find_element(By.CSS_SELECTOR, ".s_alertbox_title")
+            #     msg = alert.text
                 
-                if "Avertissement" in msg or "Erreur" in msg:
-                    self.logger.error(f"❌ {msg}")
-                    return False
-                else:
-                    self.logger.info(f"✅ {msg}")
-                    return True
-            except:
-                self.logger.info("✅ Enregistré")
-                return True
-            
+            #     if "Avertissement" in msg or "Erreur" in msg:
+            #         self.logger.error(f"❌ {msg}")
+            #         return False
+            #     else:
+            #         self.logger.info(f"✅ {msg}")
+            #         return True
+            # except:
+            #     self.logger.info("✅ Enregistré")
+            #     return True
+            return True
         except Exception as e:
             self.logger.error(f"❌ Erreur enregistrement: {e}")
             return False
@@ -871,7 +870,7 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
         try:
             time.sleep(1)
             # Attendre que la boîte de dialogue soit visible
-            wait = WebDriverWait(driver, 10)
+            wait = WebDriverWait(driver, 2)
             dialog = wait.until(EC.visibility_of_element_located((By.CLASS_NAME, "s_alertbox")))
 
             # Cliquer sur OK
