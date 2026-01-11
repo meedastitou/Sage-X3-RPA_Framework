@@ -582,35 +582,47 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
         try:
             
             
-            # 1. Rechercher l'article
-            self.logger.info(f"🔍 Recherche article: {code_article}")
-            chercher_article = driver.find_element(By.ID, "2-565-input")
+            # 1. Trouver la section "Articles" 
+            articles_section = driver.find_element(By.XPATH, 
+                "//header[.//a[contains(text(), 'Articles')]]/following-sibling::div[1]"
+            )
+            table_head = articles_section.find_element(By.CLASS_NAME, "s-grid-table-head")
+
+            # 2. Directement: trouver le premier input dans le deuxième tr
+            filter_row = table_head.find_element(By.XPATH, ".//tr[2]")
+            chercher_article = filter_row.find_element(By.XPATH, ".//td[1]//input")
+
+            # 3. Rechercher l'article
             chercher_article.click()
             time.sleep(0.5)
             chercher_article.clear()
             chercher_article.send_keys(code_article)
             chercher_article.send_keys(Keys.TAB)
             time.sleep(1)
-            
-            # 2. Cliquer sur l'article
-            click_on_article = driver.find_element(By.CSS_SELECTOR, "div.s-inplace-value-read")
+
+            table_body = articles_section.find_element(By.CLASS_NAME, "s-grid-table-body")
+
+            # 4. Cliquer sur l'article
+            premier_ligne_recherche = table_body.find_element(By.XPATH, ".//tr[1]")
+            click_on_article = premier_ligne_recherche.find_element(By.XPATH, ".//td[1]//div")
+
             click_on_article.click()
             time.sleep(1)
-
+            
 
             # 0. verifier if BC_auto is checked
-            BC_auto = driver.find_element(By.ID, "2-178-input")
-            BC_auto_label = driver.find_element(By.CSS_SELECTOR, "label[for='2-178-input']")
-            if BC_auto.is_selected():
+            BC_auto_input = self.get_input_by_label("BC Auto.")
+            BC_auto_label = driver.find_element(By.CSS_SELECTOR, f"label[for='{BC_auto_input.get_attribute('id')}']")
+            if BC_auto_input.is_selected():
                 self.logger.info("BC_auto déjà cochée")
             else:
                 BC_auto_label.click()
                 self.logger.info("✅ BC_auto cochée")
-
+            
 
             # 3. Modifier le fournisseur
             self.logger.info(f"🔄 Modification fournisseur: {code_fournisseur}")
-            changer_fournisseur = driver.find_element(By.ID, "2-179-input")
+            changer_fournisseur = self.get_input_by_label("Fournisseur")
             time.sleep(0.5)
             changer_fournisseur.click()
             time.sleep(0.5)
@@ -622,7 +634,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             # 4. Modifier l'affaire
             self.logger.info(f"🔄 Modification affaire: {affaire}")
             if not(affaire == 'nan' or affaire.strip() == ''):
-                changer_affaire = driver.find_element(By.ID, "2-180-input")
+                changer_affaire = self.get_input_by_label("Affaire")
                 time.sleep(0.5)
                 changer_affaire.click()
                 time.sleep(0.5)
@@ -633,8 +645,8 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             
 
             # 5. Modifier le tarif
-            self.logger.info(f"💰 Modification tarif: {montant}")
-            change_tarif = driver.find_element(By.ID, "2-181-input")
+            self.logger.info(f"💰 Modification Prix: {montant}")
+            change_tarif = self.get_input_by_label("Prix")
             change_tarif.click()
             time.sleep(0.5)
             change_tarif.clear()
@@ -661,7 +673,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
 
             # 6. Modifier la marque
             self.logger.info(f"💰 Modification marque: {marque}")
-            change_marque = driver.find_element(By.ID, "2-182-input")
+            change_marque = self.get_input_by_label("Marque")
             change_marque.click()
             time.sleep(0.5)
             change_marque.clear()
@@ -710,39 +722,44 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
         
         try:
 
-            # 1. Rechercher la DA
-            self.logger.info(f"🔍 Recherche DA: {numero_da}")
-            chercher_da = driver.find_element(By.ID, "2-109-input")
+             # 1. Trouver la section "Demandes d'Achat" 
+            demmande_achat_section = driver.find_element(By.XPATH, 
+                "//header[.//a[contains(text(), 'Demandes')]]/following-sibling::div[1]"
+            )
+            table_head = demmande_achat_section.find_element(By.CLASS_NAME, "s-grid-table-head")
+
+            # 2. Directement: trouver le premier input dans le deuxième tr
+            filter_row = table_head.find_element(By.XPATH, ".//tr[2]")
+            chercher_da = filter_row.find_element(By.XPATH, ".//td[2]//input")
+
+            # 3. Rechercher l'article
             chercher_da.click()
             time.sleep(0.5)
             chercher_da.clear()
             chercher_da.send_keys(numero_da)
             chercher_da.send_keys(Keys.TAB)
             time.sleep(1)
-            
-            # 2. Cliquer sur la DA
-            click_on_da = driver.find_element(By.CSS_SELECTOR, "div.s-inplace-value-read")
+
+            table_body = demmande_achat_section.find_element(By.CLASS_NAME, "s-grid-table-body")
+
+            # 4. Cliquer sur l'article
+            premier_ligne_recherche = table_body.find_element(By.XPATH, ".//tr[1]")
+            click_on_da = premier_ligne_recherche.find_element(By.XPATH, ".//td[2]//div")
+
             click_on_da.click()
             time.sleep(1)
             
+
             # 3. Validation acheteur
             self.logger.info(f"✅ Validation acheteur: {acheteur}")
-            validation_acheteur = driver.find_element(By.ID, "2-80-input")
-            label_validation_acheteur = driver.find_element(By.CSS_SELECTOR, "label[for='2-80-input']")
+            validation_acheteur = self.get_input_by_label("Validation Acheteur")
+            label_validation_acheteur = driver.find_element(By.CSS_SELECTOR, f"label[for='{validation_acheteur.get_attribute('id')}']")
             if validation_acheteur.is_selected():
-                self.logger.info("✅ 1 - Case cochée")
+                self.logger.info("✅ 1 - Case deja cochée")
             else:
                 label_validation_acheteur.click()
                 self.logger.info("✅ 2 - Case cochée")
-                # elements_existe = len(driver.find_elements(By.CSS_SELECTOR, "article.s_alertbox_content")) > 0
 
-                # if elements_existe:
-                #     pre_elements = driver.find_elements(By.CSS_SELECTOR, "pre.s_alertbox_msg")
-                #     error_message = pre_elements[0].text
-                #     resultat['message'] = f'Erreur validation acheteur DA {numero_da} \n {error_message}'
-                #     self.logger.error(f"❌ {resultat['message']}")
-                #     return resultat
-    
                 self.logger.info("Case déjà cochée")
 
             time.sleep(1)
