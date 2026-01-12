@@ -838,7 +838,7 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
         driver = self.driver_manager.driver
         
         try:
-            save_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_save")
+            save_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_check")
             driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", save_btn)
             time.sleep(0.5)
             save_btn.click()
