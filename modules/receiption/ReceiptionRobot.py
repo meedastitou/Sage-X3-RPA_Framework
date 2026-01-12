@@ -470,6 +470,9 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
         """Cliquer sur le bouton 'Créer Réception'"""
         driver = self.driver_manager.driver
         try:
+            WebDriverWait(driver, 10000).until(
+                EC.invisibility_of_element_located((By.CSS_SELECTOR, ".s_page_action_add"))
+            )
             add_button = driver.find_element(By.CSS_SELECTOR, ".s_page_action_add")
 
             if "s-disabled" in add_button.get_attribute("class"):
@@ -843,9 +846,9 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
             time.sleep(0.5)
             save_btn.click()
 
-            time.sleep(2)
+            time.sleep(5)
 
-            self.wait_for_spinner_to_disappear(driver, timeout=120)
+            self.wait_for_spinner_to_disappear(driver, timeout=120000)
             
             # try:
             #     alert = driver.find_element(By.CSS_SELECTOR, ".s_alertbox_title")
@@ -860,6 +863,12 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
             # except:
             #     self.logger.info("✅ Enregistré")
             #     return True
+            WebDriverWait(driver, 10000).until(
+                EC.invisibility_of_element_located((By.CSS_SELECTOR, "a.s_page_close"))
+            )
+            s_page_close = driver.find_element(By.CSS_SELECTOR, "a.s_page_close")
+            s_page_close.click()
+            time.sleep(2)
             return True
         except Exception as e:
             self.logger.error(f"❌ Erreur enregistrement: {e}")
