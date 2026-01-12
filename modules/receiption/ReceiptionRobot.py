@@ -410,13 +410,13 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
             self._gere_popup_fournisseur()
 
             # Date BC
-            date_input = self.get_input_by_label("Date réception")
-            date_input.click()
-            time.sleep(0.5)
-            date_input.clear()
-            date_input.send_keys(date_bc)
-            date_input.send_keys(Keys.TAB)
-            time.sleep(0.5)
+            # date_input = self.get_input_by_label("Date réception")
+            # date_input.click()
+            # time.sleep(0.5)
+            # date_input.clear()
+            # date_input.send_keys(date_bc)
+            # date_input.send_keys(Keys.TAB)
+            # time.sleep(0.5)
             
             # BL Fournisseur
             bl_input = self.get_input_by_label("BL fournisseur")
