@@ -470,9 +470,7 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
         """Cliquer sur le bouton 'Créer Réception'"""
         driver = self.driver_manager.driver
         try:
-            WebDriverWait(driver, 10000).until(
-                EC.invisibility_of_element_located((By.CSS_SELECTOR, ".s_page_action_add"))
-            )
+            time.sleep(2)
             add_button = driver.find_element(By.CSS_SELECTOR, ".s_page_action_add")
 
             if "s-disabled" in add_button.get_attribute("class"):
@@ -863,9 +861,7 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
             # except:
             #     self.logger.info("✅ Enregistré")
             #     return True
-            WebDriverWait(driver, 10000).until(
-                EC.invisibility_of_element_located((By.CSS_SELECTOR, "a.s_page_close"))
-            )
+            time.sleep(4)
             s_page_close = driver.find_element(By.CSS_SELECTOR, "a.s_page_close")
             s_page_close.click()
             time.sleep(2)
