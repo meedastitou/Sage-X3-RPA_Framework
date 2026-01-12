@@ -471,7 +471,7 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
         driver = self.driver_manager.driver
         try:
             time.sleep(2)
-            add_button = driver.find_element(By.CSS_SELECTOR, ".s_page_action_add")
+            add_button = driver.find_element(By.CSS_SELECTOR, ".s_page_action_i.s_page_action_add")
 
             if "s-disabled" in add_button.get_attribute("class"):
                 # Bouton désactivé 
