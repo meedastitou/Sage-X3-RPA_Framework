@@ -68,7 +68,9 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
                 
                 # 5. NAVIGUER VERS MODULE
                 self.navigate_to_module(self.url_receiption)
-                time.sleep(3)
+                time.sleep(5)
+                self.wait_for_spinner_to_disappear(self.driver_manager.driver, timeout=90000)
+
                 self.logger.info(f"{'='*80}")
                 self.logger.info(f"🏢 FOURNISSEUR: {code_frs}")
                 self.logger.info(f"{'='*80}")
