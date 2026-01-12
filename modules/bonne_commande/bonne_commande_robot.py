@@ -394,10 +394,10 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
     def _traiter_tous_articles(self, structure: Dict[str, Any]) -> bool:
         """Traiter tous les articles UNIQUES avec validation stricte"""
         self.navigate_to_module(self.url_article)
-        time.sleep(3)
+        time.sleep(5)
 
         driver = self.driver_manager.driver
-        self.wait_for_spinner_to_disappear(driver, timeout=9000)
+        self.wait_for_spinner_to_disappear(driver, timeout=90000)
 
         total_articles = len(structure['tous_articles'])
 
@@ -453,10 +453,10 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
     def _traiter_toutes_das(self, structure: Dict[str, Any]) -> bool:
         """Traiter toutes les DAs UNIQUES avec validation stricte"""
         self.navigate_to_module(self.url_demande_achat)
-        time.sleep(3)
+        time.sleep(5)
 
         driver = self.driver_manager.driver
-        self.wait_for_spinner_to_disappear(driver, timeout=9000)
+        self.wait_for_spinner_to_disappear(driver, timeout=90000)
 
         total_das = len(structure['das'])
         try:
@@ -519,8 +519,8 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             # Naviguer vers le module bonne de commande
             self.navigate_to_module(self.url_bonne_commande)
             # generation automatique de la BC
-            # time.sleep(500)
-            self.wait_for_spinner_to_disappear(driver, timeout=9000)
+            time.sleep(5)
+            self.wait_for_spinner_to_disappear(driver, timeout=90000)
 
             bc_inputs = driver.find_elements(By.CSS_SELECTOR, ".s-inplace-input.s-readonly")
             self.logger.info(f"Nombre d'inputs BC trouvés: {len(bc_inputs)}")
@@ -800,9 +800,9 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             time.sleep(0.5)
             save_btn.click()
 
-            time.sleep(2)
+            time.sleep(5)
 
-            self.wait_for_spinner_to_disappear(driver, timeout=60)
+            self.wait_for_spinner_to_disappear(driver, timeout=6000)
             
             self.logger.info("💾 Enregistrement article...")
             return True
@@ -828,8 +828,8 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             time.sleep(0.5)
             
             save_btn.click()
-            time.sleep(2)
-            self.wait_for_spinner_to_disappear(driver, timeout=60)
+            time.sleep(5)
+            self.wait_for_spinner_to_disappear(driver, timeout=60000)
             self.logger.info("💾 Enregistrement DA...")
             
             return True
