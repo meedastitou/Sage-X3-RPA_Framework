@@ -615,7 +615,6 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             click_on_article.click()
             time.sleep(1)
             
-            input("Appuyez sur Entrée après avoir vérifié que la fiche article est ouverte...")
             # 0. verifier if BC_auto is checked
             BC_auto_input = self.get_input_by_label("BC Auto.")
             BC_auto_label = driver.find_element(By.CSS_SELECTOR, f"label[for='{BC_auto_input.get_attribute('id')}']")
