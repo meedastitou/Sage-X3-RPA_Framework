@@ -394,8 +394,11 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
     def _traiter_tous_articles(self, structure: Dict[str, Any]) -> bool:
         """Traiter tous les articles UNIQUES avec validation stricte"""
         self.navigate_to_module(self.url_article)
-        time.sleep(2)
-        
+        time.sleep(3)
+
+        driver = self.driver_manager.driver
+        self.wait_for_spinner_to_disappear(driver, timeout=9000)
+
         total_articles = len(structure['tous_articles'])
 
         try: 
@@ -450,8 +453,11 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
     def _traiter_toutes_das(self, structure: Dict[str, Any]) -> bool:
         """Traiter toutes les DAs UNIQUES avec validation stricte"""
         self.navigate_to_module(self.url_demande_achat)
-        time.sleep(2)
-        
+        time.sleep(3)
+
+        driver = self.driver_manager.driver
+        self.wait_for_spinner_to_disappear(driver, timeout=9000)
+
         total_das = len(structure['das'])
         try:
             for idx, (numero_da, info_da) in enumerate(structure['das'].items(), 1):
@@ -609,7 +615,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             click_on_article.click()
             time.sleep(1)
             
-
+            input("Appuyez sur Entrée après avoir vérifié que la fiche article est ouverte...")
             # 0. verifier if BC_auto is checked
             BC_auto_input = self.get_input_by_label("BC Auto.")
             BC_auto_label = driver.find_element(By.CSS_SELECTOR, f"label[for='{BC_auto_input.get_attribute('id')}']")
