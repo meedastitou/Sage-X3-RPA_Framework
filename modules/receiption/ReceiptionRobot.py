@@ -75,7 +75,7 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
                 
                 resultat_frs = self._traiter_fournisseur(code_frs, frs_data)
                 self.add_result(resultat_frs)
-                input("Appuyez sur Entrée pour continuer...")
+
                 if resultat_frs['statut'] == 'Succes':
                     self.fournisseurs_traites += 1
                 else:
