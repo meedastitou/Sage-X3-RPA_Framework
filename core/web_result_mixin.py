@@ -147,6 +147,10 @@ class WebResultMixin:
 
         if 'BonneCommande' in class_name:
             data = self.result_sender.format_bonne_commande_result(self)
+        elif 'Receiption' in class_name:
+            data = self.result_sender.format_receiption_result(self)
+        elif 'Facturation' in class_name:
+            data = self.result_sender.format_facturation_result(self)
         elif 'Lettrage' in class_name:
             data = self.result_sender.format_lettrage_result(self)
         else:

@@ -219,15 +219,15 @@ class ResultSender:
     def format_lettrage_result(self, robot) -> Dict[str, Any]:
         """
         Formater les résultats du robot Lettrage pour l'envoi
-        
+
         Args:
             robot: Instance de LettrageRobot
-        
+
         Returns:
             Dictionnaire formaté
         """
         summary = robot.generate_summary()
-        
+
         return {
             'module': 'lettrage',
             'timestamp': datetime.now().isoformat(),
@@ -240,6 +240,56 @@ class ResultSender:
             'rapport_path': str(robot.rapport_path) if robot.rapport_path else None,
             'details': summary
         }
+
+    def format_receiption_result(self, robot) -> Dict[str, Any]:
+        """
+        Formater les résultats du robot Réception pour l'envoi
+
+        Args:
+            robot: Instance de ReceiptionRobot
+
+        Returns:
+            Dictionnaire formaté
+        """
+        summary = robot.generate_summary() if hasattr(robot, 'generate_summary') else {}
+
+        data = {
+            'module': 'reception',
+            'timestamp': datetime.now().isoformat(),
+            'statut': 'succes' if robot.fournisseurs_echec == 0 else 'partiel',
+            'statistiques': {
+                'total_fournisseurs': robot.fournisseurs_traites + robot.fournisseurs_echec,
+                'fournisseurs_traites': robot.fournisseurs_traites,
+                'fournisseurs_echec': robot.fournisseurs_echec,
+                'total_articles': robot.total_articles
+            },
+            'rapport_path': str(robot.rapport_path) if robot.rapport_path else None,
+            'details': summary
+        }
+
+        return data
+
+    def format_facturation_result(self, robot) -> Dict[str, Any]:
+        """
+        Formater les résultats du robot Facturation pour l'envoi
+
+        Args:
+            robot: Instance de FacturationRobot
+
+        Returns:
+            Dictionnaire formaté
+        """
+        summary = robot.generate_summary() if hasattr(robot, 'generate_summary') else {}
+
+        data = {
+            'module': 'facturation',
+            'timestamp': datetime.now().isoformat(),
+            'statut': 'succes' if hasattr(robot, 'validation_passed') and robot.validation_passed else 'echec',
+            'rapport_path': str(robot.rapport_path) if robot.rapport_path else None,
+            'details': summary
+        }
+
+        return data
 
 
 # ============================================================================
