@@ -133,7 +133,7 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
         
         colonnes_requises = [
             'CodeFrs',
-            'BLFrs', 
+            'BLFrs',
             'DateBC',
             'N_BC',
             'CodeArticle',
@@ -141,21 +141,22 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
             'N_B_transport',
             'Matricule',
             'Poids',
-            'Marque'
+            'Marque',
+            'observation'
         ]
         
         df = self.excel_handler.read_excel(excel_file, required_columns=colonnes_requises)
         
         self.logger.info(f"✅ {len(df)} ligne(s) lues")
         
-        # Validation des colonnes importantes
+        # Validation des colonnes importantes (observation est optionnelle)
         lignes_invalides = []
         for idx, row in df.iterrows():
             colonnes_vides = []
             for col in ['CodeFrs','BLFrs', 'DateBC', 'N_BC', 'CodeArticle', 'Quantite', 'Poids', 'Marque']:
                 if pd.isna(row[col]) or str(row[col]).strip() == '':
                     colonnes_vides.append(col)
-            
+
             if colonnes_vides:
                 lignes_invalides.append(idx)
                 self.logger.warning(f"⚠️ Ligne {idx+1} ignorée - Colonnes vides: {', '.join(colonnes_vides)}")
@@ -170,11 +171,11 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
     def _regrouper_donnees(self, df: pd.DataFrame) -> Dict[str, Any]:
         """
         Regrouper par Fournisseur → BC → Articles
-        CodeFrs	    BLFrs	        DateBC	    N_BC	    CodeArticle	Quantite	N_B_transport	Matricule	Poids	Marque
-        T6664	    FN°0037/2025	23/05/2025	BC186553	A15007	    1	        FN°0037/2025	XX	        0,01	LEASING
-        T6664	    FN°0037/2025	23/05/2025	BC186553	A15884	    1	        FN°0037/2025	XX	        0,01	LEASING
+        CodeFrs	    BLFrs	        DateBC	    N_BC	    CodeArticle	Quantite	N_B_transport	Matricule	Poids	Marque	observation
+        T6664	    FN°0037/2025	23/05/2025	BC186553	A15007	    1	        FN°0037/2025	XX	        0,01	LEASING	Note 1
+        T6664	    FN°0037/2025	23/05/2025	BC186553	A15884	    1	        FN°0037/2025	XX	        0,01	LEASING	Note 2
         T3581	    FN°0065/2025	01/11/2021	BC165170	A12585	    1	        FN°0065/2025	XX	        0,01	LEASING
-        T5700	    FN°0037/2025	06/01/2026	BC191348	A14495	    1	        FN°0037/2025	XX	        0,01	ETUDE 
+        T5700	    FN°0037/2025	06/01/2026	BC191348	A14495	    1	        FN°0037/2025	XX	        0,01	ETUDE	Urgent
         T5700	    FN°0065/2025	06/01/2026	BC191349	A14495	    1	        FN°0065/2025	XX	        0,01	ETUDE 
 
         Structure:
@@ -217,7 +218,8 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
                                 'n_b_transport': 'FN°0065/2025',
                                 'matricule': 'XX',
                                 'poids': '0,01',
-                                'marque': 'LEASING'
+                                'marque': 'LEASING',
+                                'observation': ''
                             }
                         ]
                     }
@@ -272,7 +274,8 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
                 'n_b_transport': str(row['N_B_transport']) if not pd.isna(row['N_B_transport']) else '',
                 'matricule': str(row['Matricule']) if not pd.isna(row['Matricule']) else '',
                 'poids': str(row['Poids']) if not pd.isna(row['Poids']) else '',
-                'marque': str(row['Marque']) if not pd.isna(row['Marque']) else ''
+                'marque': str(row['Marque']) if not pd.isna(row['Marque']) else '',
+                'observation': str(row['observation']) if not pd.isna(row['observation']) else ''
             }
             
             structure[code_frs]['bons_commande'][n_bc]['articles'].append(article)
@@ -449,9 +452,9 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
                     self.logger.info(f"   ✅ Article {article['code']} OK")
                 else:
                     self.logger.warning(f"   ⚠️ Article {article['code']} échec")
-                
+
                 time.sleep(0.5)
-            
+
             # 4. ENREGISTRER
             if self._enregistrer_reception():
                 resultat['statut'] = 'Succes'
@@ -736,6 +739,79 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
             driver.save_screenshot(f"error_selection_bc_{n_bc}.png")
             return False
     
+    def _ajouter_observation(self, article: Dict, row_number: int) -> bool:
+        """
+        Ajouter une observation à un article via la modale de texte
+
+        Args:
+            article: Dictionnaire contenant les données de l'article
+            row_number: Numéro de la ligne dans le tableau
+
+        Returns:
+            True si l'observation a été ajoutée avec succès, False sinon
+        """
+        driver = self.driver_manager.driver
+
+        try:
+            # Vérifier si une observation existe
+            observation = article.get('observation', '').strip()
+            if not observation:
+                self.logger.info("   ℹ️ Aucune observation à ajouter")
+                return True
+
+            # Trouver la ligne avec le numéro dans la première cellule
+            row_with_number = driver.find_element(By.XPATH,
+                f"//td[contains(@class, 's-record-row-index') and normalize-space(text())='{row_number}']/parent::tr"
+            )
+
+            # Dans cette ligne, trouver le premier <i> et cliquer dessus
+            icon_i = row_with_number.find_element(By.XPATH, ".//i")
+            icon_i.click()
+            time.sleep(1)
+
+            # Cliquer sur "Texte" dans le popup
+            popup = driver.find_element(By.CLASS_NAME, "s_popup")
+            texte_link = popup.find_element(By.XPATH, ".//a[text()='Texte']")
+            texte_link.click()
+            time.sleep(2)
+
+            # Attendre la modale
+            modal = driver.find_element(By.CLASS_NAME, "s_modal_dialog")
+            if not modal.is_displayed():
+                self.logger.warning("   ⚠️ Modale non visible")
+                return False
+
+            # Basculer vers l'iframe de la modale
+            iframe = modal.find_element(By.TAG_NAME, "iframe")
+            driver.switch_to.frame(iframe)
+
+            # Écrire l'observation dans le body de l'iframe
+            body = driver.find_element(By.TAG_NAME, "body")
+            body.clear()
+            body.send_keys(observation)
+
+            # Revenir au contenu principal
+            driver.switch_to.default_content()
+
+            # Cliquer sur OK pour valider
+            ok_button = driver.find_element(By.XPATH,
+                "//div[@class='s_page_header_business_actions']//a[text()='OK']"
+            )
+            ok_button.click()
+            time.sleep(0.5)
+
+            self.logger.info(f"   ✅ Observation ajoutée: {observation}")
+            return True
+
+        except Exception as e:
+            self.logger.error(f"   ❌ Erreur lors de l'ajout de l'observation: {e}")
+            # Revenir au contenu principal en cas d'erreur
+            try:
+                driver.switch_to.default_content()
+            except:
+                pass
+            return False
+
     def _remplir_article_dans_ligne(self, article: Dict, ligne_num: int) -> bool:
         """Remplir les données d'un article dans le tableau des lignes"""
         
@@ -754,8 +830,11 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
             # Trouver toutes les lignes
             rows = table.find_elements(By.CSS_SELECTOR, ".s-grid-table-body tr.s-grid-row")
             self.logger.info(f"📊 {len(rows)} ligne(s) dans le tableau pour remplissage")
+            
             # Chercher la ligne avec cet article
             target_row = None
+            row_number = 1
+            row_index = None
             for row in rows:
                 try:
                     cells = row.find_elements(By.CSS_SELECTOR, ".s-inplace-input")
@@ -766,13 +845,18 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
                             break
                     if target_row:
                         break
+                    row_number = row_number+1
                 except:
                     continue
             
             if not target_row:
                 self.logger.warning(f"Article {article['code']} non trouvé dans tableau")
                 return False
-            
+            self.logger.info(f"   📍 Ligne trouvée: {row_number}")
+
+            # Ajouter l'observation si elle existe
+            self._ajouter_observation(article, row_number)
+
             # Modifier les cellules
             cells = target_row.find_elements(By.CSS_SELECTOR, ".s-inplace-input")
             
