@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from utils.queue_manager import get_next_task, update_task
 from modules.bonne_commande.bonne_commande_robot import BonneCommandeRobot
-from modules.receiption.ReceiptionRobot import ReceiptionRobot
+from modules.receiption.ReceiptionRobot_v2 import ReceiptionRobot
 from core.logger import Logger
 
 logger = Logger.get_logger('WorkerRPA', 'workers')
