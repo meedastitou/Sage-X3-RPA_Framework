@@ -12,10 +12,11 @@ from selenium.webdriver.support import expected_conditions as EC
 import time
 
 from core.base_robot import BaseRobot
+from core.web_result_mixin import WebResultMixin
 from utils.excel_handler import ExcelHandler
+from datetime import datetime
 
-
-class FacturationRobot(BaseRobot):
+class FacturationRobot(BaseRobot, WebResultMixin):
     """Robot pour le facturation automatique des fournisseurs"""
     
     def __init__(self, headless: bool = False):
@@ -25,53 +26,128 @@ class FacturationRobot(BaseRobot):
         Args:
             headless: Mode sans interface
         """
-        super().__init__('facturation')
+        BaseRobot.__init__(self, 'facturation')
+        WebResultMixin.__init__(self)
+
         self.excel_handler = ExcelHandler()
-        
-        self.logger.info(f"🤖 Robot Lettrage initialisé")
+
+        self.url_facturation = "http://192.168.1.241:8124/syracuse-main/html/main.html?url=%2Ftrans%2Fx3%2Ferp%2FBASE1%2F%24sessions%3Ff%3DGESPIH%252F2%252F%252FM%252F%26profile%3D~(loc~%27fr-FR~role~%278ecdb3d1-8ca7-40ca-af08-76cb58c70740~ep~%27cb006c17-58a5-4b98-9f2b-474ec03472a3~appConn~())"
+        # Compteurs pour les statistiques
+        self.factures_traitees = 0
+        self.factures_echec = 0
+
+        self.logger.info(f"🤖 Robot Facturation initialisé")
     
-    def execute(self, excel_file: str, url: str):
+    def execute(self, excel_file: str, url: str = None):
         """
-        Exécuter le lettrage
-        
+        Exécuter la facturation
+
         Args:
             excel_file: Chemin du fichier Excel
             url: URL du module Sage X3
         """
-        # Lire Excel
-        df = self.excel_handler.read_excel(
-            excel_file,
-            required_columns=['Code', 'DFF', 'FactureFrs','Date','BR']
-        )
-        
-        self.logger.info(f"📊 {len(df)} lignes à traiter")
-        
-        # Connexion Sage
-        self.connect_sage()
-        
-        # Traiter chaque ligne
-        for idx, row in df.iterrows():
-            self.navigate_to_module(url)
-            self.logger.info(f"\n{'='*80}")
-            self.logger.info(f"📌 LIGNE {idx+1}/{len(df)}")
-            self.logger.info(f"{'='*80}")
-            code = str(row['Code'])
-            dff = str(row['DFF'])
-            factureFrs = 'FN°' + str(row['FactureFrs'])
-            date = str(row['Date'])
-            br= str(row['BR'])
-            nom = str(row.get('Nom', ''))
-            
-            self.logger.info(f"\n{'='*80}")
-            self.logger.info(f"📌 LIGNE {idx+1}/{len(df)}")
-            self.logger.info(f"{'='*80}")
-            
-            resultat = self.traiter_fournisseur(url, code, factureFrs, dff, date, br, nom)
-            
-            self.add_result(resultat)
-            self.save_report(incremental=True)
-            
-            time.sleep(2)
+        driver = self.driver_manager.driver
+        email_f = ""
+
+        try:
+            # Lire Excel
+            df = self.excel_handler.read_excel(
+                excel_file,
+                required_columns=['Code', 'DFF', 'FactureFrs', 'Date', 'BR']
+            )
+
+            # Récupérer l'email si disponible
+            if 'email_expediteur' in df.columns:
+                email_f = df.iloc[0]['email_expediteur']
+
+            self.logger.info(f"📊 {len(df)} lignes à traiter")
+
+            # Connexion Sage
+            self.connect_sage()
+
+            # Traiter chaque ligne
+            for idx, row in df.iterrows():
+                self.navigate_to_module(self.url_facturation)
+                time.sleep(1)
+                self.wait_for_spinner_to_disappear(driver, 6000)
+                
+                self.logger.info(f"\n{'='*80}")
+                self.logger.info(f"📌 LIGNE {idx+1}/{len(df)}")
+                self.logger.info(f"{'='*80}")
+
+                code = str(row['Code'])
+                dff = str(row['DFF'])
+                factureFrs = 'FN°' + str(row['FactureFrs'])
+                date = str(row['Date'].strftime('%d/%m/%Y'))
+                br = str(row['BR'])
+                nom = str(row.get('Nom', ''))
+
+                resultat = self.traiter_fournisseur(url, code, factureFrs, dff, date, br, nom)
+
+                # Récupérer le numéro de pièce (numero_FF)
+                try:
+                    numero_FF_input = self.get_input_by_label("Numéro pièce")
+                    numero_FF = numero_FF_input.get_attribute("value") if numero_FF_input else ""
+                    resultat['numero_FF'] = numero_FF
+                    self.logger.info(f"📋 Numéro FF: {numero_FF}")
+                except Exception as e:
+                    resultat['numero_FF'] = ""
+                    self.logger.warning(f"⚠️ Impossible de récupérer le numéro FF: {e}")
+
+                # Mettre à jour les compteurs
+                if resultat.get('statut') == 'Succes':
+                    self.factures_traitees += 1
+                else:
+                    self.factures_echec += 1
+
+                self.add_result(resultat)
+                self.save_report(incremental=True)
+
+                time.sleep(2)
+
+            # Bilan final
+            self.add_result({
+                'type': 'BILAN_FINAL',
+                'statut': 'SUCCES' if self.factures_echec == 0 else 'PARTIEL',
+                'factures_traitees': self.factures_traitees,
+                'factures_echec': self.factures_echec,
+                'message': f'{self.factures_traitees} facture(s) traité(s), {self.factures_echec} échec(s)'
+            })
+
+            # Sauvegarder le rapport final
+            self.save_report()
+
+            # Envoyer les résultats vers n8n
+            self.send_results_to_web(email_f)
+
+            self.logger.info("="*80)
+            self.logger.info("🎉 PROCESSUS TERMINÉ")
+            self.logger.info(f"✅ {self.factures_traitees} facture(s) traité(s)")
+            self.logger.info(f"❌ {self.factures_echec} facture(s) en échec")
+            self.logger.info("="*80)
+
+        except Exception as e:
+            self.logger.error(f"❌ ERREUR CRITIQUE: {e}")
+            import traceback
+            self.logger.error(traceback.format_exc())
+
+            self.add_result({
+                'type': 'ERREUR',
+                'statut': 'ECHEC',
+                'message': str(e)
+            })
+
+            self.save_report()
+            self.send_results_to_web(email_f)
+
+        finally:
+            try:
+                s_page_close = driver.find_element(By.CSS_SELECTOR, "a.s_page_close")
+                s_page_close.click()
+                time.sleep(2)
+            except:
+                pass
+            self.disconnect_sage()
     
     def selection_recieption(self, codeReception):
         """
@@ -218,7 +294,7 @@ class FacturationRobot(BaseRobot):
             return False
         
     def saisi_information(self, typeF, codeFournisseur, factureFournisseur, DFF, Date, codeReception, nom=""):
-        self.logger.info(f"🔍 Saisir: Tier={codeFournisseur}, Reception={codeReception}, Facture={factureFournisseur}")
+        self.logger.info(f"🔍 Saisir: Tier={codeFournisseur}, Reception={codeReception}, Facture={factureFournisseur}, Date = {Date}")
         driver = self.driver_manager.driver
 
         try:
@@ -227,7 +303,10 @@ class FacturationRobot(BaseRobot):
             cree.click()
             time.sleep(2)
 
-            cf = driver.find_element(By.ID, "2-73-input")
+            self.wait_for_spinner_to_disappear(driver, 900)
+
+            # cf = driver.find_element(By.ID, "2-73-input")
+            cf = self.get_input_by_label("Type facture")
             cf.click()
             time.sleep(0.5)
             cf.clear()
@@ -235,7 +314,8 @@ class FacturationRobot(BaseRobot):
             cf.send_keys(Keys.TAB)
             time.sleep(1)
             
-            cf2 = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "2-81-input")))
+            # cf2 = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "2-81-input")))
+            cf2 = self.get_input_by_label("Fournisseur")
             cf2.click()
             time.sleep(0.5)
             cf2.clear()
@@ -244,7 +324,8 @@ class FacturationRobot(BaseRobot):
             time.sleep(1)
 
 
-            AncienCode_input = driver.find_element(By.ID, "2-85-input")
+            # AncienCode_input = driver.find_element(By.ID, "2-85-input")
+            AncienCode_input = self.get_input_by_label("Ancien Code")
             AncienCode_input.click()
             time.sleep(0.5)
             AncienCode_input.clear()
@@ -253,7 +334,8 @@ class FacturationRobot(BaseRobot):
             time.sleep(1)
 
 
-            DFF_input = driver.find_element(By.ID, "2-87-input")
+            # DFF_input = driver.find_element(By.ID, "2-87-input")
+            DFF_input = self.get_input_by_label("N°Dépôt")
             DFF_input.click()
             time.sleep(0.5)
             DFF_input.clear()
@@ -261,7 +343,7 @@ class FacturationRobot(BaseRobot):
             DFF_input.send_keys(Keys.TAB)
             time.sleep(1)
             
-            self.gere_popup_info()
+            # self.gere_popup_info()
 
             # Selection la Reception
             if not self.selection_recieption(codeReception):
@@ -271,11 +353,13 @@ class FacturationRobot(BaseRobot):
 
 
             # Saisir le Montant HT
-            HT_input = driver.find_element(By.ID, "2-183-input")
+            # HT_input = driver.find_element(By.ID, "2-183-input")
+            HT_input = self.get_input_by_label("HT calculé")
             ht_value= HT_input.get_attribute('value')  # Juste pour s'assurer que l'élément est chargé
             time.sleep(1)
 
-            HT_saisi_input = driver.find_element(By.ID, "2-182-input")
+            # HT_saisi_input = driver.find_element(By.ID, "2-182-input")
+            HT_saisi_input = self.get_input_by_label("HT saisi")
             HT_saisi_input.click()
             time.sleep(0.5)
             HT_saisi_input.clear()
@@ -285,7 +369,8 @@ class FacturationRobot(BaseRobot):
 
 
             # Saisir la Taxe
-            Taxe = driver.find_element(By.ID, "2-190-input")
+            # Taxe = driver.find_element(By.ID, "2-190-input")
+            Taxe = self.get_input_by_label("Ecart taxes")
             taxe_value= Taxe.get_attribute('value')  # Juste pour s'assurer que l'élément est chargé
             # Supprimer uniquement le '-' au début si présent
             if taxe_value and taxe_value.startswith('-'):
@@ -293,7 +378,8 @@ class FacturationRobot(BaseRobot):
 
             time.sleep(1)
 
-            Taxe_saisi_input = driver.find_element(By.ID, "2-189-input")
+            # Taxe_saisi_input = driver.find_element(By.ID, "2-189-input")
+            Taxe_saisi_input = self.get_input_by_label("Total taxes saisi")
             Taxe_saisi_input.click()
             time.sleep(0.5)
             Taxe_saisi_input.clear()
@@ -302,7 +388,8 @@ class FacturationRobot(BaseRobot):
             time.sleep(1)
 
             # Saisir la Date
-            date_input = driver.find_element(By.ID, "2-98-input")
+            # date_input = driver.find_element(By.ID, "2-98-input")
+            date_input = self.get_input_by_label("Date fact.fou")
             date_input.click()
             time.sleep(0.5)
             date_input.clear()
@@ -310,7 +397,8 @@ class FacturationRobot(BaseRobot):
             date_input.send_keys(Keys.TAB)
             time.sleep(1)
 
-            factureFrs_input = driver.find_element(By.ID, "2-99-input")
+            # factureFrs_input = driver.find_element(By.ID, "2-99-input")
+            factureFrs_input = self.get_input_by_label("No fact.fou")
             factureFrs_input.click()
             time.sleep(0.5)
             factureFrs_input.clear()
@@ -318,7 +406,8 @@ class FacturationRobot(BaseRobot):
             factureFrs_input.send_keys(Keys.TAB)
             time.sleep(1)
 
-            referenceIntern_input = driver.find_element(By.ID, "2-111-input")
+            # referenceIntern_input = driver.find_element(By.ID, "2-111-input")
+            referenceIntern_input = self.get_input_by_label("Référence interne")
             referenceIntern_input.click()
             time.sleep(0.5)
             referenceIntern_input.clear()
@@ -336,20 +425,51 @@ class FacturationRobot(BaseRobot):
         driver = self.driver_manager.driver
 
         try:
-            save_btn = driver.find_element(By.CLASS_NAME, "s_page_action_i.s_page_action_i_save")
+            input("Appuyez sur Entrée pour continuer l'enregistrement...")
+            save_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_check")
             driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", save_btn)
             time.sleep(0.5)
             save_btn.click()
+            time.sleep(2)
+            self.wait_for_spinner_to_disappear(driver, 9000)
+
             self.logger.info("✅ Enregistrement clique")
             confirmation_msg = WebDriverWait(driver, 5).until(
                 EC.presence_of_element_located((By.CLASS_NAME, "s_alertbox_title"))
             )
-            confirmation_msg_text = confirmation_msg.text
-
-            if "Avertissement" in confirmation_msg_text or "Mibilisation" in confirmation_msg_text:
-                self.logger.error(f"❌ Erreur enregistrement: {confirmation_msg_text}")
-                raise Exception(confirmation_msg_text)  
+            # confirmation_msg_text = confirmation_msg.text
             
+            # if "Avertissement" in confirmation_msg_text :
+            #     try:
+            #         # Cliquer sur "Oui"
+            #         oui_button = driver.find_element(By.XPATH, "//a[@aria-label='OK']")
+            #         oui_button.click()
+            #         self.logger.info("✅ Avertissement Confirmation abandon cliquée")
+            #         time.sleep(1)
+            #     except:
+            #         # Pas de popup ou autre type de popup
+            #         pass
+            
+            # if "Mibilisation" in confirmation_msg_text:
+            #     try:
+            #         header = driver.find_element(By.CLASS_NAME, "s_alertbox_header")
+            #         close_button = header.find_element(By.CLASS_NAME, "s_modal_close")
+            #         close_button.click()
+
+            #         self.logger.error(f"Mobilisation : {confirmation_msg_text}")
+            #     except: 
+            #         pass
+            
+            try:
+                # Fermer la popup de confirmation
+                header = driver.find_element(By.CLASS_NAME, "s_alertbox_header")
+                close_button = header.find_element(By.CLASS_NAME, "s_modal_close")
+                close_button.click()
+
+                self.logger.info(f"✅ Popup de confirmation fermée {confirmation_msg.text}")
+                time.sleep(1)
+            except:
+                pass
             self.logger.info(f"✅ Enregistrement reussi: {confirmation_msg.text}")
             time.sleep(3)
         except Exception as e:
@@ -388,13 +508,19 @@ class FacturationRobot(BaseRobot):
                     resultat['message'] = 'Erreur recherche, actualisation échouée'
                     return resultat
             
-            input("⏸️ Vérifiez les informations saisies, puis appuyez sur Entrée pour continuer...")
-            time.sleep(10)
+            time.sleep(2)
             self.clique_enregistrer()
             
+            self.close_module()
+
+            # Marquer comme succès
+            resultat['statut'] = 'Succes'
+            resultat['facturation_effectue'] = True
+            resultat['message'] = 'Facturation effectuée avec succès'
+
         except Exception as e:
             resultat['message'] = f'Erreur: {str(e)}'
             self.logger.error(f"❌ Erreur traitement fournisseur: {e}")
-        
+
         return resultat
     

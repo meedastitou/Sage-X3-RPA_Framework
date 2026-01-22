@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from utils.queue_manager import get_next_task, update_task
 from modules.bonne_commande.bonne_commande_robot import BonneCommandeRobot
 from modules.receiption.ReceiptionRobot_v2 import ReceiptionRobot
+from modules.facturation.FacturationRobot import FacturationRobot
 from core.logger import Logger
 
 logger = Logger.get_logger('WorkerRPA', 'workers')
@@ -47,6 +48,10 @@ def main():
                     elif task_type == "receiption":
                         logger.info("🚀 Lancement du ReceiptionRobot...")
                         robot = ReceiptionRobot()
+                        robot.run(excel_file=task['file'])
+                    elif task_type == "facturation":
+                        logger.info("🚀 Lancement du FacturationRobot...")
+                        robot = FacturationRobot()
                         robot.run(excel_file=task['file'])
                     else:
                         raise ValueError(f"Type de tâche inconnu: {task_type}")
