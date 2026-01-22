@@ -284,10 +284,29 @@ class ResultSender:
         data = {
             'module': 'facturation',
             'timestamp': datetime.now().isoformat(),
-            'statut': 'succes' if hasattr(robot, 'validation_passed') and robot.validation_passed else 'echec',
+            'statut': 'succes' if robot.factures_echec == 0 else 'partiel',
+            'statistiques': {
+                'total_factures': robot.factures_traitees + robot.factures_echec,
+                'factures_traitees': robot.factures_traitees,
+                'factures_echec': robot.factures_echec
+            },
             'rapport_path': str(robot.rapport_path) if robot.rapport_path else None,
             'details': summary
         }
+
+        # Ajouter les numéros FF des résultats
+        if hasattr(robot, 'results') and robot.results:
+            numeros_ff = []
+            for result in robot.results:
+                if isinstance(result, dict) and result.get('numero_FF'):
+                    numeros_ff.append({
+                        'codeFournisseur': result.get('codeFournisseur', ''),
+                        'factureFournisseur': result.get('factureFournisseur', ''),
+                        'numero_FF': result.get('numero_FF', ''),
+                        'statut': result.get('statut', '')
+                    })
+            if numeros_ff:
+                data['factures'] = numeros_ff
 
         return data
 
