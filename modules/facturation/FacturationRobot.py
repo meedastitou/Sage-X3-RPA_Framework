@@ -78,7 +78,7 @@ class FacturationRobot(BaseRobot, WebResultMixin):
                 code = str(row['Code'])
                 dff = str(row['DFF'])
                 factureFrs = 'FN°' + str(row['FactureFrs'])
-                date = str(row['Date'])
+                date = str(row['Date'].strftime('%d/%m/%Y'))
                 br = str(row['BR'])
                 nom = str(row.get('Nom', ''))
 
