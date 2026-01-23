@@ -147,7 +147,9 @@ class FacturationRobot(BaseRobot, WebResultMixin):
                 time.sleep(2)
             except:
                 pass
-            self.disconnect_sage()
+            finally:
+                self.wait_for_spinner_to_disappear(driver, 600000)
+                self.disconnect_sage()
     
     def selection_recieption(self, codeReception):
         """
