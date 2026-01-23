@@ -78,7 +78,7 @@ class FacturationRobot(BaseRobot, WebResultMixin):
                 code = str(row['Code'])
                 dff = str(row['DFF'])
                 factureFrs = 'FN°' + str(row['FactureFrs'])
-                
+
                 try:
                     # Si c'est un nombre Excel, le convertir
                     if isinstance(row['Date'], (int, float)):
@@ -440,13 +440,12 @@ class FacturationRobot(BaseRobot, WebResultMixin):
         driver = self.driver_manager.driver
 
         try:
-            input("Appuyez sur Entrée pour continuer l'enregistrement...")
             save_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_check")
             driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", save_btn)
             time.sleep(0.5)
             save_btn.click()
-            time.sleep(2)
-            self.wait_for_spinner_to_disappear(driver, 9000)
+            time.sleep(5)
+            self.wait_for_spinner_to_disappear(driver, 9000000)
 
             self.logger.info("✅ Enregistrement clique")
             confirmation_msg = WebDriverWait(driver, 5).until(
