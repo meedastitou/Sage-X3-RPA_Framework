@@ -78,7 +78,20 @@ class FacturationRobot(BaseRobot, WebResultMixin):
                 code = str(row['Code'])
                 dff = str(row['DFF'])
                 factureFrs = 'FN°' + str(row['FactureFrs'])
-                date = str(row['Date'].strftime('%d/%m/%Y'))
+                
+                try:
+                    # Si c'est un nombre Excel, le convertir
+                    if isinstance(row['Date'], (int, float)):
+                        date_obj = pd.Timestamp('1899-12-30') + pd.Timedelta(days=float(row['Date']))
+                    else:
+                        date_obj = pd.to_datetime(row['Date'])
+                    
+                    date = date_obj.strftime('%d/%m/%Y')
+                except Exception as e:
+                    self.logger.error(f"Erreur conversion date: {e}")
+                    date = ""  # Valeur par défaut en cas d'erreur
+
+                # date = str(row['Date'].strftime('%d/%m/%Y'))
                 br = str(row['BR'])
                 nom = str(row.get('Nom', ''))
 
