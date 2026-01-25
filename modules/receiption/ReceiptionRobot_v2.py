@@ -346,7 +346,9 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
             # 1. CRÉER UNE SEULE RÉCEPTION pour ce fournisseur
             if not self._cree_reception():
                 self.logger.warning(f"❌ Échec création réception pour fournisseur {code_frs}")
+                error_info = self.handle_error_with_screenshot(f"Erreur création réception pour {code_frs}", "_cree_reception")
                 resultat['message'] = 'Erreur création réception'
+                resultat['error_info'] = error_info
                 return resultat
 
             self.logger.info(f"✅ Réception créée pour fournisseur {code_frs}")
@@ -383,7 +385,9 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
 
             if articles_selectionnes == 0:
                 self.logger.warning(f"❌ Aucun article sélectionné pour fournisseur {code_frs}")
+                error_info = self.handle_error_with_screenshot(f"Aucun article sélectionné pour {code_frs}", "_selectionner_articles_multi_bc")
                 resultat['message'] = 'Aucun article sélectionné'
+                resultat['error_info'] = error_info
                 return resultat
 
             self.logger.info(f"✅ {articles_selectionnes} article(s) sélectionné(s) au total")
@@ -415,7 +419,9 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
                 resultat['message'] = f'{resultat["bcs_traites"]} BC(s), {resultat["total_articles"]} article(s) traité(s)'
                 self.logger.info(f"✅ Réception enregistrée pour fournisseur {code_frs}")
             else:
+                error_info = self.handle_error_with_screenshot(f"Erreur enregistrement réception pour {code_frs}", "_enregistrer_reception")
                 resultat['message'] = 'Erreur enregistrement'
+                resultat['error_info'] = error_info
 
             self.logger.info(f"✅ Fournisseur {code_frs}: {resultat['message']}")
 
