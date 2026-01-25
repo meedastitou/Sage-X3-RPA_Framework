@@ -239,6 +239,11 @@ class BaseRobot(ABC):
         except Exception as e:
             pass
 
+    def wait_for_element_to_appear(self, driver, by, value, timeout=30000):
+        """Attendre qu'un élément soit visible"""
+        wait = WebDriverWait(driver, timeout / 1000)
+        wait.until(EC.visibility_of_element_located((by, value)))   
+
     def get_input_by_label(self, label_name: str):
         """
         Retourne l'élément input associé à un label
