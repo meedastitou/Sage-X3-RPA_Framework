@@ -3,7 +3,7 @@
 Classe de base pour tous les robots RPA
 """
 from abc import ABC, abstractmethod
-from datetime import datetime
+from datetime import datetime, time
 from typing import Dict, Any, Optional, List
 import pandas as pd
 from pathlib import Path
@@ -244,7 +244,7 @@ class BaseRobot(ABC):
         wait = WebDriverWait(driver, timeout / 1000)
         wait.until(EC.visibility_of_element_located((by, value)))   
 
-    def get_input_by_label(self, label_name: str):
+    def get_input_by_label(self, label_name: str, for_id: int = None):
         """
         Retourne l'élément input associé à un label
 
@@ -258,14 +258,38 @@ class BaseRobot(ABC):
             Exception: Si le label ou l'input n'est pas trouvé
         """
         driver = self.driver_manager.driver
+        conditional_for = ""
+        if for_id is not None:
+            conditional_for = f" and contains(@for, '{for_id}-input')"
         try:
             input_element = driver.find_element(By.XPATH,
-                f"//label[contains(@class, 's-field-title') and contains(text(), '{label_name}')]/following::input[1]"
+                f"//label[contains(@class, 's-field-title') and contains(text(), '{label_name}'){conditional_for}]/following::input[1]"
             )
             return input_element
         except Exception as e:
             self.logger.error(f"❌ Erreur: impossible de trouver l'input pour le label '{label_name}': {e}")
             raise
+
+    def handle_popup(self, button_text: str, message: str) -> bool:
+        """
+        Gérer une popup en cliquant sur un bouton spécifique
+        
+        Args:
+            button_text: Texte du bouton à cliquer
+            message: Message attendu dans la popup
+        """
+            
+        driver = self.driver_manager.driver
+        try:
+            WebDriverWait(driver, 2).until(
+                EC.visibility_of_element_located((By.XPATH, f"//pre[@class='s_alertbox_msg' and contains(text(), '{message}')]"))
+            )
+            popup_button = driver.find_element(By.XPATH, f"//a[@aria-label='{button_text}']")
+            popup_button.click()
+            time.sleep(1)
+        except:
+            # Pas de popup ou autre type de popup
+            pass
 
     def cleanup(self):
         """Nettoyage et déconnexion"""

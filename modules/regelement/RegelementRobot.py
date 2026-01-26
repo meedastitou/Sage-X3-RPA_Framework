@@ -32,8 +32,8 @@ class RegelementRobot(BaseRobot, WebResultMixin):
         self.driver_manager.headless = headless
         
         # URL du module règlements
-        self.url_regelement = "http://192.168.1.241:8124/syracuse-main/html/main.html?url=%2Ftrans%2Fx3%2Ferp%2FBASE1%2F%24sessions%3Ff%3DGESPAY%252F2%252F%252FM%252F%26representation%3DWOPYFEFFFRA.%2524fusion%26profile%3D~(loc~%27fr-FR~role~%278ecdb3d1-8ca7-40ca-af08-76cb58c70740~ep~%27cb006c17-58a5-4b98-9f2b-474ec03472a3~appConn~())"
-        self.url_home = "http://192.168.1.241:8124/syracuse-main/html/main.html?url=%3Frepresentation%3Dhome.%2524landing%26profile%3D~(loc~%27fr-FR~role~%278ecdb3d1-8ca7-40ca-af08-76cb58c70740~ep~%27cb006c17-58a5-4b98-9f2b-474ec03472a3~appConn~())"
+        self.url_regelement = "http://192.168.1.252:8124/syracuse-main/html/main.html?url=%2Ftrans%2Fx3%2Ferp%2FBASE1%2F%24sessions%3Ff%3DGESPAY%252F2%252F%252FM%252F%26representation%3DWOPYFEFFFRA.%2524fusion%26profile%3D~(loc~%27fr-FR~role~%278ecdb3d1-8ca7-40ca-af08-76cb58c70740~ep~%27cb006c17-58a5-4b98-9f2b-474ec03472a3~appConn~())"
+        self.url_home = "http://192.168.1.252:8124/syracuse-main/html/main.html?url=%3Frepresentation%3Dhome.%2524landing%26profile%3D~(loc~%27fr-FR~role~%278ecdb3d1-8ca7-40ca-af08-76cb58c70740~ep~%27cb006c17-58a5-4b98-9f2b-474ec03472a3~appConn~())"
         # Compteurs
         self.fournisseurs_traites = 0
         self.fournisseurs_echec = 0
@@ -55,7 +55,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
         try:
             # 1. LIRE ET VALIDER L'EXCEL
             df = self._lire_et_valider_excel(excel_file)
-            email_f = df.iloc[0]['email_expediteur'] if 'email_expediteur' in df.columns else ""
+            email_f = df.iloc[0]['email_expediteur'] if 'email_expediteur' in df.columns else "astitoumd@gmail.com"
 
             self.logger.info(f"{'='*80}")
             self.logger.info(f"📊 {len(df)} ligne(s) à traiter")
@@ -64,11 +64,12 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             # 2. CONNEXION SAGE
             self.connect_sage()
             
+            # Naviguer vers le module
+            self.navigate_to_module(self.url_regelement)
+            self._choisir_mode_regelement("Effet à payer")
+
             # 3. TRAITER CHAQUE LIGNE
             for idx, row in df.iterrows():
-                # Naviguer vers le module
-                self.navigate_to_module(self.url_regelement)
-                self._choisir_mode_regelement("Effet à payer")
 
                 time.sleep(5)
                 self.wait_for_spinner_to_disappear(self.driver_manager.driver, timeout=90000)
@@ -266,7 +267,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             libelle_input.send_keys(Keys.TAB)
             time.sleep(0.5)
 
-            banque_input = self.get_input_by_label("Banque")
+            banque_input = self.get_input_by_label("Banque", 94)
             banque_input.click()
             time.sleep(0.5)
             banque_input.send_keys("B01")
@@ -284,7 +285,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             montant_input.send_keys(montant)
             montant_input.send_keys(Keys.TAB)
             time.sleep(0.5)
-
+            
             # =================================================================
             # =================================================================
             # 7. SÉLECTIONNER Numero cheque
@@ -357,8 +358,10 @@ class RegelementRobot(BaseRobot, WebResultMixin):
 
             # 12. ENREGISTRER
             if self._enregistrer_regelement():
+                input_reg = self.get_input_by_label("No règlement", 65)
+                reg_num = input_reg.get_attribute("value")
                 resultat['statut'] = 'Succes'
-                resultat['message'] = f'Règlement créé pour {num_facture}'
+                resultat['message'] = f'Règlement créé pour {num_facture}, N° Règlement: {reg_num}'
                 self.logger.info(f"✅ Règlement enregistré")
             else:
                 error_info = self.handle_error_with_screenshot(
@@ -445,10 +448,8 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             save_btn.click()
 
             time.sleep(5)
-
-            self.wait_for_spinner_to_disappear(driver, timeout=120000)
             
-            time.sleep(4)
+            self.wait_for_spinner_to_disappear(driver, timeout=120000)
             try:
                 s_page_close = driver.find_element(By.CSS_SELECTOR, "a.s_page_close")
                 s_page_close.click()
@@ -551,7 +552,15 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                 cell_facture.send_keys(Keys.TAB)
                 time.sleep(0.3)
                 
-            
+            self.logger.info(f"Remplissage auto montant:...")
+            if len(cells_scrool) > 5:
+                cell_facture = cells_scrool[5]
+                cell_facture.click()
+                time.sleep(0.3)
+                cell_facture.send_keys(Keys.TAB)
+                time.sleep(1)
+
+                self.handle_popup("OK", "ATTENTION ECHEANCE MISE A JOUR")
             
             return True
             
@@ -562,7 +571,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                 context="Remplissage détail - Exception"
             )
             return False
-
+    
     def _choisir_mode_regelement(self, mode: str) -> bool:
         """Choisir le mode de règlement"""
         driver = self.driver_manager.driver
