@@ -2,22 +2,33 @@
 """
 API REST pour déclencher les robots RPA Sage X3
 FastAPI avec endpoints pour chaque module
+Architecture Queue-Based pour traitement asynchrone
 """
+import sys
+from pathlib import Path
+
+# Ajouter le répertoire racine au path
+ROOT_DIR = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT_DIR))
+
 from fastapi import FastAPI, HTTPException, BackgroundTasks, UploadFile, File
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 import os
 import threading
 import uuid
 from datetime import datetime
-from pathlib import Path
 import shutil
+import pandas as pd
 
 # Importer les robots
 from modules.lettrage.lettrage_robot import LettrageRobot
 from modules.bonne_commande.bonne_commande_robot import BonneCommandeRobot
 from core.logger import Logger
+
+# Importer le queue manager
+from utils.queue_manager import add_task, load_queue
 
 app = FastAPI(
     title="Sage X3 RPA API",
@@ -51,6 +62,13 @@ class BonneCommandeRequest(BaseModel):
     """Requête pour déclencher les bons de commande"""
     excel_file: str
     headless: bool = False
+
+
+class BonneCommandeDataRequest(BaseModel):
+    """Requête pour déclencher les bons de commande avec données JSON"""
+    donnees: List[Dict[str, Any]]
+    email_expediteur: str
+    headless: bool = True
 
 
 class TaskStatus(BaseModel):
@@ -139,6 +157,38 @@ def execute_bonne_commande(task_id: str, excel_file: str, headless: bool):
 
 
 # ============================================================================
+# FONCTIONS UTILITAIRES QUEUE
+# ============================================================================
+
+def save_dataframe_to_excel(donnees: List[Dict[str, Any]], email_expediteur: str) -> str:
+    """
+    Convertir les données JSON en fichier Excel temporaire
+
+    Args:
+        donnees: Liste de dictionnaires contenant les données
+
+    Returns:
+        Chemin du fichier Excel créé
+    """
+    # Créer le DataFrame
+    df = pd.DataFrame(donnees)
+    
+    # Ajouter la colonne email_expediteur à chaque ligne
+    df['email_expediteur'] = email_expediteur
+    
+    # Générer un nom de fichier unique
+    filename = f"api_data_BC_{uuid.uuid4()}.xlsx"
+    file_path = UPLOAD_DIR / filename
+
+    # Sauvegarder en Excel
+    df.to_excel(file_path, index=False)
+
+    logger.info(f"📊 Données JSON converties en Excel: {file_path}")
+
+    return str(file_path)
+
+
+# ============================================================================
 # ENDPOINTS API
 # ============================================================================
 
@@ -151,6 +201,7 @@ async def root():
         "endpoints": {
             "lettrage": "/api/lettrage",
             "bonne_commande": "/api/bonne-commande",
+            "bonne_commande_data": "/api/bonne-commande/data",
             "upload": "/api/upload",
             "status": "/api/task/{task_id}",
             "tasks": "/api/tasks"
@@ -253,8 +304,66 @@ async def trigger_bonne_commande(request: BonneCommandeRequest, background_tasks
     thread.start()
     
     logger.info(f"📋 Tâche bonne commande créée: {task_id}")
-    
+
     return TaskStatus(**tasks_status[task_id])
+
+
+@app.post("/api/bonne-commande/data", response_model=TaskStatus)
+async def trigger_bonne_commande_from_data(request: BonneCommandeDataRequest):
+    """
+    Déclencher une tâche bonne commande avec données JSON
+    Les données sont converties en Excel et enqueued pour le worker
+
+    Exemple:
+    ```json
+    {
+        "donnees": [
+            {
+                "Numero_DA": "DA170753",
+                "Acheteur": "RACH",
+                "Code_Fournisseur": "T1398",
+                "Email_Fournisseur": "exemple1@fournisseur1.com",
+                "TEL_Fournisseu": "2126 00 00 00 00",
+                "Code_Article": "A00001",
+                "Montant": 20,
+                "Marque": "DELL",
+                "Affaire": ""
+            }
+        ],
+        "email_expediteur": "cyber.analyst@ibel-annour.ma",
+        "headless": true
+    }
+    ```
+    """
+    # Valider email
+    if not request.email_expediteur:
+        raise HTTPException(status_code=400, detail="email_expediteur est requis")
+
+    # Convertir JSON → Excel
+    excel_file = save_dataframe_to_excel(request.donnees, request.email_expediteur)
+
+    # Enqueue la tâche
+    task_id = add_task(
+        file_path=excel_file,
+        email=request.email_expediteur,
+        task_type="bon_commande"
+    )
+
+    # Retourner le statut de la tâche enqueued
+    queue_tasks = load_queue()
+    task = next((t for t in queue_tasks if t['id'] == task_id), None)
+
+    logger.info(f"📋 Tâche bonne commande (JSON) enqueued: {task_id}")
+
+    return TaskStatus(
+        task_id=task_id,
+        status='pending',
+        module='bonne_commande_api',
+        started_at=None,
+        completed_at=None,
+        result=None,
+        error=None
+    )
 
 
 @app.post("/api/upload")
@@ -291,12 +400,27 @@ async def upload_file(file: UploadFile = File(...)):
 @app.get("/api/task/{task_id}", response_model=TaskStatus)
 async def get_task_status(task_id: str):
     """
-    Récupérer le statut d'une tâche
+    Récupérer le statut d'une tâche (mémoire ou queue)
     """
-    if task_id not in tasks_status:
-        raise HTTPException(status_code=404, detail=f"Tâche non trouvée: {task_id}")
-    
-    return TaskStatus(**tasks_status[task_id])
+    # Chercher dans la mémoire (compatibilité arrière)
+    if task_id in tasks_status:
+        return TaskStatus(**tasks_status[task_id])
+
+    # Chercher dans la queue
+    queue_tasks = load_queue()
+    for task in queue_tasks:
+        if task['id'] == task_id:
+            return TaskStatus(
+                task_id=task['id'],
+                status=task['status'],
+                module='bonne_commande_api',
+                started_at=task.get('started_at'),
+                completed_at=task.get('completed_at'),
+                result=None,
+                error=task.get('error')
+            )
+
+    raise HTTPException(status_code=404, detail=f"Tâche non trouvée: {task_id}")
 
 
 @app.get("/api/tasks")
@@ -357,4 +481,4 @@ if __name__ == "__main__":
     logger.info("📖 Documentation: http://localhost:8000/docs")
     logger.info("="*80)
     
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8001)
