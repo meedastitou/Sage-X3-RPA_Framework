@@ -345,7 +345,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             # =================================================================
             # =================================================================
             # 11. REMPLIR LES DÉTAILS DE PAIEMENT            
-            if self._remplir_detail_simple(refference):
+            if self._remplir_detail_simple(num_facture):
                 self.total_factures += 1
                 self.logger.info(f"✅ Détail OK")
             else:
