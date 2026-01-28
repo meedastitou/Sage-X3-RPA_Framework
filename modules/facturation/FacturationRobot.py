@@ -69,7 +69,7 @@ class FacturationRobot(BaseRobot, WebResultMixin):
             for idx, row in df.iterrows():
                 self.navigate_to_module(self.url_facturation)
                 time.sleep(1)
-                self.wait_for_spinner_to_disappear(driver, 6000)
+                self.wait_for_spinner_to_disappear(driver, 600000)
                 
                 self.logger.info(f"\n{'='*80}")
                 self.logger.info(f"📌 LIGNE {idx+1}/{len(df)}")
@@ -77,7 +77,8 @@ class FacturationRobot(BaseRobot, WebResultMixin):
 
                 code = str(row['Code'])
                 dff = str(row['DFF'])
-                factureFrs = 'FN°' + str(row['FactureFrs'])
+                # factureFrs = 'FN°' + str(row['FactureFrs'])
+                factureFrs = str(row['FactureFrs'])
 
                 try:
                     # Si c'est un nombre Excel, le convertir
@@ -94,7 +95,6 @@ class FacturationRobot(BaseRobot, WebResultMixin):
                 # date = str(row['Date'].strftime('%d/%m/%Y'))
                 br = str(row['BR'])
                 nom = str(row.get('Nom', ''))
-
                 resultat = self.traiter_fournisseur(url, code, factureFrs, dff, date, br, nom)
 
                 # Récupérer le numéro de pièce (numero_FF)
@@ -313,12 +313,13 @@ class FacturationRobot(BaseRobot, WebResultMixin):
         driver = self.driver_manager.driver
 
         try:
-
-            cree = driver.find_element(By.CLASS_NAME, "s_page_action_i.s_page_action_i_add")
+            wait = WebDriverWait(driver, 2000000)
+            wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "a.s_page_action_add")))
+            cree = driver.find_element(By.CSS_SELECTOR, "a.s_page_action_add")
+            
             cree.click()
             time.sleep(2)
-
-            self.wait_for_spinner_to_disappear(driver, 900)
+            self.wait_for_spinner_to_disappear(driver, 90000)
 
             # cf = driver.find_element(By.ID, "2-73-input")
             cf = self.get_input_by_label("Type facture")
@@ -328,7 +329,7 @@ class FacturationRobot(BaseRobot, WebResultMixin):
             cf.send_keys(typeF)
             cf.send_keys(Keys.TAB)
             time.sleep(1)
-            
+
             # cf2 = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "2-81-input")))
             cf2 = self.get_input_by_label("Fournisseur")
             cf2.click()
@@ -336,7 +337,7 @@ class FacturationRobot(BaseRobot, WebResultMixin):
             cf2.clear()
             cf2.send_keys(codeFournisseur)
             cf2.send_keys(Keys.TAB)
-            time.sleep(1)
+            time.sleep(2)
 
 
             # AncienCode_input = driver.find_element(By.ID, "2-85-input")
