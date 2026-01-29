@@ -453,8 +453,9 @@ class RegelementRobot(BaseRobot, WebResultMixin):
 
             time.sleep(5)
             
-            self.wait_for_spinner_to_disappear(driver, timeout=120000)
+            self.wait_for_spinner_to_disappear(driver, timeout=120000000)
             try:
+                self.wait_for_element_to_appear(driver, By.CSS_SELECTOR, "a.s_page_close", timeout=1000000)
                 s_page_close = driver.find_element(By.CSS_SELECTOR, "a.s_page_close")
                 s_page_close.click()
                 time.sleep(2)
