@@ -634,6 +634,10 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             time.sleep(0.5)
             changer_fournisseur.clear()
             changer_fournisseur.send_keys(code_fournisseur)
+            if(changer_fournisseur.get_attribute('value').strip() != code_fournisseur):
+                resultat['message'] = f'Erreur de format du code fournisseur pour l\'article {code_article} (valeur: {code_fournisseur})'
+                self.logger.error(f"❌ {resultat['message']}")
+                return resultat
             changer_fournisseur.send_keys(Keys.TAB)
             time.sleep(1)
 
@@ -659,6 +663,10 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             time.sleep(0.5)
             change_tarif.clear()
             change_tarif.send_keys(montant)
+            # if(change_tarif.get_attribute('value').replace(',','.').strip() != montant):
+            #     resultat['message'] = f'Erreur de format du tarif pour l\'article {code_article} (valeur: {montant})'
+            #     self.logger.error(f"❌ {resultat['message']}")
+            #     return resultat
             change_tarif.send_keys(Keys.TAB)
             time.sleep(1)
 
@@ -686,6 +694,10 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             time.sleep(0.5)
             change_marque.clear()
             change_marque.send_keys(marque)
+            if(change_marque.get_attribute('value').strip() != marque):
+                resultat['message'] = f'Erreur de format de la marque pour l\'article {code_article} (valeur: {marque})'
+                self.logger.error(f"❌ {resultat['message']}")
+                return resultat
             change_marque.send_keys(Keys.TAB)
             time.sleep(1)
 
