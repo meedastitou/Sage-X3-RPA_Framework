@@ -446,7 +446,7 @@ class FacturationRobot(BaseRobot, WebResultMixin):
             time.sleep(0.5)
             save_btn.click()
             time.sleep(5)
-            self.wait_for_spinner_to_disappear(driver, 9000000)
+            self.wait_for_spinner_to_disappear(driver, 900000000)
 
             self.logger.info("✅ Enregistrement clique")
             confirmation_msg = WebDriverWait(driver, 5).until(
