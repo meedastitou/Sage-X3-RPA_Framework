@@ -32,8 +32,8 @@ class RegelementRobot(BaseRobot, WebResultMixin):
         self.driver_manager.headless = headless
         
         # URL du module règlements
-        self.url_regelement = "http://192.168.1.252:8124/syracuse-main/html/main.html?url=%2Ftrans%2Fx3%2Ferp%2FBASE1%2F%24sessions%3Ff%3DGESPAY%252F2%252F%252FM%252F%26representation%3DWOPYFEFFFRA.%2524fusion%26profile%3D~(loc~%27fr-FR~role~%278ecdb3d1-8ca7-40ca-af08-76cb58c70740~ep~%27cb006c17-58a5-4b98-9f2b-474ec03472a3~appConn~())"
-        self.url_home = "http://192.168.1.252:8124/syracuse-main/html/main.html?url=%3Frepresentation%3Dhome.%2524landing%26profile%3D~(loc~%27fr-FR~role~%278ecdb3d1-8ca7-40ca-af08-76cb58c70740~ep~%27cb006c17-58a5-4b98-9f2b-474ec03472a3~appConn~())"
+        self.url_regelement = "http://192.168.1.241:8124/syracuse-main/html/main.html?url=%2Ftrans%2Fx3%2Ferp%2FBASE1%2F%24sessions%3Ff%3DGESPAY%252F2%252F%252FM%252F%26representation%3DWOPYFEFFFRA.%2524fusion%26profile%3D~(loc~%27fr-FR~role~%278ecdb3d1-8ca7-40ca-af08-76cb58c70740~ep~%27cb006c17-58a5-4b98-9f2b-474ec03472a3~appConn~())"
+        self.url_home = "http://192.168.1.241:8124/syracuse-main/html/main.html?url=%3Frepresentation%3Dhome.%2524landing%26profile%3D~(loc~%27fr-FR~role~%278ecdb3d1-8ca7-40ca-af08-76cb58c70740~ep~%27cb006c17-58a5-4b98-9f2b-474ec03472a3~appConn~())"
         # Compteurs
         self.fournisseurs_traites = 0
         self.fournisseurs_echec = 0
@@ -66,6 +66,9 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             
             # Naviguer vers le module
             self.navigate_to_module(self.url_regelement)
+            self.wait_for_spinner_to_disappear(self.driver_manager.driver, timeout=900000000)
+            self.handle_popup("OK",  "GESPAY : Accès restreint par la licence")
+            self.wait_for_spinner_to_disappear(self.driver_manager.driver, timeout=900000000)
             self._choisir_mode_regelement("Effet à payer")
 
             # 3. TRAITER CHAQUE LIGNE
@@ -202,6 +205,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             self.logger.info(f"💰 Montant: {montant} | Chèque: {num_cheque}")
             self.logger.info(f"📅 Date Réel: {date_reel} | Date Échéance: {date_echeance}")
 
+            input("Appuyez sur Entrée pour continuer le traitement...")
             # 1. CRÉER LE RÈGLEMENT
             if not self._cree_regelement():
                 self.logger.warning(f"❌ Échec création règlement pour {num_facture}")
@@ -345,7 +349,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             # =================================================================
             # =================================================================
             # 11. REMPLIR LES DÉTAILS DE PAIEMENT            
-            if self._remplir_detail_simple(num_facture):
+            if self._remplir_detail_simple(refference):
                 self.total_factures += 1
                 self.logger.info(f"✅ Détail OK")
             else:
@@ -420,7 +424,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
         """Cliquer sur le bouton 'Créer Règlement'"""
         driver = self.driver_manager.driver
         try:
-            time.sleep(2)
+            time.sleep(5)
             add_button = driver.find_element(By.CSS_SELECTOR, "a.s_page_action_add")
 
             if "s-disabled" in add_button.get_attribute("class"):
@@ -440,7 +444,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
     def _enregistrer_regelement(self) -> bool:
         """Enregistrer le règlement"""
         driver = self.driver_manager.driver
-        
+        input("Appuyez sur Entrée pour enregistrer le règlement...")
         try:
             save_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_check")
             driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", save_btn)
