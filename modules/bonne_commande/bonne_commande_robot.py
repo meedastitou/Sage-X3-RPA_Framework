@@ -520,8 +520,8 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             self.navigate_to_module(self.url_bonne_commande)
             # generation automatique de la BC
             time.sleep(5)
-            self.wait_for_spinner_to_disappear(driver, timeout=90000000000)
-            self.wait_for_element_to_appear(driver, By.CSS_SELECTOR, ".s-inplace-input.s-readonly", timeout=90000000000)
+            self.wait_for_spinner_to_disappear(driver, timeout=900000000)
+            self.wait_for_element_to_appear(driver, By.CSS_SELECTOR, ".s-inplace-input.s-readonly", timeout=900000000)
 
             bc_inputs = driver.find_elements(By.CSS_SELECTOR, ".s-inplace-input.s-readonly")
             self.logger.info(f"Nombre d'inputs BC trouvés: {len(bc_inputs)}")
@@ -651,6 +651,8 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             
 
             # 5. Modifier le tarif
+            # prend juste 4 chiffres apres la virgule
+            montant = f"{float(montant):.4f}"
             self.logger.info(f"💰 Modification Prix: {montant}")
             change_tarif = self.get_input_by_label("Prix")
             change_tarif.click()
