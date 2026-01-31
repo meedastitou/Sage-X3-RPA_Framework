@@ -153,6 +153,8 @@ class WebResultMixin:
             data = self.result_sender.format_facturation_result(self)
         elif 'Lettrage' in class_name:
             data = self.result_sender.format_lettrage_result(self)
+        elif 'Regelement' in class_name:
+            data = self.result_sender.format_regelement_result(self)
         else:
             # Format générique
             summary = self.generate_summary() if hasattr(self, 'generate_summary') else {}
