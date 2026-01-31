@@ -694,13 +694,14 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             time.sleep(0.5)
             change_marque.clear()
             change_marque.send_keys(marque)
-            if(change_marque.get_attribute('value').strip() != marque):
+            if(change_marque.get_attribute('value').strip() != marque.strip()):
                 resultat['message'] = f'Erreur de format de la marque pour l\'article {code_article} (valeur: {marque})'
                 self.logger.error(f"❌ {resultat['message']}")
                 return resultat
             change_marque.send_keys(Keys.TAB)
             time.sleep(1)
-
+            
+            self.logger.info(f"✅ Marque modifiée: {marque}")
             # 7. Enregistrer
             if self.enregistrer_article():
                 resultat['statut'] = 'Succes'
