@@ -262,16 +262,16 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             # =================================================================
             # =================================================================
             # 5. SAIISIR Libelle
-            self.logger.info(f"🔍 REMPLIR le Libelle: {libelle}")
+            self.logger.info(f"🔍 REMPLIR le Libelle: {num_cheque}")
             libelle_input = self.get_input_by_label("Libellé")
             libelle_input.click()
             time.sleep(0.5)
             libelle_input.clear()
-            libelle_input.send_keys(libelle + "/BMCE/BRIQUETERIE JBEL A")
+            libelle_input.send_keys(num_cheque + "/BMCE/BRIQUETERIE JBEL A")
             libelle_input.send_keys(Keys.TAB)
             time.sleep(0.5)
 
-            banque_input = self.get_input_by_label("Banque", 94)
+            banque_input = self.get_input_by_label("Banque", 95)
             banque_input.click()
             time.sleep(0.5)
             banque_input.send_keys("B01")
@@ -293,15 +293,25 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             # =================================================================
             # =================================================================
             # 7. SÉLECTIONNER Numero cheque
-            self.logger.info(f"🔍 REMPLIR le Numero cheque: {libelle}")
+            self.logger.info(f"🔍 REMPLIR le Numero cheque: {num_cheque}")
             num_cheque_input = self.get_input_by_label("Numéro chèque")
             num_cheque_input.click()
             time.sleep(0.5)
             num_cheque_input.clear()
-            num_cheque_input.send_keys(libelle)
+            num_cheque_input.send_keys(num_cheque)
             num_cheque_input.send_keys(Keys.TAB)
             time.sleep(0.5)
 
+            if self._check_num_cheque_deja_utilise(num_cheque):
+                self.logger.warning(f"⚠️ Numéro de chèque {num_cheque} déjà utilisé")
+                error_info = self.handle_error_with_screenshot(
+                    error_message=f'Numéro de chèque {num_cheque} déjà utilisé',
+                    context=f"Chèque {num_cheque}"
+                )
+                resultat['error_info'] = error_info
+                return resultat
+           
+            input("Appuyez sur Entrée pour continuer le traitement...")
             Etablisstpayeur_input = self.get_input_by_label("Etablisst payeur")
             Etablisstpayeur_input.click()
             time.sleep(0.5)
@@ -387,6 +397,20 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             resultat['error_info'] = error_info
         
         return resultat
+    
+    def _check_num_cheque_deja_utilise(self, num_cheque: str) -> bool:
+        """Vérifier si le numéro de chèque est déjà utilisé"""
+        driver = self.driver_manager.driver
+        try:
+            #check if popup appears
+            WebDriverWait(driver, 10).until(
+                EC.visibility_of_element_located((By.XPATH, f"//pre[@class='s_alertbox_msg' and contains(text(), 'Le Numéro de série que vous avez entré est déjà utilsé!')]"))
+            )
+            self.logger.warning(f"Popup détecté pour le numéro de chèque: {num_cheque}")
+            return True
+        except Exception as e:
+            return False
+        return False
     
     def _format_date(self, date_value) -> str:
         """Formater la date au format JJ/MM/AAAA"""
