@@ -55,6 +55,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
         try:
             # 1. LIRE ET VALIDER L'EXCEL
             df = self._lire_et_valider_excel(excel_file)
+            
             email_f = df.iloc[0]['email_expediteur'] if 'email_expediteur' in df.columns else "astitoumd@gmail.com"
 
             self.logger.info(f"{'='*80}")
@@ -73,7 +74,18 @@ class RegelementRobot(BaseRobot, WebResultMixin):
 
             # 3. TRAITER CHAQUE LIGNE
             for idx, row in df.iterrows():
-
+                if(row['Code_Frs'] == 'T2948' or row['Code_Frs'] == 'T4407'):
+                    self.logger.info(f"🚀 Ligne {idx + 1} - FIN rencontrée, arrêt du traitement.")
+                    resultat = {
+                        'type': 'Ligne',
+                        'statut': 'Echec',
+                        'code_frs': str(row['Code_Frs']),
+                        'num_facture': str(row['N_Facture']),
+                        'message': 'AKEG et AMS (T2948 et T4407) sont interdits pour le règlement, arrêt du traitement.',
+                        'error_info': None
+                    }
+                    self.add_result(resultat)
+                    break
                 time.sleep(5)
                 self.wait_for_spinner_to_disappear(self.driver_manager.driver, timeout=90000)
                 self.wait_for_element_to_appear(self.driver_manager.driver, By.CSS_SELECTOR, "div.s-page-content-slot", timeout=60000)
