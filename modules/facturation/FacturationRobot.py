@@ -112,6 +112,12 @@ class FacturationRobot(BaseRobot, WebResultMixin):
                     self.factures_traitees += 1
                 else:
                     self.factures_echec += 1
+                    # Capturer screenshot et popup en cas d'échec
+                    error_info = self.handle_error_with_screenshot(
+                        error_message=resultat.get('message', 'Erreur inconnue'),
+                        context=f"Fournisseur {code} - Facture {factureFrs}"
+                    )
+                    resultat['error_info'] = error_info
 
                 self.add_result(resultat)
                 self.save_report(incremental=True)
@@ -514,13 +520,23 @@ class FacturationRobot(BaseRobot, WebResultMixin):
         try:
             if not self.saisi_information(typeF="FAF", codeFournisseur=codeFournisseur, factureFournisseur=factureFournisseur, DFF=DFF, Date=Date, codeReception=codeReception, nom=nom):
                 self.logger.warning("⚠️ Erreur recherche, tentative d'actualisation...")
-                
+
                 if self.sage_connector.refresh_with_popup_handling():
                     if not self.saisi_information(typeF="FAF", codeFournisseur=codeFournisseur, factureFournisseur=factureFournisseur, DFF=DFF, Date=Date, codeReception=codeReception, nom=nom):
                         resultat['message'] = 'Erreur recherche après actualisation'
+                        error_info = self.handle_error_with_screenshot(
+                            error_message=resultat['message'],
+                            context=f"Fournisseur {codeFournisseur} - Saisie info après refresh"
+                        )
+                        resultat['error_info'] = error_info
                         return resultat
                 else:
                     resultat['message'] = 'Erreur recherche, actualisation échouée'
+                    error_info = self.handle_error_with_screenshot(
+                        error_message=resultat['message'],
+                        context=f"Fournisseur {codeFournisseur} - Actualisation échouée"
+                    )
+                    resultat['error_info'] = error_info
                     return resultat
             
             time.sleep(2)
@@ -536,6 +552,11 @@ class FacturationRobot(BaseRobot, WebResultMixin):
         except Exception as e:
             resultat['message'] = f'Erreur: {str(e)}'
             self.logger.error(f"❌ Erreur traitement fournisseur: {e}")
+            error_info = self.handle_error_with_screenshot(
+                error_message=str(e),
+                context=f"Fournisseur {codeFournisseur} - Exception"
+            )
+            resultat['error_info'] = error_info
 
         return resultat
     
