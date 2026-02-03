@@ -177,4 +177,25 @@ class WebResultMixin:
         if hasattr(self, 'popup_messages') and self.popup_messages:
             data['popup_messages'] = self.popup_messages
 
+        # Ajouter le PDF BC en base64 si disponible (pour envoi par email)
+        if hasattr(self, 'pdf_bc_path') and self.pdf_bc_path:
+            import base64
+            import os
+            try:
+                if os.path.exists(self.pdf_bc_path):
+                    with open(self.pdf_bc_path, 'rb') as f:
+                        pdf_content = f.read()
+                        pdf_base64 = base64.b64encode(pdf_content).decode('utf-8')
+                    data['pdf_bc'] = {
+                        'filename': os.path.basename(self.pdf_bc_path),
+                        'content': pdf_base64,
+                        'mimetype': 'application/pdf',
+                        'path': self.pdf_bc_path
+                    }
+                    if hasattr(self, 'logger'):
+                        self.logger.info(f"📄 PDF BC ajouté aux données: {self.pdf_bc_path}")
+            except Exception as e:
+                if hasattr(self, 'logger'):
+                    self.logger.warning(f"⚠️ Impossible d'ajouter le PDF BC: {e}")
+
         return data
