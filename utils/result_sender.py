@@ -214,6 +214,10 @@ class ResultSender:
         if hasattr(robot, 'message_final') and robot.message_final:
             data['message'] = robot.message_final
 
+        # Ajouter le chemin du PDF BC si disponible
+        if hasattr(robot, 'pdf_bc_path') and robot.pdf_bc_path:
+            data['pdf_bc_path'] = robot.pdf_bc_path
+
         return data
     
     def format_lettrage_result(self, robot) -> Dict[str, Any]:
