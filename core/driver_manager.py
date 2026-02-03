@@ -74,13 +74,28 @@ class DriverManager:
         options.add_experimental_option('useAutomationExtension', False)
         
         # Préférences
+        download_dir = os.path.join(SELENIUM_CONFIG['document_genere'], "downloads")
         prefs = {
             "profile.password_manager_enabled": False,
             "credentials_enable_service": False,
-            "download.default_directory": SELENIUM_CONFIG['download_dir'],
+            # Téléchargement automatique sans confirmation
+            "download.default_directory": download_dir,
             "download.prompt_for_download": False,
+            "download.directory_upgrade": True,
+            # Désactiver SafeBrowsing pour les téléchargements
+            "safebrowsing.enabled": False,
+            "safebrowsing.disable_download_protection": True,
+            # Permettre les téléchargements multiples
+            "profile.default_content_settings.popups": 0,
+            "profile.default_content_setting_values.automatic_downloads": 1,
+            # PDF: télécharger au lieu d'afficher
+            "plugins.always_open_pdf_externally": True,
         }
         options.add_experimental_option("prefs", prefs)
+
+        # Désactiver les avertissements de téléchargement non sécurisé
+        options.add_argument("--safebrowsing-disable-download-protection")
+        options.add_argument("--disable-features=SafeBrowsing")
         
         # Garder le navigateur ouvert
         options.add_experimental_option("detach", True)
