@@ -16,7 +16,10 @@ from collections import defaultdict
 from core.base_robot import BaseRobot
 from core.web_result_mixin import WebResultMixin
 from utils.excel_handler import ExcelHandler
+from config.settings import SELENIUM_CONFIG
 import re
+import os
+import glob
 
 
 class BonneCommandeRobot(BaseRobot, WebResultMixin):
@@ -96,6 +99,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                 # IMPORTANT: Réinitialiser les erreurs du fournisseur précédent
                 self.error_screenshot = None
                 self.popup_messages = []
+                self.pdf_bc_path = None  # Chemin du PDF téléchargé
 
                 # PHASE 1 : TRAITER LES ARTICLES DE CE FOURNISSEUR
                 self.logger.info("="*80)
@@ -540,6 +544,13 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             self.logger.info(f"Total BC trouvés: {len(bc_numbers)}")
             self.logger.info(f"Liste: {bc_numbers}")
 
+            # Télécharger le PDF de la BC
+            if bc_numbers:
+                pdf_path = self._telecharger_pdf_bc()
+                if pdf_path:
+                    self.pdf_bc_path = pdf_path
+                    self.logger.info(f"📄 PDF BC stocké: {pdf_path}")
+
             return bc_numbers
 
         except Exception as e:
@@ -837,17 +848,17 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
     def enregistrer_demande_achat(self) -> bool:
         """Enregistrer les modifications de la DA"""
         driver = self.driver_manager.driver
-        
+
         try:
             save_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_save")
             driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", save_btn)
             time.sleep(0.5)
-            
+
             save_btn.click()
             time.sleep(5)
             self.wait_for_spinner_to_disappear(driver, timeout=60000)
             self.logger.info("💾 Enregistrement DA...")
-            
+
             return True
         except Exception as e:
             self.logger.error(f"❌ Erreur enregistrement DA: {e}")
@@ -860,4 +871,78 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
 
             driver.save_screenshot("error_enregistrement_da.png")
             return False
+
+    def _telecharger_pdf_bc(self) -> str:
+        """
+        Télécharger le PDF de la bonne de commande
+
+        Returns:
+            Chemin du fichier PDF téléchargé ou None si échec
+        """
+        driver = self.driver_manager.driver
+        download_dir = SELENIUM_CONFIG['document_genere']
+
+        try:
+            self.logger.info("📥 Téléchargement du PDF de la BC...")
+
+            # Récupérer les fichiers PDF existants avant le téléchargement
+            existing_pdfs = set(glob.glob(os.path.join(download_dir, "*.pdf")))
+
+            # Attendre le téléchargement (max 30 secondes)
+            timeout = 30
+            start_time = time.time()
+            new_pdf = None
+
+            while time.time() - start_time < timeout:
+                time.sleep(1)
+                current_pdfs = set(glob.glob(os.path.join(download_dir, "*.pdf")))
+                new_pdfs = current_pdfs - existing_pdfs
+
+                if new_pdfs:
+                    # Vérifier que le fichier n'est pas en cours de téléchargement (.crdownload)
+                    for pdf in new_pdfs:
+                        if not pdf.endswith('.crdownload') and os.path.exists(pdf):
+                            # Attendre que le fichier soit complet
+                            time.sleep(1)
+                            if os.path.getsize(pdf) > 0:
+                                new_pdf = pdf
+                                break
+                    if new_pdf:
+                        break
+
+            if new_pdf:
+                self.logger.info(f"✅ PDF téléchargé: {new_pdf}")
+                return new_pdf
+            else:
+                self.logger.warning("⚠️ Timeout: PDF non téléchargé")
+                return None
+
+        except Exception as e:
+            self.logger.error(f"❌ Erreur téléchargement PDF: {e}")
+            return None
+
+    # def _accepter_telechargement_chrome(self):
+    #     """Accepter le téléchargement dans Chrome si la popup apparaît"""
+    #     driver = self.driver_manager.driver
+
+    #     try:
+    #         # Chercher le bouton "Enregistrer" ou "Conserver" dans la barre de téléchargement
+    #         time.sleep(2)
+
+    #         # Exécuter JavaScript pour accepter le téléchargement
+    #         driver.execute_script("""
+    #             // Chercher et cliquer sur "Enregistrer" dans la notification de téléchargement
+    #             var buttons = document.querySelectorAll('button, a');
+    #             for (var i = 0; i < buttons.length; i++) {
+    #                 var text = buttons[i].textContent.toLowerCase();
+    #                 if (text.includes('enregistrer') || text.includes('conserver') || text.includes('keep')) {
+    #                     buttons[i].click();
+    #                     break;
+    #                 }
+    #             }
+    #         """)
+
+    #         self.logger.info("✅ Téléchargement accepté")
+    #     except Exception as e:
+    #         self.logger.debug(f"Pas de popup de téléchargement: {e}")
 
