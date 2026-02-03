@@ -880,7 +880,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             Chemin du fichier PDF téléchargé ou None si échec
         """
         driver = self.driver_manager.driver
-        os.path.join(SELENIUM_CONFIG['document_genere'], "downloads")
+        download_dir = os.path.join(SELENIUM_CONFIG['document_genere'], "downloads")
 
         try:
             self.logger.info("📥 Téléchargement du PDF de la BC...")
