@@ -39,6 +39,7 @@ SELENIUM_CONFIG = {
     'profile_path': os.getenv('CHROME_PROFILE_PATH', str(BASE_DIR / 'chrome_profile')),
     'headless': os.getenv('CHROME_HEADLESS', 'False').lower() == 'true',
     'download_dir': str(OUTPUT_DIR / 'rapports'),
+    'document_genere': str(OUTPUT_DIR / 'generated_documents'),
     'page_load_timeout': int(os.getenv('PAGE_LOAD_TIMEOUT', '90')),
 }
 
