@@ -100,6 +100,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                 self.error_screenshot = None
                 self.popup_messages = []
                 self.pdf_bc_path = None  # Chemin du PDF téléchargé
+                self.email_fournisseur = data_fournisseur.get('email', None)  # Email du fournisseur
 
                 # PHASE 1 : TRAITER LES ARTICLES DE CE FOURNISSEUR
                 self.logger.info("="*80)
@@ -889,7 +890,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             existing_pdfs = set(glob.glob(os.path.join(download_dir, "*.pdf")))
 
             # Attendre le téléchargement (max 30 secondes)
-            timeout = 30
+            timeout = 30000
             start_time = time.time()
             new_pdf = None
 
@@ -921,28 +922,4 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             self.logger.error(f"❌ Erreur téléchargement PDF: {e}")
             return None
 
-    # def _accepter_telechargement_chrome(self):
-    #     """Accepter le téléchargement dans Chrome si la popup apparaît"""
-    #     driver = self.driver_manager.driver
-
-    #     try:
-    #         # Chercher le bouton "Enregistrer" ou "Conserver" dans la barre de téléchargement
-    #         time.sleep(2)
-
-    #         # Exécuter JavaScript pour accepter le téléchargement
-    #         driver.execute_script("""
-    #             // Chercher et cliquer sur "Enregistrer" dans la notification de téléchargement
-    #             var buttons = document.querySelectorAll('button, a');
-    #             for (var i = 0; i < buttons.length; i++) {
-    #                 var text = buttons[i].textContent.toLowerCase();
-    #                 if (text.includes('enregistrer') || text.includes('conserver') || text.includes('keep')) {
-    #                     buttons[i].click();
-    #                     break;
-    #                 }
-    #             }
-    #         """)
-
-    #         self.logger.info("✅ Téléchargement accepté")
-    #     except Exception as e:
-    #         self.logger.debug(f"Pas de popup de téléchargement: {e}")
-
+    
