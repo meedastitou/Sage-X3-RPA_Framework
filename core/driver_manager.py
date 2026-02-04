@@ -2,6 +2,7 @@
 """
 Gestionnaire centralisé de Selenium WebDriver
 """
+from pandas import options
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
@@ -31,22 +32,40 @@ class DriverManager:
     def start(self) -> webdriver.Chrome:
         """
         Démarrer le navigateur Chrome
-        
+
         Returns:
             Instance de WebDriver
         """
         if self.driver:
             self.logger.warning("Driver déjà démarré")
             return self.driver
-        
+
         try:
             options = self._get_chrome_options()
             self.driver = webdriver.Chrome(options=options)
             self.driver.set_page_load_timeout(self.page_load_timeout)
-            
+
+            # Configurer le téléchargement automatique via CDP (Chrome DevTools Protocol)
+            download_dir = os.path.join(SELENIUM_CONFIG['document_genere'], "downloads")
+            os.makedirs(download_dir, exist_ok=True)
+
+            # Permettre les téléchargements sans confirmation
+            self.driver.execute_cdp_cmd("Page.setDownloadBehavior", {
+                "behavior": "allow",
+                "downloadPath": download_dir
+            })
+
+            # Désactiver les avertissements de téléchargement dangereux
+            self.driver.execute_cdp_cmd("Browser.setDownloadBehavior", {
+                "behavior": "allow",
+                "downloadPath": download_dir,
+                "eventsEnabled": True
+            })
+
             self.logger.info(f"✅ Driver Chrome démarré (headless={self.headless})")
+            self.logger.info(f"📁 Téléchargements configurés: {download_dir}")
             return self.driver
-            
+
         except Exception as e:
             self.logger.error(f"❌ Erreur démarrage driver: {e}")
             raise
@@ -90,13 +109,16 @@ class DriverManager:
             "profile.default_content_setting_values.automatic_downloads": 1,
             # PDF: télécharger au lieu d'afficher
             "plugins.always_open_pdf_externally": True,
+            "profile.managed_default_content_settings.images": 1,
+            "profile.default_content_setting_values.insecure_content": 1, # Autorise le contenu mixte
         }
         options.add_experimental_option("prefs", prefs)
 
         # Désactiver les avertissements de téléchargement non sécurisé
         options.add_argument("--safebrowsing-disable-download-protection")
         options.add_argument("--disable-features=SafeBrowsing")
-        
+        options.add_argument("--allow-running-insecure-content")
+        options.add_argument("--ignore-certificate-errors")
         # Garder le navigateur ouvert
         options.add_experimental_option("detach", True)
         
