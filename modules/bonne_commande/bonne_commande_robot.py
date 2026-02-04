@@ -547,7 +547,8 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
 
             # Télécharger le PDF de la BC
             if bc_numbers:
-                pdf_path = self._telecharger_pdf_bc()
+                code_frs = structure.get('fournisseur', '')
+                pdf_path = self._telecharger_pdf_bc(code_fournisseur=code_frs, bc_numbers=bc_numbers)
                 if pdf_path:
                     self.pdf_bc_path = pdf_path
                     self.logger.info(f"📄 PDF BC stocké: {pdf_path}")
@@ -873,9 +874,13 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             driver.save_screenshot("error_enregistrement_da.png")
             return False
 
-    def _telecharger_pdf_bc(self) -> str:
+    def _telecharger_pdf_bc(self, code_fournisseur: str = None, bc_numbers: list = None) -> str:
         """
-        Télécharger le PDF de la bonne de commande
+        Télécharger le PDF de la bonne de commande et le renommer avec un nom unique
+
+        Args:
+            code_fournisseur: Code du fournisseur pour le nom du fichier
+            bc_numbers: Liste des numéros de BC pour le nom du fichier
 
         Returns:
             Chemin du fichier PDF téléchargé ou None si échec
@@ -883,37 +888,64 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
         driver = self.driver_manager.driver
         download_dir = os.path.join(SELENIUM_CONFIG['document_genere'], "downloads")
 
+        # Créer le dossier s'il n'existe pas
+        os.makedirs(download_dir, exist_ok=True)
+
         try:
             self.logger.info("📥 Téléchargement du PDF de la BC...")
 
-            # Récupérer les fichiers PDF existants avant le téléchargement
-            existing_pdfs = set(glob.glob(os.path.join(download_dir, "*.pdf")))
+            # Récupérer les timestamps des fichiers PDF existants avant le téléchargement
+            existing_pdfs = {}
+            for pdf in glob.glob(os.path.join(download_dir, "*.pdf")):
+                existing_pdfs[pdf] = os.path.getmtime(pdf)
 
-            # Attendre le téléchargement (max 30 secondes)
-            timeout = 30000
+            # Attendre le téléchargement (max 60 secondes)
+            timeout = 60
             start_time = time.time()
-            new_pdf = None
+            downloaded_pdf = None
 
             while time.time() - start_time < timeout:
                 time.sleep(1)
-                current_pdfs = set(glob.glob(os.path.join(download_dir, "*.pdf")))
-                new_pdfs = current_pdfs - existing_pdfs
 
-                if new_pdfs:
-                    # Vérifier que le fichier n'est pas en cours de téléchargement (.crdownload)
-                    for pdf in new_pdfs:
-                        if not pdf.endswith('.crdownload') and os.path.exists(pdf):
-                            # Attendre que le fichier soit complet
-                            time.sleep(1)
-                            if os.path.getsize(pdf) > 0:
-                                new_pdf = pdf
-                                break
-                    if new_pdf:
-                        break
+                # Chercher un nouveau fichier ou un fichier modifié
+                for pdf in glob.glob(os.path.join(download_dir, "*.pdf")):
+                    # Ignorer les fichiers en cours de téléchargement
+                    if pdf.endswith('.crdownload'):
+                        continue
 
-            if new_pdf:
-                self.logger.info(f"✅ PDF téléchargé: {new_pdf}")
-                return new_pdf
+                    current_mtime = os.path.getmtime(pdf)
+
+                    # Nouveau fichier ou fichier modifié récemment
+                    if pdf not in existing_pdfs or current_mtime > existing_pdfs[pdf]:
+                        # Vérifier que le fichier est complet
+                        time.sleep(1)
+                        if os.path.exists(pdf) and os.path.getsize(pdf) > 0:
+                            downloaded_pdf = pdf
+                            break
+
+                if downloaded_pdf:
+                    break
+
+            if downloaded_pdf:
+                # Générer un nom unique pour le fichier
+                from datetime import datetime
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+                # Construire le nouveau nom
+                frs_part = f"_{code_fournisseur}" if code_fournisseur else ""
+                bc_part = f"_BC{'_'.join(bc_numbers)}" if bc_numbers else ""
+
+                original_name = os.path.basename(downloaded_pdf)
+                name_without_ext = os.path.splitext(original_name)[0]
+
+                new_filename = f"{name_without_ext}{frs_part}{bc_part}_{timestamp}.pdf"
+                new_path = os.path.join(download_dir, new_filename)
+
+                # Renommer le fichier
+                os.rename(downloaded_pdf, new_path)
+
+                self.logger.info(f"✅ PDF téléchargé et renommé: {new_filename}")
+                return new_path
             else:
                 self.logger.warning("⚠️ Timeout: PDF non téléchargé")
                 return None
