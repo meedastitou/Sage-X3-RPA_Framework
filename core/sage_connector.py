@@ -6,7 +6,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
-from config.settings import SAGE_CONFIG, SAGE_CONFIG_TEST
+from config.settings import SAGE_CONFIG
 from core.driver_manager import DriverManager
 from core.logger import Logger
 from selenium.webdriver.common.keys import Keys
@@ -175,7 +175,8 @@ class SageConnector:
         time.sleep(2)
 
         self.click_oui_if_popup(driver)        
-
+        wait = WebDriverWait(driver,  100)
+        wait.until(EC.visibility_of_element_located((By.ID, "loginForm")))   
         if self.driver_manager:
             self.driver_manager.stop()
         self.is_connected = False
@@ -183,16 +184,22 @@ class SageConnector:
     
     def click_oui_if_popup(self,driver, timeout=3):
         """Clique sur Oui si un popup avec bouton Oui apparaît"""
+        driver = self.driver_manager.driver
+
         try:
+            self.logger.info("🔍 Vérification de la présence d'un popup de confirmation...")
             # Vérifier d'abord si le popup est présent
             popup = WebDriverWait(driver, timeout).until(
                 EC.presence_of_element_located((By.CLASS_NAME, "s_alertbox_footer"))
             )
-            
+            self.logger.info("⚠️ Popup de confirmation détectée, tentative de clic sur 'Oui'")
             # Chercher le bouton Oui dans le popup
-            oui_button = popup.find_element(By.XPATH, ".//a[@aria-label='Oui']")
+            time.sleep(1)  # Petite pause pour s'assurer que le popup est complètement chargé
+            oui_button = popup.find_element(By.XPATH, "//a[@aria-label='Oui' and contains(@class, 's_alertbox_textLink')]")
             oui_button.click()
-            
+            time.sleep(2)  # Attendre que l'action se fasse
+            self.logger.info("✅ Clic sur 'Oui' réussi")
+               
         except:
             # Si le popup n'est pas trouvé, ne rien faire
             pass
