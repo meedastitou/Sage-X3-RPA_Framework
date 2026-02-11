@@ -217,7 +217,6 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             self.logger.info(f"💰 Montant: {montant} | Chèque: {num_cheque}")
             self.logger.info(f"📅 Date Réel: {date_reel} | Date Échéance: {date_echeance}")
 
-            input("Appuyez sur Entrée pour continuer le traitement...")
             # 1. CRÉER LE RÈGLEMENT
             if not self._cree_regelement():
                 self.logger.warning(f"❌ Échec création règlement pour {num_facture}")
@@ -323,7 +322,6 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                 resultat['error_info'] = error_info
                 return resultat
            
-            input("Appuyez sur Entrée pour continuer le traitement...")
             Etablisstpayeur_input = self.get_input_by_label("Etablisst payeur")
             Etablisstpayeur_input.click()
             time.sleep(0.5)
@@ -371,7 +369,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             # =================================================================
             # =================================================================
             # 11. REMPLIR LES DÉTAILS DE PAIEMENT            
-            if self._remplir_detail_simple(refference):
+            if self._remplir_detail_simple(num_facture):
                 self.total_factures += 1
                 self.logger.info(f"✅ Détail OK")
             else:
@@ -381,7 +379,10 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                     context=f"Chèque {num_cheque} - Détail paiement"
                 )
                 resultat['error_info'] = error_info
+                return resultat
 
+
+            input("Appuyez sur Entrée pour continuer le traitement...2")
             # 12. ENREGISTRER
             if self._enregistrer_regelement():
                 input_reg = self.get_input_by_label("No règlement", 65)
@@ -480,7 +481,6 @@ class RegelementRobot(BaseRobot, WebResultMixin):
     def _enregistrer_regelement(self) -> bool:
         """Enregistrer le règlement"""
         driver = self.driver_manager.driver
-        input("Appuyez sur Entrée pour enregistrer le règlement...")
         try:
             save_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_check")
             driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", save_btn)
@@ -522,7 +522,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             # Pas de popup
             pass
 
-    def _remplir_detail_simple(self, reference: str) -> bool:
+    def _remplir_detail_simple(self, num_facture: str) -> bool:
         """
         Remplir un détail de paiement simplement (une seule ligne)
         Format: DEC [TAB] FAFOU [TAB] reference [TAB] [TAB]
@@ -547,7 +547,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             cells_fixed = target_row.find_elements(By.CSS_SELECTOR, ".s-inplace-input")
             
             self.logger.info(f"📊 {len(cells_fixed)} cellules trouvées")
-            
+            time.sleep(5)
             # Cellule 1: DEC
             self.logger.info("Remplissage DEC...")
             if len(cells_fixed) > 0:
@@ -559,9 +559,9 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                 cell_dec.send_keys(Keys.TAB)
                 time.sleep(0.3)
             
-
+            time.sleep(5)
             rows_scrool = driver.find_elements(By.CSS_SELECTOR, ".s-page-content-slot .s-grid-slot-table-scroll .s-grid-table-body tr.s-grid-row")
-            
+            self.logger.info(f"📊 {len(rows_scrool)} ligne(s) trouvée(s) dans la partie scroll du tableau")
             if not rows_scrool:
                 self.logger.warning("Aucune ligne trouvée dans le tableau")
                 return False
@@ -583,22 +583,24 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                 time.sleep(0.3)
             
             # Cellule 3: Numéro Facture
-            self.logger.info(f"Remplissage facture: {reference}...")
+            self.logger.info(f"Remplissage facture: {num_facture}...")
             if len(cells_scrool) > 1:
                 cell_facture = cells_scrool[1]
                 cell_facture.click()
                 time.sleep(0.3)
                 cell_facture.clear()
-                cell_facture.send_keys(reference)
+                cell_facture.send_keys(num_facture)
                 cell_facture.send_keys(Keys.TAB)
-                time.sleep(0.3)
-                
+                time.sleep(1)
+                self.handle_popup("OK", "ATTENTION ECHEANCE MISE A JOUR")
+                time.sleep(1)
+
             self.logger.info(f"Remplissage auto montant:...")
             if len(cells_scrool) > 5:
                 cell_facture = cells_scrool[5]
                 cell_facture.click()
                 time.sleep(0.3)
-                cell_facture.send_keys(Keys.TAB)
+                # cell_facture.send_keys(Keys.TAB)
                 time.sleep(1)
 
                 self.handle_popup("OK", "ATTENTION ECHEANCE MISE A JOUR")
