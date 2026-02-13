@@ -10,7 +10,7 @@ from pathlib import Path
 # Ajouter le dossier parent au path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from modules.regelement.RegelementRobot_V2 import RegelementRobot
+from modules.regelement.RegelementRobot_V3 import RegelementRobot
 from utils.queue_manager import get_next_task, update_task
 from modules.bonne_commande.bonne_commande_robot import BonneCommandeRobot
 from modules.receiption.ReceiptionRobot_v2 import ReceiptionRobot
