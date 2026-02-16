@@ -104,6 +104,24 @@ class OrderVairementRobot:
         assert input_value == value, f"Erreur: {input_value} au lieu de {value}"
         
         return True
+    
+    def _switch_to_type_operation(type_vairement : str) -> str : 
+        """ convert to type operation afin de facilite le traitement des comptabilite """
+
+        if type_vairement == 1:
+            return "virement ordinaire"
+        elif type_vairement == 2:
+            return "virement permanent"
+        elif type_vairement == 3:
+            return "virement compte à compte"
+        elif type_vairement == 4:
+            return "versement"
+        elif type_vairement == 5:
+            return "Douane"
+        elif type_vairement == 6:
+            return "Virement STC"
+        elif type_vairement == 7:
+            return "Virement de masse"
 
     def _saisir_champs(self, driver : webdriver.Chrome, df: pd.DataFrame) -> bool:
         # Exemple de saisie du champ "Montant"
@@ -113,8 +131,9 @@ class OrderVairementRobot:
         codeFrs = df.iloc[0]['Code_Frs'] if 'Code_Frs' in df.columns else "T1234"  # Récupérer le code fournisseur depuis le DataFrame ou utiliser une valeur par défaut
 
         try:
-            
-            if not self.select_operation_type(driver, value="virement ordinaire"):
+            type_operation = self._switch_to_type_operation(type_vairement)
+
+            if not self.select_operation_type(driver, value=type_operation):
                 self.logger.error("❌ Impossible de sélectionner le type d'opération")
                 return False
             ref_input = self.parent.get_input_by_label("Réference")

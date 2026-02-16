@@ -90,7 +90,7 @@ class VairementRobot(BaseRobot, WebResultMixin):
                 self.logger.info(f"📋 Ligne {idx + 1}/{len(df)}")
                 self.logger.info(f"{'='*80}")
 
-                resultat = self._traiter_ligne(row)
+                resultat = self._traiter_ligne(row, Numero_order_virement)
                 self.add_result(resultat)
 
                 if resultat['statut'] == 'Succes':
@@ -125,18 +125,18 @@ class VairementRobot(BaseRobot, WebResultMixin):
             # self.logger.info("="*80)
             
         except Exception as e:
-            # self.logger.error(f"❌ ERREUR CRITIQUE: {e}")
-            # import traceback
-            # self.logger.error(traceback.format_exc())
+            self.logger.error(f"❌ ERREUR CRITIQUE: {e}")
+            import traceback
+            self.logger.error(traceback.format_exc())
             
-            # self.add_result({
-            #     'type': 'ERREUR',
-            #     'statut': 'ECHEC',
-            #     'message': str(e)
-            # })
+            self.add_result({
+                'type': 'ERREUR',
+                'statut': 'ECHEC',
+                'message': str(e)
+            })
             
-            # self.save_report()
-            # self.send_results_to_web(email_f)
+            self.save_report()
+            self.send_results_to_web(email_f)
             pass
         finally:
             # self.logger.info("Deconnexion du robot...")
@@ -161,8 +161,7 @@ class VairementRobot(BaseRobot, WebResultMixin):
             'Montant',
             'N_Facture',
             'Refference',
-            'TVA',
-            'numero_cheque'
+            'TVA'
             # 'Date_Reel', # c'est date ajourd'hui
             # 'DateEcheance' # c'est date ajourd'hui
         ]
@@ -211,7 +210,7 @@ class VairementRobot(BaseRobot, WebResultMixin):
             self.logger.error(f"Erreur choix mode règlement: {e}")
             return False
      
-    def _traiter_ligne(self, row: pd.Series) -> Dict[str, Any]:
+    def _traiter_ligne(self, row: pd.Series, numero_order_vairement: str) -> Dict[str, Any]:
         """Traiter une ligne Excel (créer 1 règlement par ligne)"""
         resultat = {
             'type': 'Ligne',
@@ -229,10 +228,10 @@ class VairementRobot(BaseRobot, WebResultMixin):
             code_frs = str(row['Code_Frs'])
             num_facture = str(row['N_Facture']) if 'N_Facture' in row and not pd.isna(row['N_Facture']) else ""
             refference = str(row['Refference']) if not pd.isna(row['Refference']) else ""
-            # libelle = str(row['Libelle']) if not pd.isna(row['Libelle']) else ""
             montant = str(row['Montant'])
-            num_cheque = str(row['numero_cheque'])  # Récupérer le numéro de chèque depuis la base de données
+            num_cheque = self._get_num_cheque_from_db()  # Récupérer le numéro de chèque depuis la base de données
             tva = str(row['TVA']) if not pd.isna(row['TVA']) else ""
+
             # date reel c'est date d'aujourd'hui
             date_reel = datetime.now().strftime('%d/%m/%Y')
             # date_reel = self._format_date(row['Date_Reel']) if not pd.isna(row['Date_Reel']) else ""
@@ -390,17 +389,17 @@ class VairementRobot(BaseRobot, WebResultMixin):
             date_reel_input.send_keys(date_reel)
             date_reel_input.send_keys(Keys.TAB)
             time.sleep(0.5)
-
+    
             # =================================================================
             # =================================================================
-            # 10. REMPLIR DATE ECHEANCE
-            self.logger.info(f"🔍 REMPLIR la Date echeance: {date_echeance}")
-            date_echeance_input = self.get_input_by_label("Date échéance")
-            date_echeance_input.click()
+            # 10. REMPLIR Order Vairement
+            self.logger.info(f"🔍 REMPLIR Order Vairement: {numero_order_vairement}")
+            date_reel_input = self.get_input_by_label("Ordre Virement")
+            date_reel_input.click()
             time.sleep(0.5)
-            date_echeance_input.clear()
-            date_echeance_input.send_keys(date_echeance)
-            # date_echeance_input.send_keys(Keys.TAB)
+            date_reel_input.clear()
+            date_reel_input.send_keys(numero_order_vairement)
+            date_reel_input.send_keys(Keys.TAB)
             time.sleep(0.5)
 
             # =================================================================
@@ -661,3 +660,35 @@ class VairementRobot(BaseRobot, WebResultMixin):
             )
             return False
     
+    def _get_num_cheque_from_db(self) -> str:
+        """Récupérer le numéro de chèque depuis la base de données"""
+        # cree la connexion à la base de données ( SQLSERVER ) et récupérer le numéro de chèque
+        import pyodbc
+
+        try:
+            conn = pyodbc.connect(
+                "DRIVER={ODBC Driver 17 for SQL Server};"
+                "SERVER=192.168.1.241\\ERPX3;"  # Notez le double backslash
+                "DATABASE=x3;"
+                "UID=X3U;"
+                "PWD=SQL@2019;"
+            )
+            cursor = conn.cursor()
+            print("Connected to SQL Server successfully!")
+            cursor.execute("select TOP 1 XNUM_0, L.NSER_0, XPAM_0 as ModReg from BASE1.XACRCAL L WHERE FLG_0<>2 AND XPAM_0=5 ORDER BY L.ROWID ASC")
+            row = cursor.fetchone()
+            if row:
+                num_cheque = row[1]
+                # return L.NSER_0 as NumCheque
+                return num_cheque
+            else:
+                raise Exception("Aucun numéro de chèque disponible dans la base de données")
+        except Exception as e:
+            raise Exception(f"Erreur connexion SQL ou récupération numéro de chèque: {e}")
+        finally:
+            try:
+                cursor.close()
+                conn.close()
+            except:
+                pass
+   
