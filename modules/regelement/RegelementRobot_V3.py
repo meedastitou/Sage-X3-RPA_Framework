@@ -21,7 +21,7 @@ from core.base_robot import BaseRobot
 from core.web_result_mixin import WebResultMixin
 from utils.excel_handler import ExcelHandler
 
-# import pyautogui
+import pyautogui
 
 # pyautogui.press('tab')
 class RegelementRobot(BaseRobot, WebResultMixin):
@@ -236,7 +236,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             # =================================================================
             avance = False if num_facture.startswith("FF") else True
             self.logger.info(f"🔍 Type de règlement: {'Avance sans facture' if avance else 'Règlement avec facture'}")
-            input("Vérifier le type de règlement, puis appuyer sur Entrée pour continuer...")
+
             # 1. CRÉER LE RÈGLEMENT
             if not self._cree_regelement():
                 self.logger.warning(f"❌ Échec création règlement pour {num_facture}")
@@ -381,10 +381,12 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             date_echeance_input = self.get_input_by_label("Date échéance")
             date_echeance_input.click()
             time.sleep(0.5)
-            date_echeance_input.clear()
-            date_echeance_input.send_keys(date_echeance)
-            # date_echeance_input.send_keys(Keys.TAB)
+            # date_echeance_input.clear()
+            # date_echeance_input.send_keys(date_echeance)
+            date_echeance_input.send_keys(Keys.TAB)
             time.sleep(0.5)
+
+
 
             # =================================================================
             # =================================================================
@@ -407,11 +409,10 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             else:
                 # juste clique sur le champ montant banque 
                 # pour re-formule la date d'échéance et la date réel dans le cas de règlement de l'avance sans facture
-                Montant_banque_input = self.get_input_by_label("Tiers Endossé")
-                Montant_banque_input.click()   
+                pyautogui.press('esc') 
 
 
-            input("Vérifier les champs, puis appuyer sur Entrée pour enregistrer...")
+            # input("Vérifier les champs, puis appuyer sur Entrée pour enregistrer...")
             # 12. ENREGISTRER
             if self._enregistrer_regelement():
                 input_reg = self.get_input_by_label("No règlement", 65)
