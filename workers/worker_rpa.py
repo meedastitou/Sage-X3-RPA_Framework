@@ -10,6 +10,7 @@ from pathlib import Path
 # Ajouter le dossier parent au path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from modules.regelement.VairementRobot import VairementRobot
 from modules.regelement.RegelementRobot_V3 import RegelementRobot
 from utils.queue_manager import get_next_task, update_task
 from modules.bonne_commande.bonne_commande_robot import BonneCommandeRobot
@@ -57,6 +58,10 @@ def main():
                     elif task_type == "regelement":
                         logger.info("🚀 Lancement du RegelementRobot...")
                         robot = RegelementRobot()
+                        robot.run(excel_file=task['file'])
+                    elif task_type == "vairement":
+                        logger.info("🚀 Lancement du VairementRobot...")
+                        robot = VairementRobot()
                         robot.run(excel_file=task['file'])
                     else:
                         raise ValueError(f"Type de tâche inconnu: {task_type}")
