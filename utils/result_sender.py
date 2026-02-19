@@ -357,6 +357,47 @@ class ResultSender:
 
         return data
 
+    def format_vairement_result(self, robot) -> Dict[str, Any]:
+        """
+        Formater les résultats du robot Vairement pour l'envoi
+
+        Args:
+            robot: Instance de VairementRobot
+
+        Returns:
+            Dictionnaire formaté
+        """
+        summary = robot.generate_summary() if hasattr(robot, 'generate_summary') else {}
+
+        data = {
+            'module': 'vairement',
+            'timestamp': datetime.now().isoformat(),
+            'statut': 'succes' if robot.fournisseurs_echec == 0 else 'partiel',
+            'statistiques': {
+                'total_lignes': robot.fournisseurs_traites + robot.fournisseurs_echec,
+                'lignes_traitees': robot.fournisseurs_traites,
+                'lignes_echec': robot.fournisseurs_echec,
+                'total_reglements': robot.total_factures
+            },
+            'rapport_path': str(robot.rapport_path) if robot.rapport_path else None,
+            'details': summary
+        }
+
+        # Ajouter les détails des règlements
+        if hasattr(robot, 'resultats') and robot.resultats:
+            reglements = []
+            for result in robot.resultats:
+                if isinstance(result, dict) and result.get('type') == 'Ligne':
+                    reglements.append({
+                        'code_frs': result.get('code_frs', ''),
+                        'num_facture': result.get('num_facture', ''),
+                        'statut': result.get('statut', ''),
+                        'message': result.get('message', '')
+                    })
+            if reglements:
+                data['reglements'] = reglements
+
+        return data
 
 # ============================================================================
 # EXEMPLES D'UTILISATION
