@@ -71,6 +71,13 @@ class BonneCommandeDataRequest(BaseModel):
     headless: bool = True
 
 
+class FacturationDataRequest(BaseModel):
+    """Requête pour déclencher la facturation avec données JSON"""
+    donnees: List[Dict[str, Any]]
+    email_expediteur: str
+    headless: bool = True
+
+
 class TaskStatus(BaseModel):
     """Statut d'une tâche"""
     task_id: str
@@ -188,6 +195,33 @@ def save_dataframe_to_excel(donnees: List[Dict[str, Any]], email_expediteur: str
     return str(file_path)
 
 
+def save_facturation_to_excel(donnees: List[Dict[str, Any]], email_expediteur: str) -> str:
+    """
+    Convertir les données JSON facturation en fichier Excel temporaire
+
+    Args:
+        donnees: Liste de dictionnaires avec les colonnes: Code, DFF, FactureFrs, Date, BR
+        email_expediteur: Email de l'expéditeur
+
+    Returns:
+        Chemin du fichier Excel créé
+    """
+    df = pd.DataFrame(donnees)
+
+    # Ajouter la colonne email_expediteur
+    df['email_expediteur'] = email_expediteur
+
+    # Générer un nom de fichier unique
+    filename = f"api_data_FACT_{uuid.uuid4()}.xlsx"
+    file_path = UPLOAD_DIR / filename
+
+    df.to_excel(file_path, index=False)
+
+    logger.info(f"📊 Données facturation converties en Excel: {file_path}")
+
+    return str(file_path)
+
+
 # ============================================================================
 # ENDPOINTS API
 # ============================================================================
@@ -202,6 +236,7 @@ async def root():
             "lettrage": "/api/lettrage",
             "bonne_commande": "/api/bonne-commande",
             "bonne_commande_data": "/api/bonne-commande/data",
+            "facturation_data": "/api/facturation/data",
             "upload": "/api/upload",
             "status": "/api/task/{task_id}",
             "tasks": "/api/tasks"
@@ -359,6 +394,71 @@ async def trigger_bonne_commande_from_data(request: BonneCommandeDataRequest):
         task_id=task_id,
         status='pending',
         module='bonne_commande_api',
+        started_at=None,
+        completed_at=None,
+        result=None,
+        error=None
+    )
+
+
+@app.post("/api/facturation/data", response_model=TaskStatus)
+async def trigger_facturation_from_data(request: FacturationDataRequest):
+    """
+    Déclencher une tâche facturation avec données JSON
+    Les données sont converties en Excel et enqueued pour le worker
+
+    Colonnes requises: Code, DFF, FactureFrs, Date, BR
+    Colonne optionnelle: Nom
+
+    Exemple:
+    ```json
+    {
+        "donnees": [
+            {
+                "Code": "T1398",
+                "DFF": "DFF12345",
+                "FactureFrs": "FAC001",
+                "Date": "15/01/2026",
+                "BR": "BR189847",
+                "Nom": "Fournisseur ABC"
+            }
+        ],
+        "email_expediteur": "user@example.com",
+        "headless": true
+    }
+    ```
+    """
+    # Valider email
+    if not request.email_expediteur:
+        raise HTTPException(status_code=400, detail="email_expediteur est requis")
+
+    # Valider les colonnes requises
+    required_columns = ['Code', 'DFF', 'FactureFrs', 'Date', 'BR']
+    if request.donnees:
+        first_row = request.donnees[0]
+        missing = [col for col in required_columns if col not in first_row]
+        if missing:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Colonnes manquantes: {', '.join(missing)}. Requises: {', '.join(required_columns)}"
+            )
+
+    # Convertir JSON → Excel
+    excel_file = save_facturation_to_excel(request.donnees, request.email_expediteur)
+
+    # Enqueue la tâche
+    task_id = add_task(
+        file_path=excel_file,
+        email=request.email_expediteur,
+        task_type="facturation"
+    )
+
+    logger.info(f"📋 Tâche facturation (JSON) enqueued: {task_id}")
+
+    return TaskStatus(
+        task_id=task_id,
+        status='pending',
+        module='facturation',
         started_at=None,
         completed_at=None,
         result=None,
