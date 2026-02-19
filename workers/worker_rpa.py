@@ -11,6 +11,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from modules.regelement.VairementRobot import VairementRobot
+from modules.regelement.VairementInternationalRobot import VairementInternationalRobot
 from modules.regelement.RegelementRobot_V3 import RegelementRobot
 from utils.queue_manager import get_next_task, update_task
 from modules.bonne_commande.bonne_commande_robot import BonneCommandeRobot
@@ -63,6 +64,9 @@ def main():
                         logger.info("🚀 Lancement du VairementRobot...")
                         robot = VairementRobot()
                         robot.run(excel_file=task['file'])
+                    elif task_type == 'vairement_inter':
+                        logger.info("🚀 Lancement du VairementInternationalRobot...")
+                        robot = VairementInternationalRobot()
                     else:
                         raise ValueError(f"Type de tâche inconnu: {task_type}")
 

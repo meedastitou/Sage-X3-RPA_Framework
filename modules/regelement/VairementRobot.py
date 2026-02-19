@@ -101,21 +101,21 @@ class VairementRobot(BaseRobot, WebResultMixin):
                 
                 time.sleep(1)
             
-            # # 4. BILAN FINAL
-            # self.add_result({
-            #     'type': 'BILAN_FINAL',
-            #     'statut': 'SUCCES' if self.fournisseurs_echec == 0 else 'PARTIEL',
-            #     'lignes_traitees': self.fournisseurs_traites,
-            #     'lignes_echec': self.fournisseurs_echec,
-            #     'total_regelements': self.total_factures,
-            #     'message': f'{self.fournisseurs_traites} ligne(s) traitée(s), {self.total_factures} règlement(s)'
-            # })
+            # 4. BILAN FINAL
+            self.add_result({
+                'type': 'BILAN_FINAL',
+                'statut': 'SUCCES' if self.fournisseurs_echec == 0 else 'PARTIEL',
+                'lignes_traitees': self.fournisseurs_traites,
+                'lignes_echec': self.fournisseurs_echec,
+                'total_regelements': self.total_factures,
+                'message': f'{self.fournisseurs_traites} ligne(s) traitée(s), {self.total_factures} règlement(s)'
+            })
             
-            # # 5. SAUVEGARDER RAPPORT
-            # self.save_report()
+            # 5. SAUVEGARDER RAPPORT
+            self.save_report()
             
-            # # 6. ENVOYER RÉSULTATS WEB
-            # self.send_results_to_web(email_f)
+            # 6. ENVOYER RÉSULTATS WEB
+            self.send_results_to_web(email_f)
             
             # self.logger.info("="*80)
             # self.logger.info("🎉 PROCESSUS TERMINÉ")

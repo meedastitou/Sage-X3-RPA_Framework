@@ -155,6 +155,10 @@ class WebResultMixin:
             data = self.result_sender.format_lettrage_result(self)
         elif 'Regelement' in class_name:
             data = self.result_sender.format_regelement_result(self)
+        elif 'Vairement' in class_name:
+            data = self.result_sender.format_vairement_result(self)
+        elif 'vairement_international' in class_name:
+            data = self.result_sender.format_vairement_result(self)
         else:
             # Format générique
             summary = self.generate_summary() if hasattr(self, 'generate_summary') else {}
