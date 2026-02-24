@@ -78,6 +78,13 @@ class FacturationDataRequest(BaseModel):
     headless: bool = True
 
 
+class RegelementDataRequest(BaseModel):
+    """Requête pour déclencher le règlement avec données JSON"""
+    donnees: List[Dict[str, Any]]
+    email_expediteur: str
+    headless: bool = True
+
+
 class TaskStatus(BaseModel):
     """Statut d'une tâche"""
     task_id: str
@@ -222,6 +229,33 @@ def save_facturation_to_excel(donnees: List[Dict[str, Any]], email_expediteur: s
     return str(file_path)
 
 
+def save_regelement_to_excel(donnees: List[Dict[str, Any]], email_expediteur: str) -> str:
+    """
+    Convertir les données JSON règlement en fichier Excel temporaire
+
+    Args:
+        donnees: Liste de dictionnaires avec colonnes: Code_Frs, N_Facture, Refference, Montant, TVA, type_regelement
+        email_expediteur: Email de l'expéditeur
+
+    Returns:
+        Chemin du fichier Excel créé
+    """
+    df = pd.DataFrame(donnees)
+
+    # Ajouter la colonne email_expediteur
+    df['email_expediteur'] = email_expediteur
+
+    # Générer un nom de fichier unique
+    filename = f"api_data_REG_{uuid.uuid4()}.xlsx"
+    file_path = UPLOAD_DIR / filename
+
+    df.to_excel(file_path, index=False)
+
+    logger.info(f"📊 Données règlement converties en Excel: {file_path}")
+
+    return str(file_path)
+
+
 # ============================================================================
 # ENDPOINTS API
 # ============================================================================
@@ -237,6 +271,7 @@ async def root():
             "bonne_commande": "/api/bonne-commande",
             "bonne_commande_data": "/api/bonne-commande/data",
             "facturation_data": "/api/facturation/data",
+            "regelement_data": "/api/regelement/data",
             "upload": "/api/upload",
             "status": "/api/task/{task_id}",
             "tasks": "/api/tasks"
@@ -466,6 +501,79 @@ async def trigger_facturation_from_data(request: FacturationDataRequest):
     )
 
 
+@app.post("/api/regelement/data", response_model=TaskStatus)
+async def trigger_regelement_from_data(request: RegelementDataRequest):
+    """
+    Déclencher une tâche règlement avec données JSON
+    Les données sont converties en Excel et enqueued pour le worker
+
+    Colonnes requises: Code_Frs, N_Facture, Refference, Montant, TVA, type_regelement
+    - type_regelement: 1 = Effet à payer, 2 = Chèques émis
+
+    Exemple:
+    ```json
+    {
+        "donnees": [
+            {
+                "Code_Frs": "T1398",
+                "N_Facture": "FF123456",
+                "Refference": "REF001",
+                "Montant": "15000.00",
+                "TVA": "300.00",
+                "type_regelement": 1
+            }
+        ],
+        "email_expediteur": "user@example.com",
+        "headless": true
+    }
+    ```
+    """
+    # Valider email
+    if not request.email_expediteur:
+        raise HTTPException(status_code=400, detail="email_expediteur est requis")
+
+    # Valider les colonnes requises
+    required_columns = ['Code_Frs', 'N_Facture', 'Refference', 'Montant', 'TVA', 'type_regelement']
+    if request.donnees:
+        first_row = request.donnees[0]
+        missing = [col for col in required_columns if col not in first_row]
+        if missing:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Colonnes manquantes: {', '.join(missing)}. Requises: {', '.join(required_columns)}"
+            )
+
+        # Valider type_regelement
+        type_reg = first_row.get('type_regelement')
+        if type_reg not in [1, 2]:
+            raise HTTPException(
+                status_code=400,
+                detail="type_regelement doit être 1 (Effet à payer) ou 2 (Chèques émis)"
+            )
+
+    # Convertir JSON → Excel
+    excel_file = save_regelement_to_excel(request.donnees, request.email_expediteur)
+
+    # Enqueue la tâche
+    task_id = add_task(
+        file_path=excel_file,
+        email=request.email_expediteur,
+        task_type="regelement"
+    )
+
+    logger.info(f"📋 Tâche règlement (JSON) enqueued: {task_id}")
+
+    return TaskStatus(
+        task_id=task_id,
+        status='pending',
+        module='regelement',
+        started_at=None,
+        completed_at=None,
+        result=None,
+        error=None
+    )
+
+
 @app.post("/api/upload")
 async def upload_file(file: UploadFile = File(...)):
     """
@@ -581,4 +689,4 @@ if __name__ == "__main__":
     logger.info("📖 Documentation: http://localhost:8000/docs")
     logger.info("="*80)
     
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8004)
