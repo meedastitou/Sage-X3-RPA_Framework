@@ -85,6 +85,13 @@ class RegelementDataRequest(BaseModel):
     headless: bool = True
 
 
+class ReceiptionDataRequest(BaseModel):
+    """Requête pour déclencher la réception avec données JSON"""
+    donnees: List[Dict[str, Any]]
+    email_expediteur: str
+    headless: bool = True
+
+
 class TaskStatus(BaseModel):
     """Statut d'une tâche"""
     task_id: str
@@ -256,6 +263,35 @@ def save_regelement_to_excel(donnees: List[Dict[str, Any]], email_expediteur: st
     return str(file_path)
 
 
+def save_receiption_to_excel(donnees: List[Dict[str, Any]], email_expediteur: str) -> str:
+    """
+    Convertir les données JSON réception en fichier Excel temporaire
+
+    Args:
+        donnees: Liste de dictionnaires avec colonnes:
+                 CodeFrs, BLFrs, DateBC, N_BC, CodeArticle, Quantite,
+                 N_B_transport, Matricule, Poids, Marque, observation
+        email_expediteur: Email de l'expéditeur
+
+    Returns:
+        Chemin du fichier Excel créé
+    """
+    df = pd.DataFrame(donnees)
+
+    # Ajouter la colonne email_expediteur
+    df['email_expediteur'] = email_expediteur
+
+    # Générer un nom de fichier unique
+    filename = f"api_data_REC_{uuid.uuid4()}.xlsx"
+    file_path = UPLOAD_DIR / filename
+
+    df.to_excel(file_path, index=False)
+
+    logger.info(f"📊 Données réception converties en Excel: {file_path}")
+
+    return str(file_path)
+
+
 # ============================================================================
 # ENDPOINTS API
 # ============================================================================
@@ -272,6 +308,7 @@ async def root():
             "bonne_commande_data": "/api/bonne-commande/data",
             "facturation_data": "/api/facturation/data",
             "regelement_data": "/api/regelement/data",
+            "receiption_data": "/api/receiption/data",
             "upload": "/api/upload",
             "status": "/api/task/{task_id}",
             "tasks": "/api/tasks"
@@ -567,6 +604,78 @@ async def trigger_regelement_from_data(request: RegelementDataRequest):
         task_id=task_id,
         status='pending',
         module='regelement',
+        started_at=None,
+        completed_at=None,
+        result=None,
+        error=None
+    )
+
+
+@app.post("/api/receiption/data", response_model=TaskStatus)
+async def trigger_receiption_from_data(request: ReceiptionDataRequest):
+    """
+    Déclencher une tâche réception avec données JSON
+    Les données sont converties en Excel et enqueued pour le worker
+
+    Colonnes requises: CodeFrs, BLFrs, DateBC, N_BC, CodeArticle, Quantite,
+                       N_B_transport, Matricule, Poids, Marque
+    Colonne optionnelle: observation
+
+    Exemple:
+    ```json
+    {
+        "donnees": [
+            {
+                "CodeFrs": "T1398",
+                "BLFrs": "BL001",
+                "DateBC": "15/01/2026",
+                "N_BC": "BC123456",
+                "CodeArticle": "A00001",
+                "Quantite": 10,
+                "N_B_transport": "BT001",
+                "Matricule": "MAT001",
+                "Poids": 500,
+                "Marque": "DELL",
+                "observation": ""
+            }
+        ],
+        "email_expediteur": "user@example.com",
+        "headless": true
+    }
+    ```
+    """
+    # Valider email
+    if not request.email_expediteur:
+        raise HTTPException(status_code=400, detail="email_expediteur est requis")
+
+    # Valider les colonnes requises (observation est optionnelle)
+    required_columns = ['CodeFrs', 'BLFrs', 'DateBC', 'N_BC', 'CodeArticle', 'Quantite',
+                         'N_B_transport', 'Matricule', 'Poids', 'Marque']
+    if request.donnees:
+        first_row = request.donnees[0]
+        missing = [col for col in required_columns if col not in first_row]
+        if missing:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Colonnes manquantes: {', '.join(missing)}. Requises: {', '.join(required_columns)}"
+            )
+
+    # Convertir JSON → Excel
+    excel_file = save_receiption_to_excel(request.donnees, request.email_expediteur)
+
+    # Enqueue la tâche
+    task_id = add_task(
+        file_path=excel_file,
+        email=request.email_expediteur,
+        task_type="receiption"
+    )
+
+    logger.info(f"📋 Tâche réception (JSON) enqueued: {task_id}")
+
+    return TaskStatus(
+        task_id=task_id,
+        status='pending',
+        module='receiption',
         started_at=None,
         completed_at=None,
         result=None,
