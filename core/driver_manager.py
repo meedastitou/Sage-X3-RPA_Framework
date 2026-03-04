@@ -44,6 +44,8 @@ class DriverManager:
             options = self._get_chrome_options()
             self.driver = webdriver.Chrome(options=options)
             self.driver.set_page_load_timeout(self.page_load_timeout)
+            
+            self.driver.maximize_window()
 
             # Configurer le téléchargement automatique via CDP (Chrome DevTools Protocol)
             download_dir = os.path.join(SELENIUM_CONFIG['document_genere'], "downloads")
