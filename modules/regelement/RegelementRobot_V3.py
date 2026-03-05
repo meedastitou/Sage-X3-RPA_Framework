@@ -23,7 +23,11 @@ from utils.excel_handler import ExcelHandler
 
 import pyautogui
 
-# pyautogui.press('tab')
+TYPE_REGELEMENT = {
+    1: "Effet à payer",
+    2: "Chèques émis",
+}
+
 class RegelementRobot(BaseRobot, WebResultMixin):
     """Robot pour la gestion automatique des règlements de factures avec regroupement"""
     
@@ -74,7 +78,9 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             self.wait_for_spinner_to_disappear(self.driver_manager.driver, timeout=900000000)
             self.handle_popup("OK",  "GESPAY : Accès restreint par la licence")
             self.wait_for_spinner_to_disappear(self.driver_manager.driver, timeout=900000000)
-            self._choisir_mode_regelement("Effet à payer")
+            
+            type_reg = int(df.iloc[0]['type_regelement'])
+            self._choisir_mode_regelement(TYPE_REGELEMENT[type_reg])
 
             # 3. TRAITER CHAQUE LIGNE
             for idx, row in df.iterrows():
@@ -166,7 +172,8 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             'N_Facture',
             'Refference',
             'Montant',
-            'TVA'
+            'TVA',
+            'type_regelement'
             # 'Date_Reel', # c'est date ajourd'hui
             # 'DateEcheance' # c'est date ajourd'hui
         ]
@@ -178,6 +185,11 @@ class RegelementRobot(BaseRobot, WebResultMixin):
         # Validation des colonnes importantes
         lignes_invalides = []
         for idx, row in df.iterrows():
+            
+            # SI type_regelement EST VIDE SAISI 1
+            if pd.isna(row.get('type_regelement')) or str(row.get('type_regelement', '')).strip() == '':
+                df.at[idx, 'type_regelement'] = 1
+
             colonnes_vides = []
             for col in ['Code_Frs', 'N_Facture', 'Montant']:
                 if pd.isna(row[col]) or str(row[col]).strip() == '':
@@ -214,7 +226,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             refference = str(row['Refference']) if not pd.isna(row['Refference']) else ""
             # libelle = str(row['Libelle']) if not pd.isna(row['Libelle']) else ""
             montant = str(row['Montant'])
-            num_cheque = self._get_num_cheque_from_db()  # Récupérer le numéro de chèque depuis la base de données
+            num_cheque = self._get_num_cheque_from_db(row['type_regelement'])  # Récupérer le numéro de chèque depuis la base de données
             tva = str(row['TVA']) if not pd.isna(row['TVA']) else ""
             # date reel c'est date d'aujourd'hui
             date_reel = datetime.now().strftime('%d/%m/%Y')
@@ -412,7 +424,6 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                 pyautogui.press('esc') 
 
 
-            # input("Vérifier les champs, puis appuyer sur Entrée pour enregistrer...")
             # 12. ENREGISTRER
             if self._enregistrer_regelement():
                 input_reg = self.get_input_by_label("No règlement", 65)
@@ -666,7 +677,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             self.logger.error(f"Erreur choix mode règlement: {e}")
             return False
         
-    def _get_num_cheque_from_db(self) -> str:
+    def _get_num_cheque_from_db(self, mode: int) -> str:
         """Récupérer le numéro de chèque depuis la base de données"""
         # cree la connexion à la base de données ( SQLSERVER ) et récupérer le numéro de chèque
         import pyodbc
@@ -681,7 +692,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             )
             cursor = conn.cursor()
             print("Connected to SQL Server successfully!")
-            cursor.execute("select TOP 1 XNUM_0, L.NSER_0, XPAM_0 as ModReg from BASE1.XACRCAL L WHERE FLG_0<>2 AND XPAM_0=1 ORDER BY L.ROWID ASC")
+            cursor.execute(f"select TOP 1 XNUM_0, L.NSER_0, XPAM_0 as ModReg from BASE1.XACRCAL L WHERE FLG_0<>2 AND XPAM_0={mode} ORDER BY L.ROWID ASC")
             row = cursor.fetchone()
             if row:
                 num_cheque = row[1]
