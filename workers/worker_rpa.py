@@ -16,7 +16,8 @@ from modules.regelement.RegelementRobot_V3 import RegelementRobot
 from utils.queue_manager import get_next_task, update_task
 from modules.bonne_commande.bonne_commande_robot import BonneCommandeRobot
 from modules.receiption.ReceiptionRobot_v2 import ReceiptionRobot
-from modules.facturation.FacturationRobot import FacturationRobot
+# from modules.facturation.FacturationRobot import FacturationRobot
+from modules.facturation.FacturationRobot_V2 import FacturationRobotV2
 from core.logger import Logger
 
 logger = Logger.get_logger('WorkerRPA', 'workers')
@@ -54,7 +55,7 @@ def main():
                         robot.run(excel_file=task['file'])
                     elif task_type == "facturation":
                         logger.info("🚀 Lancement du FacturationRobot...")
-                        robot = FacturationRobot()
+                        robot = FacturationRobotV2()
                         robot.run(excel_file=task['file'])
                     elif task_type == "regelement":
                         logger.info("🚀 Lancement du RegelementRobot...")
