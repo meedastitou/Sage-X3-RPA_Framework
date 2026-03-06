@@ -116,12 +116,12 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
                 )
 
                 # Recuperer le numero de piece
-                try:
-                    numero_FF_input = self.get_input_by_label("Numero piece")
-                    resultat['numero_FF'] = numero_FF_input.get_attribute("value") if numero_FF_input else ""
-                    self.logger.info(f"Numero FF: {resultat['numero_FF']}")
-                except Exception:
-                    resultat['numero_FF'] = ""
+                # try:
+                #     numero_FF_input = self.get_input_by_label("Numero piece")
+                #     resultat['numero_FF'] = numero_FF_input.get_attribute("value") if numero_FF_input else ""
+                #     self.logger.info(f"Numero FF: {resultat['numero_FF']}")
+                # except Exception:
+                #     resultat['numero_FF'] = ""
 
                 if resultat.get('statut') == 'Succes':
                     self.factures_traitees += 1
