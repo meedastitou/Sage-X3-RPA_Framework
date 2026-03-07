@@ -69,9 +69,12 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
 
             self.logger.info(f"{len(df)} lignes lues depuis l'Excel")
 
+            # Normaliser FactureFrs avant groupement (supprimer espaces, normaliser casse)
+            df['FactureFrs'] = df['FactureFrs'].astype(str).str.strip()
+
             # --- Groupement par FactureFrs ---
             groupes = df.groupby('FactureFrs', sort=False)
-            self.logger.info(f"{len(groupes)} facture(s) fournisseur distincte(s) trouvee(s)")
+            self.logger.info(f"{groupes.ngroups} facture(s) fournisseur distincte(s) trouvee(s)")
 
             self.connect_sage()
 
@@ -95,7 +98,7 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
                     if isinstance(first_row['Date'], (int, float)):
                         date_obj = pd.Timestamp('1899-12-30') + pd.Timedelta(days=float(first_row['Date']))
                     else:
-                        date_obj = pd.to_datetime(first_row['Date'])
+                        date_obj = pd.to_datetime(first_row['Date'], dayfirst=True)
                     date = date_obj.strftime('%d/%m/%Y')
                 except Exception as e:
                     self.logger.error(f"Erreur conversion date: {e}")
@@ -200,12 +203,12 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
         resultats = {br: False for br in list_codeReception}
 
         try:
-            # 1. Ouvrir la section "Selection receptions" (une seule fois)
+             # 1. Ouvrir la section "Selection receptions" (une seule fois)
             reception_btn = WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable((By.XPATH, "//a[@title='Selection receptions']"))
+                EC.element_to_be_clickable((By.XPATH, "//a[@title='Sélection réceptions']"))
             )
             reception_btn.click()
-            self.logger.info("Section 'Selection receptions' ouverte")
+            self.logger.info("Section 'Sélection réceptions' ouverte")
             time.sleep(1)
 
             # 2. Attendre le tableau
@@ -376,13 +379,26 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
             time.sleep(1)
 
             # N°Depot (DFF)
-            DFF_input = self.get_input_by_label("N°Depot")
+            DFF_input = self.get_input_by_label("N°Dépôt")
             DFF_input.click()
             time.sleep(0.5)
             DFF_input.clear()
             DFF_input.send_keys(DFF)
             DFF_input.send_keys(Keys.TAB)
             time.sleep(1)
+            # check if popup appears after DFF input 
+            try:
+                popup = WebDriverWait(driver, 5).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, ".s_alertbox_content"))
+                )   
+                popup_text = popup.find_element(By.CSS_SELECTOR, ".s_alertbox_msg").text
+                if "Maj N°Facture et date fournisseur" in popup_text :
+                    self.logger.info("Popup de changement de dépôt détectée, clique sur 'OK'")
+                    oui_btn = popup.find_element(By.XPATH, "//a[@aria-label='OK']")
+                    oui_btn.click()
+                    time.sleep(1)   
+            except Exception:
+                self.logger.info("Pas de popup de changement de dépôt après saisie du DFF")
 
             # Selectionner TOUS les codes reception
             resultats_selection = self.selection_multiple_receptions(list_codeReception)
@@ -397,7 +413,7 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
             time.sleep(2)
 
             # HT calcule -> HT saisi
-            HT_input = self.get_input_by_label("HT calcule")
+            HT_input = self.get_input_by_label("HT calculé")
             ht_value = HT_input.get_attribute('value')
             time.sleep(1)
 
@@ -428,6 +444,20 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
             date_input = self.get_input_by_label("Date fact.fou")
             date_input.click()
             time.sleep(0.5)
+            # check if popup appears after DFF input 
+            try:
+                popup = WebDriverWait(driver, 5).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, ".s_alertbox_content"))
+                )   
+                popup_text = popup.find_element(By.CSS_SELECTOR, ".s_alertbox_msg").text
+                if "Maj N°Facture et date fournisseur" in popup_text :
+                    self.logger.info("Popup de changement de dépôt détectée, clique sur 'OK'")
+                    oui_btn = popup.find_element(By.XPATH, "//a[@aria-label='OK']")
+                    oui_btn.click()
+                    time.sleep(1)   
+            except Exception:
+                self.logger.info("Pas de popup de changement de dépôt après saisie du DFF")
+        
             date_input.clear()
             date_input.send_keys(Date)
             date_input.send_keys(Keys.TAB)
@@ -443,7 +473,7 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
             time.sleep(1)
 
             # Reference interne
-            referenceIntern_input = self.get_input_by_label("Reference interne")
+            referenceIntern_input = self.get_input_by_label("Référence interne")
             referenceIntern_input.click()
             time.sleep(0.5)
             referenceIntern_input.clear()
