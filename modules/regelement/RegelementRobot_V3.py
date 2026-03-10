@@ -397,7 +397,16 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             # date_echeance_input.send_keys(date_echeance)
             date_echeance_input.send_keys(Keys.TAB)
             time.sleep(0.5)
-
+            # =================================================================
+            # verifier c'est une popup apparait
+            if self.read_popup_message() is not None:
+                self.logger.warning(f"⚠️ Popup détecté après saisie de la date d'échéance pour {num_facture}")
+                error_info = self.handle_error_with_screenshot(
+                    error_message='Popup détecté après saisie de la date d\'échéance',
+                    context=f"Facture {num_facture} - Date échéance"
+                )
+                resultat['error_info'] = error_info
+                return resultat
 
 
             # =================================================================
@@ -532,10 +541,31 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             
             self.wait_for_spinner_to_disappear(driver, timeout=120000000)
             try:
-                self.wait_for_element_to_appear(driver, By.CSS_SELECTOR, "a.s_page_close", timeout=1000000)
-                s_page_close = driver.find_element(By.CSS_SELECTOR, "a.s_page_close")
+                self.logger.info("⏳ Attente de la popup de confirmation...")
+                self.wait_for_element_to_appear(driver, By.CSS_SELECTOR, "a.s_modal_close", timeout=1000000)
+                self.logger.info("✅ Popup de confirmation détectée, fermeture...")
+                s_page_close = driver.find_element(By.CSS_SELECTOR, "a.s_modal_close")
                 s_page_close.click()
                 time.sleep(2)
+
+                try:
+                    close_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_close")
+                    driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", close_btn)
+                    time.sleep(0.5)
+                    close_btn.click()
+
+                    WebDriverWait(driver, 2).until(
+                        EC.visibility_of_element_located((By.XPATH, "//pre[@class='s_alertbox_msg' and contains(text(), 'Continuer et abandonner votre création ?')]"))
+                    )
+                    # Cliquer sur "Oui"
+                    oui_button = driver.find_element(By.XPATH, "//a[@aria-label='Oui']")
+                    oui_button.click()
+                    self.logger.info("✅ Confirmation abandon cliquée")
+                    time.sleep(1)
+                    return False
+                except:
+                    # Pas de popup ou autre type de popup
+                    pass
             except:
                 pass
             
