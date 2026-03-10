@@ -547,25 +547,32 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                 s_page_close = driver.find_element(By.CSS_SELECTOR, "a.s_modal_close")
                 s_page_close.click()
                 time.sleep(2)
+                
+                # verifier si le bouton close est désactivé ou pas
+                a_close_btn = driver.find_element(By.XPATH, "//a[contains(@class, 's_page_action_close')]")
+                close_disabled = a_close_btn.get_attribute("disabled") is not None
+                close_class_disabled = "s-disabled" in a_close_btn.get_attribute("class")
+                if close_disabled or close_class_disabled:
+                    try:
+                        
+                        close_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_close")
+                        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", close_btn)
+                        time.sleep(0.5)
+                        close_btn.click()
 
-                try:
-                    close_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_close")
-                    driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", close_btn)
-                    time.sleep(0.5)
-                    close_btn.click()
-
-                    WebDriverWait(driver, 2).until(
-                        EC.visibility_of_element_located((By.XPATH, "//pre[@class='s_alertbox_msg' and contains(text(), 'Continuer et abandonner votre création ?')]"))
-                    )
-                    # Cliquer sur "Oui"
-                    oui_button = driver.find_element(By.XPATH, "//a[@aria-label='Oui']")
-                    oui_button.click()
-                    self.logger.info("✅ Confirmation abandon cliquée")
-                    time.sleep(1)
+                        WebDriverWait(driver, 2).until(
+                            EC.visibility_of_element_located((By.XPATH, "//pre[@class='s_alertbox_msg' and contains(text(), 'Continuer et abandonner votre création ?')]"))
+                        )
+                        # Cliquer sur "Oui"
+                        oui_button = driver.find_element(By.XPATH, "//a[@aria-label='Oui']")
+                        oui_button.click()
+                        self.logger.info("✅ Confirmation abandon cliquée")
+                        time.sleep(1)
+                        return False
+                    except:
+                        # Pas de popup ou autre type de popup
+                        return False
                     return False
-                except:
-                    # Pas de popup ou autre type de popup
-                    pass
             except:
                 pass
             
