@@ -14,6 +14,7 @@ import time
 from core.base_robot import BaseRobot
 from core.web_result_mixin import WebResultMixin
 from utils.excel_handler import ExcelHandler
+from utils.db_handler import DBHandler
 from datetime import datetime
 
 
@@ -41,6 +42,12 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
         self.factures_traitees = 0
         self.factures_echec = 0
 
+        try:
+            self.db = DBHandler()
+        except Exception as e:
+            self.logger.warning(f"DB non disponible (mode sans base de donnees): {e}")
+            self.db = None
+
         self.logger.info("Robot Facturation V2 initialise")
 
     # ------------------------------------------------------------------
@@ -57,6 +64,7 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
         """
         driver = self.driver_manager.driver
         email_f = ""
+        execution_id = None
 
         try:
             df = self.excel_handler.read_excel(
@@ -77,6 +85,13 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
             self.logger.info(f"{groupes.ngroups} facture(s) fournisseur distincte(s) trouvee(s)")
 
             self.connect_sage()
+
+            # Demarrer la session en base de donnees
+            if self.db:
+                execution_id = self.db.start_execution('facturation', excel_file)
+                self.db.log(execution_id, 'INFO',
+                            f"{groupes.ngroups} facture(s) a traiter depuis {excel_file}",
+                            context='execute')
 
             for facture_frs, groupe in groupes:
                 self.navigate_to_module(url or self.url_facturation)
@@ -108,6 +123,19 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
                 list_br = [str(r['BR']) for _, r in groupe.iterrows()]
                 self.logger.info(f"Codes reception a selectionner : {list_br}")
 
+                # Enregistrer la facture en DB avant traitement
+                facture_id = None
+                if self.db and execution_id:
+                    facture_id = self.db.log_facture(
+                        execution_id=execution_id,
+                        facture_frs=facture_frs_str,
+                        code_fournisseur=code,
+                        codes_reception=list_br,
+                        nom_fournisseur=nom,
+                        dff=dff,
+                        date_facture=date,
+                    )
+
                 resultat = self.traiter_fournisseur(
                     url=url,
                     codeFournisseur=code,
@@ -118,13 +146,21 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
                     nom=nom
                 )
 
-                # Recuperer le numero de piece
-                # try:
-                #     numero_FF_input = self.get_input_by_label("Numero piece")
-                #     resultat['numero_FF'] = numero_FF_input.get_attribute("value") if numero_FF_input else ""
-                #     self.logger.info(f"Numero FF: {resultat['numero_FF']}")
-                # except Exception:
-                #     resultat['numero_FF'] = ""
+                # Mettre a jour le resultat en DB apres traitement
+                if self.db and execution_id and facture_id:
+                    statut_db = 'SUCCES' if resultat.get('statut') == 'Succes' else 'ECHEC'
+                    self.db.update_facture(
+                        facture_id=facture_id,
+                        statut=statut_db,
+                        message=resultat.get('message', ''),
+                        numero_piece=resultat.get('numero_piece'),
+                        screenshot_path=resultat.get('error_info', {}).get('screenshot') if resultat.get('error_info') else None,
+                    )
+                    self.db.log(execution_id, 'INFO' if statut_db == 'SUCCES' else 'ERROR',
+                                f"Facture {facture_frs_str} : {resultat.get('message', '')}",
+                                context='execute',
+                                entity_type='facturation',
+                                entity_id=facture_id)
 
                 if resultat.get('statut') == 'Succes':
                     self.factures_traitees += 1
@@ -153,6 +189,17 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
             self.save_report()
             self.send_results_to_web(email_f)
 
+            # Cloturer la session en DB
+            if self.db and execution_id:
+                statut_final = 'SUCCES' if self.factures_echec == 0 else 'PARTIEL'
+                self.db.end_execution(
+                    execution_id=execution_id,
+                    statut=statut_final,
+                    nb_succes=self.factures_traitees,
+                    nb_echec=self.factures_echec,
+                    message=f'{self.factures_traitees} traitee(s), {self.factures_echec} echec(s)'
+                )
+
             self.logger.info("="*80)
             self.logger.info("PROCESSUS TERMINE")
             self.logger.info(f"{self.factures_traitees} facture(s) traitee(s)")
@@ -163,6 +210,15 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
             self.logger.error(f"ERREUR CRITIQUE: {e}")
             import traceback
             self.logger.error(traceback.format_exc())
+
+            if self.db and execution_id:
+                self.db.end_execution(
+                    execution_id=execution_id,
+                    statut='ECHEC',
+                    nb_succes=self.factures_traitees,
+                    nb_echec=self.factures_echec,
+                    message=str(e)
+                )
 
             self.add_result({
                 'type': 'ERREUR',
@@ -183,6 +239,8 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
             finally:
                 self.wait_for_spinner_to_disappear(driver, 600000)
                 self.disconnect_sage()
+                if self.db:
+                    self.db.close()
 
     # ------------------------------------------------------------------
     # Selection de PLUSIEURS receptions
