@@ -228,6 +228,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             montant = str(row['Montant'])
             num_cheque = self._get_num_cheque_from_db(row['type_regelement'])  # Récupérer le numéro de chèque depuis la base de données
             tva = str(row['TVA']) if not pd.isna(row['TVA']) else ""
+            tier_endo = str(row['tier_endo']).strip() if 'tier_endo' in row and not pd.isna(row.get('tier_endo', None)) and str(row['tier_endo']).strip() != '' else None
             # date reel c'est date d'aujourd'hui
             date_reel = datetime.now().strftime('%d/%m/%Y')
             # date_reel = self._format_date(row['Date_Reel']) if not pd.isna(row['Date_Reel']) else ""
@@ -467,6 +468,22 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                 # pour re-formule la date d'échéance et la date réel dans le cas de règlement de l'avance sans facture
                 pyautogui.press('esc') 
 
+            # 12. TIERS ENDOSSATAIRE (optionnel)
+            if tier_endo:
+                self.logger.info(f"🔍 REMPLIR Tiers Endo.: {tier_endo}")
+                endo_input = self.get_input_by_label("Endossable")
+                time.sleep(0.5)
+                label_endo = driver.find_element(By.CSS_SELECTOR, f"label[for='{endo_input.get_attribute('id')}']")
+                label_endo.click()
+                time.sleep(0.5)
+                tier_endo_input = self.get_input_by_label("Tiers Endo.")
+                tier_endo_input.click()
+                time.sleep(0.5)
+                tier_endo_input.clear()
+                tier_endo_input.send_keys(tier_endo)
+                tier_endo_input.send_keys(Keys.TAB)
+                time.sleep(0.5)
+
             # =================================================================
             # =================================================================
             # 10. REMPLIR DATE ECHEANCE
@@ -496,7 +513,9 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                     self.logger.error(f"❌ Erreur lors de la fermeture de la popup: {e}")
                 return resultat
            
-            # 12. ENREGISTRER
+            
+
+            # 13. ENREGISTRER
             if self._enregistrer_regelement():
                 input_reg = self.get_input_by_label("No règlement", 65)
                 self.logger.info(f"Reg {input_reg.get_attribute('value')}")
