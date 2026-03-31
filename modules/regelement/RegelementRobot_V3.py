@@ -301,7 +301,22 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             reference_input.send_keys(refference)
             reference_input.send_keys(Keys.TAB)
             time.sleep(0.5)
-
+            if self.read_popup_message() is not None:
+                self.logger.warning(f"⚠️ Popup détecté après saisie de la référence de pièce pour {refference}")
+                error_info = self.handle_error_with_screenshot(
+                    error_message='Popup détecté après saisie de la référence de pièce',
+                    context=f"Facture {num_facture} - Référence pièce {refference}"
+                )
+                resultat['error_info'] = error_info
+                try:
+                    self.handle_popup("OK", "Référence erronée") 
+                    close_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_close")
+                    driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", close_btn)
+                    time.sleep(0.5)
+                    close_btn.click()
+                except Exception as e:
+                    self.logger.error(f"❌ Erreur lors de la fermeture de la popup: {e}")
+                return resultat
             # =================================================================
             # =================================================================
             # 5. SAIISIR Libelle
@@ -385,6 +400,17 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             date_reel_input.send_keys(date_reel)
             date_reel_input.send_keys(Keys.TAB)
             time.sleep(0.5)
+            # =================================================================
+            # verifier c'est une popup apparait
+            if self.read_popup_message() is not None:
+                self.logger.warning(f"⚠️ Popup détecté après saisie de la date reel pour {num_facture}")
+                error_info = self.handle_error_with_screenshot(
+                    error_message='Popup détecté après saisie de la date reel',
+                    context=f"Facture {num_facture} - Date réelle"
+                )
+                resultat['error_info'] = error_info
+                return resultat
+
 
             # =================================================================
             # =================================================================
@@ -393,8 +419,8 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             date_echeance_input = self.get_input_by_label("Date échéance")
             date_echeance_input.click()
             time.sleep(0.5)
-            # date_echeance_input.clear()
-            # date_echeance_input.send_keys(date_echeance)
+            date_echeance_input.clear()
+            date_echeance_input.send_keys("01/05/2026")
             date_echeance_input.send_keys(Keys.TAB)
             time.sleep(0.5)
             # =================================================================
@@ -406,6 +432,14 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                     context=f"Facture {num_facture} - Date échéance"
                 )
                 resultat['error_info'] = error_info
+                try:
+                    self.handle_popup("OK", "Date réelle supérieur à la date facture fournisseur+120") 
+                    close_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_close")
+                    driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", close_btn)
+                    time.sleep(0.5)
+                    close_btn.click()
+                except Exception as e:
+                    self.logger.error(f"❌ Erreur lors de la fermeture de la popup: {e}")
                 return resultat
 
 
@@ -426,27 +460,63 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                         context=f"Chèque {num_cheque} - Détail paiement"
                     )
                     resultat['error_info'] = error_info
+                    self.logger.warning(f"⚠️ Erreur lors du remplissage du détail de paiement pour {num_facture}")
                     return resultat
             else:
                 # juste clique sur le champ montant banque 
                 # pour re-formule la date d'échéance et la date réel dans le cas de règlement de l'avance sans facture
                 pyautogui.press('esc') 
 
-
+            # =================================================================
+            # =================================================================
+            # 10. REMPLIR DATE ECHEANCE
+            self.logger.info(f"🔍 REMPLIR la Date echeance: {date_echeance}")
+            date_echeance_input = self.get_input_by_label("Date échéance")
+            date_echeance_input.click()
+            time.sleep(0.5)
+            date_echeance_input.clear()
+            date_echeance_input.send_keys("01/04/2026")
+            date_echeance_input.send_keys(Keys.TAB)
+            time.sleep(1) 
+            # verifier c'est une popup apparait
+            if self.read_popup_message() is not None:
+                self.logger.warning(f"⚠️ Popup détecté après saisie de la date d'échéance pour {num_facture}")
+                error_info = self.handle_error_with_screenshot(
+                    error_message='Popup détecté après saisie de la date d\'échéance',
+                    context=f"Facture {num_facture} - Date échéance"
+                )
+                resultat['error_info'] = error_info
+                try:
+                    self.handle_popup("OK", "Date réelle supérieur à la date facture fournisseur+120") 
+                    close_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_close")
+                    driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", close_btn)
+                    time.sleep(0.5)
+                    close_btn.click()
+                except Exception as e:
+                    self.logger.error(f"❌ Erreur lors de la fermeture de la popup: {e}")
+                return resultat
+           
             # 12. ENREGISTRER
             if self._enregistrer_regelement():
                 input_reg = self.get_input_by_label("No règlement", 65)
+                self.logger.info(f"Reg {input_reg.get_attribute('value')}")
                 reg_num = input_reg.get_attribute("value")
                 resultat['statut'] = 'Succes'
                 resultat['message'] = f'Règlement créé pour {num_facture}, N° Règlement: {reg_num}'
                 self.logger.info(f"✅ Règlement enregistré")
             else:
+                self.logger.warning(f"❌ Échec enregistrement règlement pour {num_facture}")
                 error_info = self.handle_error_with_screenshot(
                     error_message='Erreur enregistrement règlement',
                     context=f"Facture {num_facture} - Enregistrement"
                 )
                 resultat['error_info'] = error_info
                 resultat['message'] = 'Erreur enregistrement'
+                self.handle_popup("OK", "Date réelle supérieur à la date facture fournisseur+120") 
+                close_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_close")
+                driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", close_btn)
+                time.sleep(0.5)
+                close_btn.click()
             
         except Exception as e:
             resultat['message'] = f'Erreur: {str(e)}'
@@ -512,6 +582,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
         driver = self.driver_manager.driver
         try:
             time.sleep(5)
+            
             add_button = driver.find_element(By.CSS_SELECTOR, "a.s_page_action_add")
 
             if "s-disabled" in add_button.get_attribute("class"):
@@ -549,10 +620,10 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                 time.sleep(2)
                 
                 # verifier si le bouton close est désactivé ou pas
-                a_close_btn = driver.find_element(By.XPATH, "//a[contains(@class, 's_page_action_close')]")
+                a_close_btn = driver.find_element(By.XPATH, "//div[contains(@class, 's_page_crud_action_wrapper')]//a[contains(@class, 's_page_action_close')]")
                 close_disabled = a_close_btn.get_attribute("disabled") is not None
                 close_class_disabled = "s-disabled" in a_close_btn.get_attribute("class")
-                if close_disabled or close_class_disabled:
+                if not close_disabled and not close_class_disabled:
                     try:
                         
                         close_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_close")
@@ -670,7 +741,25 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                 cell_facture.send_keys(num_facture)
                 cell_facture.send_keys(Keys.TAB)
                 time.sleep(1)
-                self.handle_popup("OK", "ATTENTION ECHEANCE MISE A JOUR")
+                try:
+                    if not self.handle_popup("OK", "ATTENTION ECHEANCE MISE A JOUR"):
+                        self.logger.warning(f"⚠️ Popup de mise à jour d'échéance détectée pour la facture {num_facture}, mais le bouton OK n'a pas été trouvé ou cliqué")   
+
+                        if self.handle_popup("OK", "Aucune échéance"):
+                            close_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_close")
+                            driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", close_btn)
+                            time.sleep(0.5)
+                            close_btn.click()
+                            return False
+                except Exception as e:
+                    self.logger.error(f"Erreur lors de la gestion de la popup: {e}")
+                    if self.handle_popup("OK", "Référence erronée"):
+                        close_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_close")
+                        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", close_btn)
+                        time.sleep(0.5)
+                        close_btn.click()
+                    return False
+                
                 time.sleep(1)
 
             self.logger.info(f"Remplissage auto montant:...")
