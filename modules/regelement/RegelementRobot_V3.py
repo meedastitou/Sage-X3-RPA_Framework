@@ -485,35 +485,57 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                 time.sleep(0.5)
 
             # =================================================================
+            # 10. AJUSTER DATE ECHEANCE (apres detail paiement)
+            # Sage recalcule la date auto -> on verifie et on ajuste en boucle
             # =================================================================
-            # 10. REMPLIR DATE ECHEANCE
-            self.logger.info(f"🔍 REMPLIR la Date echeance: {date_echeance}")
-            date_echeance_input = self.get_input_by_label("Date échéance")
-            date_echeance_input.click()
-            time.sleep(0.5)
-            date_echeance_input.clear()
-            date_echeance_input.send_keys("01/04/2026")
-            date_echeance_input.send_keys(Keys.TAB)
-            time.sleep(1) 
-            # verifier c'est une popup apparait
-            if self.read_popup_message() is not None:
-                self.logger.warning(f"⚠️ Popup détecté après saisie de la date d'échéance pour {num_facture}")
-                error_info = self.handle_error_with_screenshot(
-                    error_message='Popup détecté après saisie de la date d\'échéance',
-                    context=f"Facture {num_facture} - Date échéance"
-                )
-                resultat['error_info'] = error_info
+            from datetime import timedelta
+            today = datetime.now().date()
+            max_attempts = 10
+
+            date_ech_input = self.get_input_by_label("Date échéance")
+            raw_date = date_ech_input.get_attribute("value").strip()
+            self.logger.info(f"Date echeance apres detail paiement: {raw_date}")
+
+            date_ech = None
+            for fmt in ("%d/%m/%Y", "%d/%m/%y"):
                 try:
-                    self.handle_popup("OK", "Date réelle supérieur à la date facture fournisseur+120") 
-                    close_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_close")
-                    driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", close_btn)
+                    date_ech = datetime.strptime(raw_date, fmt).date()
+                    break
+                except ValueError:
+                    continue
+            if date_ech is None:
+                date_ech = today
+                self.logger.warning(f"Date echeance illisible ({raw_date}), utilisation de aujourd'hui: {today}")
+
+            # Etape 1 : si date < aujourd'hui → aujourd'hui + 1
+            if date_ech < today:
+                date_ech = today + timedelta(days=1)
+                self.logger.info(f"Date echeance < aujourd'hui, corrigee a: {date_ech.strftime('%d/%m/%Y')}")
+
+            # Etape 2 : boucle — ajoute +1 semaine si popup "Montant sup aux Decaissements-30%"
+            for attempt in range(max_attempts):
+                date_str = date_ech.strftime("%d/%m/%Y")
+                self.logger.info(f"[Tentative {attempt+1}] Saisie date echeance: {date_str}")
+
+                date_ech_input = self.get_input_by_label("Date échéance")
+                date_ech_input.click()
+                time.sleep(0.3)
+                date_ech_input.clear()
+                date_ech_input.send_keys(date_str)
+                date_ech_input.send_keys(Keys.TAB)
+                time.sleep(1)
+
+                popup_msg = self.read_popup_message()
+                if popup_msg and "Decaissements" in popup_msg:
+                    self.logger.warning(f"Popup 'Decaissements-30%' detecte, ajout +1 semaine")
+                    self.handle_popup("OK", popup_msg)
+                    date_ech = date_ech + timedelta(weeks=1)
                     time.sleep(0.5)
-                    close_btn.click()
-                except Exception as e:
-                    self.logger.error(f"❌ Erreur lors de la fermeture de la popup: {e}")
-                return resultat
-           
-            
+                else:
+                    self.logger.info(f"Date echeance acceptee: {date_str}")
+                    break
+            else:
+                self.logger.error(f"Date echeance non acceptee apres {max_attempts} tentatives")
 
             # 13. ENREGISTRER
             if self._enregistrer_regelement():
