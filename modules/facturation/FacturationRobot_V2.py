@@ -43,7 +43,10 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
         self.factures_echec = 0
 
         try:
+            self.logger.info("Initialisation de la connexion a la base de donnees...")
             self.db = DBHandler()
+            self.logger.info(f"Connexion a la base de donnees etablie {self.db}")
+
         except Exception as e:
             self.logger.warning(f"DB non disponible (mode sans base de donnees): {e}")
             self.db = None
@@ -88,6 +91,7 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
 
             # Demarrer la session en base de donnees
             if self.db:
+                self.logger.info("Demarrage de l'execution en base de donnees...")
                 execution_id = self.db.start_execution('facturation', excel_file)
                 self.db.log(execution_id, 'INFO',
                             f"{groupes.ngroups} facture(s) a traiter depuis {excel_file}",
@@ -108,6 +112,7 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
                 dff = str(first_row['DFF'])
                 facture_frs_str = str(facture_frs)
                 nom = str(first_row.get('Nom', ''))
+                type_f = str(first_row['TypeF']).strip() if 'TypeF' in first_row and str(first_row.get('TypeF', '')).strip() != '' else 'FAF'
 
                 try:
                     if isinstance(first_row['Date'], (int, float)):
@@ -143,7 +148,8 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
                     DFF=dff,
                     Date=date,
                     list_codeReception=list_br,
-                    nom=nom
+                    nom=nom,
+                    typeF=type_f
                 )
 
                 # Mettre a jour le resultat en DB apres traitement
@@ -587,7 +593,7 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
     # ------------------------------------------------------------------
 
     def traiter_fournisseur(self, url, codeFournisseur, factureFournisseur, DFF, Date,
-                            list_codeReception: List[str], nom=""):
+                            list_codeReception: List[str], nom="", typeF="FAF"):
         """
         Traite un groupe : une facture fournisseur avec plusieurs codes reception.
 
@@ -613,7 +619,7 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
 
         try:
             if not self.saisi_information(
-                typeF="FAF",
+                typeF=typeF,
                 codeFournisseur=codeFournisseur,
                 factureFournisseur=factureFournisseur,
                 DFF=DFF,
