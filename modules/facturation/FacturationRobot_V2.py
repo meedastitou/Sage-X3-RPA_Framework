@@ -252,27 +252,34 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
     # Selection de PLUSIEURS receptions
     # ------------------------------------------------------------------
 
-    def selection_multiple_receptions(self, list_codeReception: List[str]) -> Dict[str, bool]:
+    def selection_multiple_receptions(self, list_codeReception: List[str],
+                                       typeF: str = "FAF") -> Dict[str, bool]:
         """
-        Ouvre la section "Selection receptions" une seule fois,
-        puis coche la checkbox de chaque code de reception de la liste.
+        Ouvre la section "Selection receptions" (FAF) ou "Selection retours" (AVR),
+        puis coche la checkbox de chaque code de la liste.
 
         Args:
-            list_codeReception: Liste des codes BR a selectionner (ex: ["BR189847", "BR189850"])
+            list_codeReception: Liste des codes a selectionner
+            typeF: 'AVR' → Sélection retours, sinon → Sélection réceptions
 
         Returns:
-            dict {codeReception: True/False} indiquant le succes pour chaque code
+            dict {code: True/False} indiquant le succes pour chaque code
         """
         driver = self.driver_manager.driver
         resultats = {br: False for br in list_codeReception}
 
+        if typeF == 'AVR':
+            btn_title = "Sélection retours"
+        else:
+            btn_title = "Sélection réceptions"
+
         try:
-             # 1. Ouvrir la section "Selection receptions" (une seule fois)
+            # 1. Ouvrir la section (une seule fois)
             reception_btn = WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable((By.XPATH, "//a[@title='Sélection réceptions']"))
+                EC.element_to_be_clickable((By.XPATH, f"//a[@title='{btn_title}']"))
             )
             reception_btn.click()
-            self.logger.info("Section 'Sélection réceptions' ouverte")
+            self.logger.info(f"Section '{btn_title}' ouverte")
             time.sleep(1)
 
             # 2. Attendre le tableau
@@ -402,7 +409,7 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
             list_codeReception: Liste de codes BR a cocher (ex: ["BR189847", "BR189850"])
         """
         self.logger.info(
-            f"Saisir: Tier={codeFournisseur}, Receptions={list_codeReception}, "
+            f"Saisir: Type={typeF}, Tier={codeFournisseur}, Receptions={list_codeReception}, "
             f"Facture={factureFournisseur}, Date={Date}"
         )
         driver = self.driver_manager.driver
@@ -464,8 +471,8 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
             except Exception:
                 self.logger.info("Pas de popup de changement de dépôt après saisie du DFF")
 
-            # Selectionner TOUS les codes reception
-            resultats_selection = self.selection_multiple_receptions(list_codeReception)
+            # Selectionner TOUS les codes reception (ou retours si AVR)
+            resultats_selection = self.selection_multiple_receptions(list_codeReception, typeF=typeF)
             echecs = [br for br, ok in resultats_selection.items() if not ok]
             if echecs:
                 self.logger.warning(f"Receptions non selectionnees: {echecs}")
