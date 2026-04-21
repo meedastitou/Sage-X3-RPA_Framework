@@ -687,17 +687,17 @@ async def trigger_receiption_from_data(request: ReceiptionDataRequest):
     # Convertir JSON → Excel
     excel_file = save_receiption_to_excel(request.donnees, request.email_expediteur)
 
-    # Enqueue la tâche
-    # task_id = add_task(
-    #     file_path=excel_file,
-    #     email=request.email_expediteur,
-    #     task_type="receiption"
-    # )
+    #Enqueue la tâche
+    task_id = add_task(
+        file_path=excel_file,
+        email=request.email_expediteur,
+        task_type="receiption"
+    )
 
-    # logger.info(f"📋 Tâche réception (JSON) enqueued: {task_id}")
+    logger.info(f"📋 Tâche réception (JSON) enqueued: {task_id}")
 
     return TaskStatus(
-        task_id="task_id_receiption",  # À remplacer par task_id une fois add_task implémenté pour receiption
+        task_id=task_id,
         status='pending',
         module='receiption',
         started_at=None,
