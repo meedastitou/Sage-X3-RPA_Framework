@@ -25,6 +25,7 @@ import pandas as pd
 # Importer les robots
 from modules.lettrage.lettrage_robot import LettrageRobot
 from modules.bonne_commande.bonne_commande_robot import BonneCommandeRobot
+from modules.imputation.ImputationRobot import ImputationRobot
 from core.logger import Logger
 
 # Importer le queue manager
@@ -87,6 +88,13 @@ class RegelementDataRequest(BaseModel):
 
 class ReceiptionDataRequest(BaseModel):
     """Requête pour déclencher la réception avec données JSON"""
+    donnees: List[Dict[str, Any]]
+    email_expediteur: str
+    headless: bool = True
+
+
+class ImputationDataRequest(BaseModel):
+    """Requête pour déclencher l'imputation avec données JSON"""
     donnees: List[Dict[str, Any]]
     email_expediteur: str
     headless: bool = True
@@ -263,6 +271,21 @@ def save_regelement_to_excel(donnees: List[Dict[str, Any]], email_expediteur: st
     return str(file_path)
 
 
+def save_imputation_to_excel(donnees: List[Dict[str, Any]], email_expediteur: str) -> str:
+    """
+    Convertir les données JSON imputation en fichier Excel temporaire
+
+    Colonnes requises: CodeFrs, N_BC, Reglement, Facture
+    """
+    df = pd.DataFrame(donnees)
+    df['email_expediteur'] = email_expediteur
+    filename = f"api_data_IMP_{uuid.uuid4()}.xlsx"
+    file_path = UPLOAD_DIR / filename
+    df.to_excel(file_path, index=False)
+    logger.info(f"📊 Données imputation converties en Excel: {file_path}")
+    return str(file_path)
+
+
 def save_receiption_to_excel(donnees: List[Dict[str, Any]], email_expediteur: str) -> str:
     """
     Convertir les données JSON réception en fichier Excel temporaire
@@ -309,6 +332,7 @@ async def root():
             "facturation_data": "/api/facturation/data",
             "regelement_data": "/api/regelement/data",
             "receiption_data": "/api/receiption/data",
+            "imputation_data": "/api/imputation/data",
             "upload": "/api/upload",
             "status": "/api/task/{task_id}",
             "tasks": "/api/tasks"
@@ -676,6 +700,64 @@ async def trigger_receiption_from_data(request: ReceiptionDataRequest):
         task_id="task_id_receiption",  # À remplacer par task_id une fois add_task implémenté pour receiption
         status='pending',
         module='receiption',
+        started_at=None,
+        completed_at=None,
+        result=None,
+        error=None
+    )
+
+
+@app.post("/api/imputation/data", response_model=TaskStatus)
+async def trigger_imputation_from_data(request: ImputationDataRequest):
+    """
+    Déclencher une tâche imputation avec données JSON
+    Les données sont converties en Excel et enqueued pour le worker
+
+    Colonnes requises: CodeFrs, N_BC, Reglement, Facture
+
+    Exemple:
+    ```json
+    {
+        "donnees": [
+            {
+                "CodeFrs": "T1398",
+                "N_BC": "BC123456",
+                "Reglement": "REG001",
+                "Facture": "FAFOU001"
+            }
+        ],
+        "email_expediteur": "user@example.com",
+        "headless": true
+    }
+    ```
+    """
+    if not request.email_expediteur:
+        raise HTTPException(status_code=400, detail="email_expediteur est requis")
+
+    required_columns = ['CodeFrs', 'N_BC', 'Reglement', 'Facture']
+    if request.donnees:
+        first_row = request.donnees[0]
+        missing = [col for col in required_columns if col not in first_row]
+        if missing:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Colonnes manquantes: {', '.join(missing)}. Requises: {', '.join(required_columns)}"
+            )
+
+    excel_file = save_imputation_to_excel(request.donnees, request.email_expediteur)
+
+    task_id = add_task(
+        file_path=excel_file,
+        email=request.email_expediteur,
+        task_type="imputation"
+    )
+
+    logger.info(f"📋 Tâche imputation (JSON) enqueued: {task_id}")
+
+    return TaskStatus(
+        task_id=task_id,
+        status='pending',
+        module='imputation',
         started_at=None,
         completed_at=None,
         result=None,
