@@ -10,6 +10,7 @@ from pathlib import Path
 # Ajouter le dossier parent au path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from modules.imputation.ImputationRobot import ImputationRobot
 from modules.regelement.VairementRobot import VairementRobot
 from modules.regelement.VairementInternationalRobot import VairementInternationalRobot
 from modules.regelement.RegelementRobot_V3 import RegelementRobot
@@ -68,6 +69,10 @@ def main():
                     elif task_type == 'vairement_inter':
                         logger.info("🚀 Lancement du VairementInternationalRobot...")
                         robot = VairementInternationalRobot()
+                    elif task_type == 'imputation':
+                        logger.info("🚀 Lancement du ImputationRobot...")
+                        robot = ImputationRobot()
+                        robot.run(excel_file=task['file'])
                     else:
                         raise ValueError(f"Type de tâche inconnu: {task_type}")
 
