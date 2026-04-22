@@ -399,6 +399,48 @@ class ResultSender:
 
         return data
 
+    def format_imputation_result(self, robot) -> Dict[str, Any]:
+        """
+        Formater les résultats du robot Imputation pour l'envoi
+
+        Args:
+            robot: Instance de ImputationRobot
+
+        Returns:
+            Dictionnaire formaté
+        """
+        imputations = []
+        succes = 0
+        echecs = 0
+
+        for result in robot.resultats:
+            for key, valeur in result.items():
+                parties = key.split(" , ", 1)
+                reglement = parties[0] if len(parties) > 0 else ''
+                facture = parties[1] if len(parties) > 1 else ''
+                imputations.append({
+                    'reglement': reglement,
+                    'facture': facture,
+                    'statut': 'succes' if valeur else 'echec'
+                })
+                if valeur:
+                    succes += 1
+                else:
+                    echecs += 1
+
+        return {
+            'module': 'imputation',
+            'timestamp': datetime.now().isoformat(),
+            'statut': 'succes' if echecs == 0 and succes > 0 else ('partiel' if succes > 0 else 'echec'),
+            'statistiques': {
+                'total': succes + echecs,
+                'succes': succes,
+                'echecs': echecs
+            },
+            'rapport_path': str(robot.rapport_path) if robot.rapport_path else None,
+            'imputations': imputations
+        }
+
 # ============================================================================
 # EXEMPLES D'UTILISATION
 # ============================================================================
