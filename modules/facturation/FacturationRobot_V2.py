@@ -115,7 +115,7 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
                 type_f = str(first_row['TypeF']).strip() if 'TypeF' in first_row and str(first_row.get('TypeF', '')).strip() != '' else 'FAF'
 
                 try:
-                    if isinstance(first_row['Date'], (int, float)):
+                    if pd.api.types.is_numeric_dtype(type(first_row['Date'])):
                         date_obj = pd.Timestamp('1899-12-30') + pd.Timedelta(days=float(first_row['Date']))
                     else:
                         date_obj = pd.to_datetime(first_row['Date'], dayfirst=True)
