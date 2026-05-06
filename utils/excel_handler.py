@@ -28,7 +28,7 @@ class ExcelHandler:
             self.logger.info(f"📖 Lecture Excel: {filepath}")
             df = pd.read_excel(filepath)
             
-            self.logger.info(f"✅ {len(df)} ligne(s) lues")
+            self.logger.info(f"{len(df)} ligne(s) lues")
             
             # Valider les colonnes requises
             if required_columns:

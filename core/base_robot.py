@@ -122,13 +122,13 @@ class BaseRobot(ABC):
                     # Cliquer sur "Oui"
                     oui_button = driver.find_element(By.XPATH, "//a[@aria-label='Oui']")
                     oui_button.click()
-                    self.logger.info("✅ Confirmation abandon cliquée")
+                    self.logger.info("Confirmation abandon cliquée")
                     time.sleep(1)
                 except:
                     # Pas de popup ou autre type de popup
                     pass
 
-            self.logger.info("✅ Module fermé avec succès")
+            self.logger.info("Module fermé avec succès")
             return True
 
         except Exception as e:
@@ -212,7 +212,7 @@ class BaseRobot(ABC):
         self.logger.info("📊 RÉSUMÉ FINAL")
         self.logger.info("="*80)
         self.logger.info(f"Total: {summary['total']}")
-        self.logger.info(f"✅ Succès: {summary['succes']}")
+        self.logger.info(f"Succès: {summary['succes']}")
         self.logger.info(f"❌ Échecs: {summary['echecs']}")
         
         if summary['total'] > 0:
@@ -287,18 +287,19 @@ class BaseRobot(ABC):
             popup_button = driver.find_element(By.XPATH, f"//a[@aria-label='{button_text}']")
             popup_button.click()
             time.sleep(1)
+            return True
         except:
             # Pas de popup ou autre type de popup
-            pass
+            return False
 
     def cleanup(self):
         """Nettoyage et déconnexion"""
         try:
             if self.sage_connector:
                 self.sage_connector.disconnect()
-            self.logger.info("✅ Nettoyage terminé")
+            self.logger.info("Nettoyage terminé")
         except Exception as e:
-            self.logger.error(f"❌ Erreur nettoyage: {e}")
+            self.logger.error(f"Erreur nettoyage: {e}")
     
     def run(self, *args, **kwargs):
         """
@@ -307,7 +308,7 @@ class BaseRobot(ABC):
         Template Method Pattern
         """
         try:
-            self.logger.info(f"🚀 Démarrage: {self.__class__.__name__}")
+            self.logger.info(f"Démarrage: {self.__class__.__name__}")
             
             # Exécuter la logique métier
             result = self.execute(*args, **kwargs)
@@ -319,7 +320,7 @@ class BaseRobot(ABC):
             return result
             
         except Exception as e:
-            self.logger.error(f"❌ Erreur fatale: {e}")
+            self.logger.error(f"Erreur fatale: {e}")
             import traceback
             self.logger.error(traceback.format_exc())
             raise
@@ -434,8 +435,8 @@ class BaseRobot(ABC):
             'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         }
 
-        self.logger.error(f"❌ Erreur capturée - Contexte: {context}")
+        self.logger.error(f"Erreur capturée - Contexte: {context}")
         if popup_msg:
-            self.logger.error(f"📋 Message popup: {popup_msg}")
+            self.logger.error(f"Message popup: {popup_msg}")
 
         return error_info

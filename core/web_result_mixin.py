@@ -62,7 +62,7 @@ class WebResultMixin:
         try:
             # Formater les données selon le type de robot
             data = self._format_results_for_web(email_f)
-            logger.info(f"Données formatées pour l'envoi web: {data}")
+            #logger.info(f"Données formatées pour l'envoi web: {data}")
 
             # Récupérer le chemin du rapport si disponible
             file_path = str(self.rapport_path) if hasattr(self, 'rapport_path') and self.rapport_path else None
@@ -97,7 +97,7 @@ class WebResultMixin:
                     
                     # Si succès, sortir de la boucle
                     if result.get('success'):
-                        logger.info(f"✅ Envoi réussi (tentative {attempt}/{retry_count})")
+                        logger.info(f"Envoi réussi (tentative {attempt}/{retry_count})")
                         break
                     else:
                         logger.warning(f"⚠️ Échec tentative {attempt}/{retry_count}: {result.get('message')}")
@@ -163,6 +163,8 @@ class WebResultMixin:
             data = self.result_sender.format_vairement_result(self)
         elif 'Imputation' in class_name:
             data = self.result_sender.format_imputation_result(self)
+        elif 'DemmandeAchat' in class_name:
+            data = self.result_sender.format_demmande_achat_result(self)
         else:
             # Format générique
             summary = self.generate_summary() if hasattr(self, 'generate_summary') else {}

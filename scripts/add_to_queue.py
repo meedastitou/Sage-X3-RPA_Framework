@@ -29,10 +29,10 @@ def main():
     # Ajouter la tâche
     task_id = add_task(args.file, args.email, task_type=args.task_type)
     
-    print(f"✅ Tâche ajoutée à la file: {task_id}")
-    print(f"📄 Fichier: {args.file}")
-    print(f"📧 Email: {args.email}")
-    print(f"🤖 Type de tâche: {args.task_type}")
+    print(f"Tâche ajoutée à la file: {task_id}")
+    print(f"Fichier: {args.file}")
+    print(f"Email: {args.email}")
+    print(f"Type de tâche: {args.task_type}")
     
     return 0
 
