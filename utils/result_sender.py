@@ -39,7 +39,7 @@ class ResultSender:
         Returns:
             Réponse du serveur
         """
-        self.logger.info(f"📤 Envoi JSON vers: {self.endpoint_url}")
+        self.logger.info(f" Envoi JSON vers: {self.endpoint_url}")
         
         try:
             default_headers = {
@@ -59,7 +59,7 @@ class ResultSender:
             
             response.raise_for_status()
             
-            self.logger.info(f"✅ Envoi réussi (Status: {response.status_code})")
+            self.logger.info(f"Envoi réussi (Status: {response.status_code})")
             
             return {
                 'success': True,
@@ -90,7 +90,7 @@ class ResultSender:
         Returns:
             Réponse du serveur
         """
-        self.logger.info(f"📤 Envoi multipart vers: {self.endpoint_url}")
+        self.logger.info(f" Envoi multipart vers: {self.endpoint_url}")
         
         try:
             files = {}
@@ -119,7 +119,7 @@ class ResultSender:
             
             response.raise_for_status()
             
-            self.logger.info(f"✅ Envoi réussi (Status: {response.status_code})")
+            self.logger.info(f"Envoi réussi (Status: {response.status_code})")
             
             return {
                 'success': True,
@@ -150,7 +150,7 @@ class ResultSender:
         Returns:
             Réponse du serveur
         """
-        self.logger.info(f"📤 Envoi JSON+Base64 vers: {self.endpoint_url}")
+        self.logger.info(f" Envoi JSON+Base64 vers: {self.endpoint_url}")
         
         try:
             # Encoder le fichier en base64 si fourni
@@ -441,6 +441,30 @@ class ResultSender:
             'imputations': imputations
         }
 
+    def format_demmande_achat_result(self, robot) -> Dict[str, Any]:
+        """
+        Formater les résultats du robot DemmandeAchat pour l'envoi
+
+        Args:
+            robot: Instance de DemmandeAchatRobot
+
+        Returns:
+            Dictionnaire formaté
+        """
+        summary = robot.generate_summary() if hasattr(robot, 'generate_summary') else {}
+
+        return {
+            'module': 'demmande_achat',
+            'timestamp': datetime.now().isoformat(),
+            'statut': 'succes' if summary.get('succes', 0) > 0 else 'partiel',
+            'statistiques': {
+                'total_demmandes': summary.get('total_demmandes', 0),
+                'demmandes_traitees': summary.get('demmandes_traitees', 0),
+                'demmandes_echec': summary.get('demmandes_echec', 0)
+            },
+            'rapport_path': str(robot.rapport_path) if robot.rapport_path else None,
+            'details': summary
+        }   
 # ============================================================================
 # EXEMPLES D'UTILISATION
 # ============================================================================
