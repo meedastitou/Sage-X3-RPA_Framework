@@ -99,6 +99,11 @@ class ImputationDataRequest(BaseModel):
     email_expediteur: str
     headless: bool = True
 
+class DemmandAchatDataRequest(BaseModel):
+    """Requête pour déclencher la demande d'achat avec données JSON"""
+    donnees: List[Dict[str, Any]]
+    email_expediteur: str
+    headless: bool = True
 
 class TaskStatus(BaseModel):
     """Statut d'une tâche"""
@@ -121,7 +126,7 @@ def execute_lettrage(task_id: str, excel_file: str, url: str, headless: bool):
         tasks_status[task_id]['status'] = 'running'
         tasks_status[task_id]['started_at'] = datetime.now().isoformat()
         
-        logger.info(f"🚀 Démarrage tâche lettrage: {task_id}")
+        logger.info(f"Démarrage tâche lettrage: {task_id}")
         
         # Créer le robot
         robot = LettrageRobot(headless=headless)
@@ -141,7 +146,7 @@ def execute_lettrage(task_id: str, excel_file: str, url: str, headless: bool):
             'rapport': str(robot.rapport_path) if robot.rapport_path else None
         }
         
-        logger.info(f"✅ Tâche lettrage terminée: {task_id}")
+        logger.info(f"Tâche lettrage terminée: {task_id}")
         
     except Exception as e:
         logger.error(f"❌ Erreur tâche lettrage {task_id}: {e}")
@@ -156,7 +161,7 @@ def execute_bonne_commande(task_id: str, excel_file: str, headless: bool):
         tasks_status[task_id]['status'] = 'running'
         tasks_status[task_id]['started_at'] = datetime.now().isoformat()
         
-        logger.info(f"🚀 Démarrage tâche bonne commande: {task_id}")
+        logger.info(f"Démarrage tâche bonne commande: {task_id}")
         
         # Créer le robot
         robot = BonneCommandeRobot(headless=headless)
@@ -176,7 +181,7 @@ def execute_bonne_commande(task_id: str, excel_file: str, headless: bool):
             'rapport': str(robot.rapport_path) if robot.rapport_path else None
         }
         
-        logger.info(f"✅ Tâche bonne commande terminée: {task_id}")
+        logger.info(f"Tâche bonne commande terminée: {task_id}")
         
     except Exception as e:
         logger.error(f"❌ Erreur tâche bonne commande {task_id}: {e}")
@@ -311,6 +316,54 @@ def save_receiption_to_excel(donnees: List[Dict[str, Any]], email_expediteur: st
     df.to_excel(file_path, index=False)
 
     logger.info(f"📊 Données réception converties en Excel: {file_path}")
+
+    return str(file_path)
+
+
+def save_da_to_excel(donnees: List[Dict[str, Any]], email_expediteur: str) -> str:
+    """
+    Convertir les données JSON demande d'achat en fichier Excel temporaire
+    observation, lignes[code_sage, effectif] => {
+                                                observation, code_sage, effectif,
+                                                observation, code_sage, effectif,
+                                                }
+    Args:
+        donnees: Liste de dictionnaires avec colonnes:
+                  observation, lignes[code_sage, effectif]
+        email_expediteur: Email de l'expéditeur
+    Returns:    
+        Chemin du fichier Excel créé
+    """
+
+    # Liste pour stocker les lignes aplaties
+    rows = []
+
+    # Parcourir chaque dictionnaire dans donnees
+    for item in donnees:
+        observation = item.get('observation', '')
+        lignes = item.get('lignes', [])
+        
+        # Pour chaque ligne, créer une nouvelle ligne avec l'observation
+        for ligne in lignes:
+            row = {
+                'Demandeur': "AABIDI ABDELKADER",
+                'Observation': observation,
+                'code_article': ligne.get('code_sage', ''),
+                'quantite': ligne.get('effectif', 0)
+            }
+            rows.append(row)
+    
+    # Ajouter la colonne email_expediteur
+    df = pd.DataFrame(rows)
+    df['email_expediteur'] = email_expediteur
+
+    # Générer un nom de fichier unique
+    filename = f"api_data_DA_{uuid.uuid4()}.xlsx"
+    file_path = UPLOAD_DIR / filename   
+
+    df.to_excel(file_path, index=False)
+
+    logger.info(f"📊 Données demande d'achat converties en Excel: {file_path}")
 
     return str(file_path)
 
@@ -765,6 +818,88 @@ async def trigger_imputation_from_data(request: ImputationDataRequest):
     )
 
 
+@app.post("/api/demmande_achat/data", response_model=TaskStatus)
+async def trigger_demmande_achat_from_data(request: DemmandAchatDataRequest):
+    """
+    Déclencher une tâche demande d'achat avec données JSON
+    Les données sont converties en Excel et enqueued pour le worker
+
+    Colonnes requises: CodeFrs, N_BC, Reglement, Facture
+
+    Exemple:
+    ```json
+    {
+        "donnees": {
+            "societe": "AMANA",
+            "code_tier": "T6824",
+            "mois": 4,
+            "annee": 2026,
+            "marque": "PAIE 4/2026",
+            "observation": "PAIE AMANA 4/2026",
+            "lignes": [
+                    {
+                      "code_article": "A09667",
+                      "libelle": "Total CNSS",
+                      "montant": 148588.00999999998,
+                      "montant_ht": 123823.3417,
+                      "montant_moyen": 917.2099,
+                      "effectif": 135
+                    },
+                    ...
+                     ,],
+            "total_montant": 1262097.49,
+            "total_montant_ht": 1051747.9084,
+            "total_montant_moyen": 44342.92969999999
+        },
+        "email_expediteur": "user@example.com",
+        "headless": true
+    }
+    ```
+    """
+    print(request.donnees)
+    if not request.email_expediteur:
+        raise HTTPException(status_code=400, detail="email_expediteur est requis")
+    required_columns_entite = ['observation', 'marque']
+    if request.donnees:
+        first_row = request.donnees[0]
+        missing = [col for col in required_columns_entite if col not in first_row]
+        if missing:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Colonnes manquantes: {', '.join(missing)}. Requises: {', '.join(required_columns_entite)}"
+            )
+    if request.donnees and 'lignes' in request.donnees[0]:
+        required_columns_lignes = ['code_sage', 'effectif']
+        for idx, ligne in enumerate(request.donnees[0]['lignes']):
+            missing = [col for col in required_columns_lignes if col not in ligne]
+            if missing:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Colonnes manquantes dans lignes[{idx}]: {', '.join(missing)}. Requises: {', '.join(required_columns_lignes)}"
+                )
+            
+    excel_file = save_da_to_excel(request.donnees, request.email_expediteur)
+
+    task_id = add_task(
+        file_path=excel_file,
+        email=request.email_expediteur,
+        task_type="demmande_achat",
+        societe=request.donnees[0]["observation"]
+    )
+
+    logger.info(f"📋 Tâche imputation (JSON) enqueued: {task_id}")
+
+    return TaskStatus(
+        task_id=task_id,
+        status='pending',
+        module='demmande_achat',
+        started_at=None,
+        completed_at=None,
+        result=None,
+        error=None
+    )
+
+
 @app.post("/api/upload")
 async def upload_file(file: UploadFile = File(...)):
     """
@@ -782,7 +917,7 @@ async def upload_file(file: UploadFile = File(...)):
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
         
-        logger.info(f"📤 Fichier uploadé: {file.filename} → {file_path}")
+        logger.info(f" Fichier uploadé: {file.filename} → {file_path}")
         
         return {
             "filename": file.filename,
@@ -820,6 +955,20 @@ async def get_task_status(task_id: str):
             )
 
     raise HTTPException(status_code=404, detail=f"Tâche non trouvée: {task_id}")
+
+@app.get("/api/tasks/demande_achat")
+async def list_tasks_demande_achat():
+    """
+    Lister toutes les taches liee au demande achat
+    where status en pending
+    """
+    results = []
+    tasks = load_queue()
+    for task in tasks:
+        if task["status"] == "pending" and task["task_type"] == "demmande_achat":
+            results.append(task)
+    
+    return results
 
 
 @app.get("/api/tasks")
@@ -874,10 +1023,10 @@ if __name__ == "__main__":
     import uvicorn
     
     logger.info("="*80)
-    logger.info("🚀 DÉMARRAGE API SAGE X3 RPA")
+    logger.info("DÉMARRAGE API SAGE X3 RPA")
     logger.info("="*80)
-    logger.info("📡 Serveur: http://localhost:8000")
-    logger.info("📖 Documentation: http://localhost:8000/docs")
+    logger.info("📡 Serveur: http://localhost:8003")
+    logger.info("📖 Documentation: http://localhost:8003/docs")
     logger.info("="*80)
     
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8003)
