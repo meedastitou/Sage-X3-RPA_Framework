@@ -10,13 +10,14 @@ from pathlib import Path
 # Ajouter le dossier parent au path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from modules.demmande_achat.demmandeAchatRobot import DemmandeAchatRobot
 from modules.imputation.ImputationRobot import ImputationRobot
 from modules.regelement.VairementRobot import VairementRobot
 from modules.regelement.VairementInternationalRobot import VairementInternationalRobot
 from modules.regelement.RegelementRobot_V3 import RegelementRobot
 from utils.queue_manager import get_next_task, update_task
 from modules.bonne_commande.bonne_commande_robot import BonneCommandeRobot
-from modules.receiption.ReceiptionRobot_v2 import ReceiptionRobot
+from modules.receiption.ReceiptionRobot_v3 import ReceiptionRobot
 # from modules.facturation.FacturationRobot import FacturationRobot
 from modules.facturation.FacturationRobot_V2 import FacturationRobotV2
 from core.logger import Logger
@@ -25,7 +26,7 @@ logger = Logger.get_logger('WorkerRPA', 'workers')
 
 def main():
     logger.info("="*80)
-    logger.info("🚀 WORKER RPA DÉMARRÉ")
+    logger.info("WORKER RPA DÉMARRÉ")
     logger.info("="*80)
     logger.info("En attente de tâches...")
     
@@ -47,37 +48,41 @@ def main():
                 try:
                     # Lancer le robot approprié selon le type de tâche
                     if task_type == "bon_commande":
-                        logger.info("🚀 Lancement du BonneCommandeRobot...")
+                        logger.info("Lancement du BonneCommandeRobot...")
                         robot = BonneCommandeRobot()
                         robot.run(excel_file=task['file'])
                     elif task_type == "receiption":
-                        logger.info("🚀 Lancement du ReceiptionRobot...")
+                        logger.info("Lancement du ReceiptionRobot...")
                         robot = ReceiptionRobot()
                         robot.run(excel_file=task['file'])
                     elif task_type == "facturation":
-                        logger.info("🚀 Lancement du FacturationRobot...")
+                        logger.info("Lancement du FacturationRobot...")
                         robot = FacturationRobotV2()
                         robot.run(excel_file=task['file'])
                     elif task_type == "regelement":
-                        logger.info("🚀 Lancement du RegelementRobot...")
+                        logger.info("Lancement du RegelementRobot...")
                         robot = RegelementRobot()
                         robot.run(excel_file=task['file'])
                     elif task_type == "vairement":
-                        logger.info("🚀 Lancement du VairementRobot...")
+                        logger.info("Lancement du VairementRobot...")
                         robot = VairementRobot()
                         robot.run(excel_file=task['file'])
                     elif task_type == 'vairement_inter':
-                        logger.info("🚀 Lancement du VairementInternationalRobot...")
+                        logger.info("Lancement du VairementInternationalRobot...")
                         robot = VairementInternationalRobot()
                     elif task_type == 'imputation':
-                        logger.info("🚀 Lancement du ImputationRobot...")
+                        logger.info("Lancement du ImputationRobot...")
                         robot = ImputationRobot()
+                        robot.run(excel_file=task['file'])
+                    elif task_type == 'demmande_achat':
+                        logger.info("Lancement du DemmandeAchatRobot...")
+                        robot = DemmandeAchatRobot()
                         robot.run(excel_file=task['file'])
                     else:
                         raise ValueError(f"Type de tâche inconnu: {task_type}")
 
                     update_task(task['id'], "completed")
-                    logger.info(f"✅ Tâche {task['id']} terminée avec succès")
+                    logger.info(f"Tâche {task['id']} terminée avec succès")
 
                 except Exception as e:
                     update_task(task['id'], "failed", error=str(e))

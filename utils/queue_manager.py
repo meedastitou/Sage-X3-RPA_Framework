@@ -4,14 +4,14 @@ from datetime import datetime
 import uuid
 from pathlib import Path
 
-# ✅ Chemin correct
+# Chemin correct
 BASE_DIR = Path(__file__).resolve().parent.parent
 QUEUE_FILE = BASE_DIR / 'data' / 'queue' / 'tasks.json'
 
 # S'assurer que le dossier existe
 QUEUE_FILE.parent.mkdir(parents=True, exist_ok=True)
 
-def add_task(file_path, email, task_type="bon_commande"):
+def add_task(file_path, email, task_type="bon_commande", societe=None):
     """Ajouter une tâche à la file
 
     Args:
@@ -22,7 +22,7 @@ def add_task(file_path, email, task_type="bon_commande"):
     tasks = load_queue()
 
     # Valider le type de tâche
-    valid_types = ["bon_commande", "receiption", "facturation", "regelement", "vairement", "imputation"]
+    valid_types = ["bon_commande", "receiption", "facturation", "regelement", "vairement", "imputation", "demmande_achat"]
     if task_type not in valid_types:
         raise ValueError(f"Type de tâche invalide. Doit être: {', '.join(valid_types)}")
 
@@ -36,10 +36,11 @@ def add_task(file_path, email, task_type="bon_commande"):
         "started_at": None,
         "completed_at": None
     }
-
+    if (societe):
+        task["societe"] = societe
     tasks.append(task)
     save_queue(tasks)
-    print(f"✅ Tâche ajoutée: {task['id']} (type: {task_type})")
+    print(f"Tâche ajoutée: {task['id']} (type: {task_type})")
     return task["id"]
 
 def get_next_task():
