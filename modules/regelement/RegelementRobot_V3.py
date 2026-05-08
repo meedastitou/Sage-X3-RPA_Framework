@@ -330,7 +330,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             libelle_input.send_keys(Keys.TAB)
             time.sleep(0.5)
 
-            banque_input = self.get_input_by_label("Banque", 95)
+            banque_input = self.get_input_by_label("Banque", 96) # id de champ banque est change de 95 a 96 dans le cas de reglement de l'avance sans facture
             banque_input.click()
             time.sleep(0.5)
             banque_input.send_keys("B01")
@@ -416,31 +416,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             # =================================================================
             # =================================================================
             # 10. REMPLIR DATE ECHEANCE
-            self.logger.info(f"🔍 REMPLIR la Date echeance: {date_echeance}")
-            date_echeance_input = self.get_input_by_label("Date échéance")
-            date_echeance_input.click()
-            time.sleep(0.5)
-            date_echeance_input.clear()
-            date_echeance_input.send_keys("01/05/2026")
-            date_echeance_input.send_keys(Keys.TAB)
-            time.sleep(0.5)
-            # =================================================================
-            # verifier c'est une popup apparait
-            if self.read_popup_message() is not None:
-                self.logger.warning(f"⚠️ Popup détecté après saisie de la date d'échéance pour {num_facture}")
-                error_info = self.handle_error_with_screenshot(
-                    error_message='Popup détecté après saisie de la date d\'échéance',
-                    context=f"Facture {num_facture} - Date échéance"
-                )
-                resultat['error_info'] = error_info
-                try:
-                    self.handle_popup("OK", "Date réelle supérieur à la date facture fournisseur+120") 
-                    close_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_close")
-                    driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", close_btn)
-                    time.sleep(0.5)
-                    close_btn.click()
-                except Exception as e:
-                    self.logger.error(f"❌ Erreur lors de la fermeture de la popup: {e}")
+            if not self._saisir_date_echeance(date_echeance, num_facture, resultat):
                 return resultat
 
 
@@ -466,7 +442,8 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             else:
                 # juste clique sur le champ montant banque 
                 # pour re-formule la date d'échéance et la date réel dans le cas de règlement de l'avance sans facture
-                pyautogui.press('esc') 
+                self.logger.info(f"🔍 Cliquer sur le champ Montant banque pour reformuler la date d'échéance et la date réel dans le cas de règlement de l'avance sans facture")
+                #pyautogui.press('esc') 
 
             # 12. TIERS ENDOSSATAIRE (optionnel)
             if tier_endo:
@@ -485,79 +462,9 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                 time.sleep(0.5)
 
             # =================================================================
-            # 10. AJUSTER DATE ECHEANCE (apres detail paiement)
-            # Sage recalcule la date auto -> on verifie et on ajuste en boucle
+            # 10. AJUSTER DATE ECHEANCE + ENREGISTRER (apres detail paiement)
             # =================================================================
-            from datetime import timedelta
-            today = datetime.now().date()
-            max_attempts = 10
-
-            date_ech_input = self.get_input_by_label("Date échéance")
-            raw_date = date_ech_input.get_attribute("value").strip()
-            self.logger.info(f"Date echeance apres detail paiement: {raw_date}")
-
-            date_ech = None
-            for fmt in ("%d/%m/%Y", "%d/%m/%y"):
-                try:
-                    date_ech = datetime.strptime(raw_date, fmt).date()
-                    break
-                except ValueError:
-                    continue
-            if date_ech is None:
-                date_ech = today
-                self.logger.warning(f"Date echeance illisible ({raw_date}), utilisation de aujourd'hui: {today}")
-
-            # Etape 1 : si date < aujourd'hui → aujourd'hui + 1
-            if date_ech < today:
-                date_ech = today + timedelta(days=1)
-                self.logger.info(f"Date echeance < aujourd'hui, corrigee a: {date_ech.strftime('%d/%m/%Y')}")
-
-            # Etape 2 : boucle — ajoute +1 semaine si popup "Montant sup aux Decaissements-30%"
-            for attempt in range(max_attempts):
-                date_str = date_ech.strftime("%d/%m/%Y")
-                self.logger.info(f"[Tentative {attempt+1}] Saisie date echeance: {date_str}")
-
-                date_ech_input = self.get_input_by_label("Date échéance")
-                date_ech_input.click()
-                time.sleep(0.3)
-                date_ech_input.clear()
-                date_ech_input.send_keys(date_str)
-                date_ech_input.send_keys(Keys.TAB)
-                time.sleep(1)
-
-                popup_msg = self.read_popup_message()
-                if popup_msg and "Decaissements" in popup_msg:
-                    self.logger.warning(f"Popup 'Decaissements-30%' detecte, ajout +1 semaine")
-                    self.handle_popup("OK", popup_msg)
-                    date_ech = date_ech + timedelta(weeks=1)
-                    time.sleep(0.5)
-                else:
-                    self.logger.info(f"Date echeance acceptee: {date_str}")
-                    break
-            else:
-                self.logger.error(f"Date echeance non acceptee apres {max_attempts} tentatives")
-
-            # 13. ENREGISTRER
-            if self._enregistrer_regelement():
-                input_reg = self.get_input_by_label("No règlement", 65)
-                self.logger.info(f"Reg {input_reg.get_attribute('value')}")
-                reg_num = input_reg.get_attribute("value")
-                resultat['statut'] = 'Succes'
-                resultat['message'] = f'Règlement créé pour {num_facture}, N° Règlement: {reg_num}'
-                self.logger.info(f"✅ Règlement enregistré")
-            else:
-                self.logger.warning(f"❌ Échec enregistrement règlement pour {num_facture}")
-                error_info = self.handle_error_with_screenshot(
-                    error_message='Erreur enregistrement règlement',
-                    context=f"Facture {num_facture} - Enregistrement"
-                )
-                resultat['error_info'] = error_info
-                resultat['message'] = 'Erreur enregistrement'
-                self.handle_popup("OK", "Date réelle supérieur à la date facture fournisseur+120") 
-                close_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_close")
-                driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", close_btn)
-                time.sleep(0.5)
-                close_btn.click()
+            self._ajuster_date_et_enregistrer(num_facture, resultat)
             
         except Exception as e:
             resultat['message'] = f'Erreur: {str(e)}'
@@ -572,6 +479,160 @@ class RegelementRobot(BaseRobot, WebResultMixin):
         
         return resultat
     
+    def _saisir_date_echeance(self, date_echeance: str, num_facture: str, resultat: dict) -> bool:
+        from datetime import timedelta
+        driver = self.driver_manager.driver
+        today = datetime.now().date()
+
+        date_ech = None
+        for fmt in ("%d/%m/%Y", "%d/%m/%y"):
+            try:
+                date_ech = datetime.strptime(date_echeance, fmt).date()
+                break
+            except (ValueError, TypeError):
+                continue
+        if date_ech is None:
+            date_ech = today + timedelta(days=1)
+            self.logger.warning(f"Date echeance illisible ({date_echeance}), utilisation de demain: {date_ech}")
+
+        if date_ech < today:
+            date_ech = today + timedelta(days=1)
+            self.logger.info(f"Date echeance < aujourd'hui, corrigee a: {date_ech.strftime('%d/%m/%Y')}")
+
+        self.logger.info(f"🔍 REMPLIR la Date echeance: {date_ech.strftime('%d/%m/%Y')}")
+        date_echeance_input = self.get_input_by_label("Date échéance")
+
+        for attempt in range(10):
+            date_str = date_ech.strftime("%d/%m/%Y")
+            self.logger.info(f"[Tentative {attempt+1}] Saisie date echeance: {date_str}")
+            date_echeance_input.click()
+            time.sleep(0.5)
+            date_echeance_input.clear()
+            date_echeance_input.send_keys(date_str)
+            date_echeance_input.send_keys(Keys.TAB)
+            time.sleep(0.5)
+
+            popup_msg = self.read_popup_message()
+            if popup_msg and "Décaissements-30" in popup_msg:
+                self.logger.warning(f"Popup 'Décaissements-30%' après saisie date, +1 mois")
+                self.handle_popup("OK", popup_msg)
+                new_month = date_ech.month % 12 + 1
+                new_year = date_ech.year + (1 if date_ech.month == 12 else 0)
+                date_ech = date_ech.replace(month=new_month, year=new_year)
+                time.sleep(0.5)
+                continue
+            elif popup_msg is not None:
+                self.logger.warning(f"⚠️ Popup détecté après saisie de la date d'échéance pour {num_facture}")
+                error_info = self.handle_error_with_screenshot(
+                    error_message="Popup détecté après saisie de la date d'échéance",
+                    context=f"Facture {num_facture} - Date échéance"
+                )
+                resultat['error_info'] = error_info
+                try:
+                    self.handle_popup("OK", popup_msg)
+                    close_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_close")
+                    driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", close_btn)
+                    time.sleep(0.5)
+                    close_btn.click()
+                except Exception as e:
+                    self.logger.error(f"❌ Erreur fermeture popup: {e}")
+                return False
+            else:
+                return True
+
+        self.logger.warning(f"❌ Impossible de saisir la date echeance après 10 tentatives pour {num_facture}")
+        return False
+
+    def _ajuster_date_et_enregistrer(self, num_facture: str, resultat: dict) -> bool:
+        from datetime import timedelta
+        driver = self.driver_manager.driver
+        today = datetime.now().date()
+        max_attempts = 10
+
+        date_ech_input = self.get_input_by_label("Date échéance")
+        raw_date = date_ech_input.get_attribute("value").strip()
+        self.logger.info(f"Date echeance apres detail paiement: {raw_date}")
+
+        date_ech = None
+        for fmt in ("%d/%m/%Y", "%d/%m/%y"):
+            try:
+                date_ech = datetime.strptime(raw_date, fmt).date()
+                break
+            except ValueError:
+                continue
+        if date_ech is None:
+            date_ech = today
+            self.logger.warning(f"Date echeance illisible ({raw_date}), utilisation de aujourd'hui: {today}")
+
+        if date_ech < today:
+            date_ech = today + timedelta(days=1)
+            self.logger.info(f"Date echeance < aujourd'hui, corrigee a: {date_ech.strftime('%d/%m/%Y')}")
+
+        enregistrement_ok = False
+        for attempt in range(max_attempts):
+            date_str = date_ech.strftime("%d/%m/%Y")
+            self.logger.info(f"[Tentative {attempt+1}] Saisie date echeance: {date_str}")
+
+            date_ech_input.click()
+            time.sleep(0.3)
+            date_ech_input.clear()
+            date_ech_input.send_keys(date_str)
+            date_ech_input.send_keys(Keys.TAB)
+            time.sleep(5)
+
+            popup_msg = self.read_popup_message()
+            self.logger.info(f"Popup message apres saisie date echeance: {popup_msg}")
+            if popup_msg and "Décaissements-30" in popup_msg:
+                self.logger.warning(f"Popup 'Decaissements-30%' apres saisie date, +1 mois")
+                self.handle_popup("OK", popup_msg)
+                new_month = date_ech.month % 12 + 1
+                new_year = date_ech.year + (1 if date_ech.month == 12 else 0)
+                date_ech = date_ech.replace(month=new_month, year=new_year)
+                time.sleep(0.5)
+                continue
+
+            if self._enregistrer_regelement():
+                input_reg = self.get_input_by_label("No règlement", 65)
+                reg_num = input_reg.get_attribute("value")
+                self.logger.info(f"Reg {reg_num}")
+                resultat['statut'] = 'Succes'
+                resultat['message'] = f'Règlement créé pour {num_facture}, N° Règlement: {reg_num}'
+                self.logger.info(f"✅ Règlement enregistré")
+                enregistrement_ok = True
+                break
+            else:
+                popup_msg_save = self.read_popup_message()
+                self.logger.info(f"Popup message apres enregistrement: {popup_msg_save}")
+                if popup_msg_save and "Décaissements-30" in popup_msg_save:
+                    self.logger.warning(f"Popup 'Decaissements-30%' apres enregistrement, +1 mois")
+                    self.handle_popup("OK", popup_msg_save)
+                    new_month = date_ech.month % 12 + 1
+                    new_year = date_ech.year + (1 if date_ech.month == 12 else 0)
+                    date_ech = date_ech.replace(month=new_month, year=new_year)
+                    time.sleep(0.5)
+                    continue
+                else:
+                    self.logger.warning(f"❌ Échec enregistrement règlement pour {num_facture}")
+                    error_info = self.handle_error_with_screenshot(
+                        error_message='Erreur enregistrement règlement',
+                        context=f"Facture {num_facture} - Enregistrement"
+                    )
+                    resultat['error_info'] = error_info
+                    resultat['message'] = 'Erreur enregistrement'
+                    self.handle_popup("OK", "Date réelle supérieur à la date facture fournisseur+120")
+                    try:
+                        close_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_close")
+                        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", close_btn)
+                        time.sleep(0.5)
+                        close_btn.click()
+                    except Exception:
+                        pass
+                    break
+
+        if not enregistrement_ok:
+            self.logger.error(f"Règlement non enregistré après {max_attempts} tentatives pour {num_facture}")
+        return enregistrement_ok
+
     def _check_num_cheque_deja_utilise(self, num_cheque: str) -> bool:
         """Vérifier si le numéro de chèque est déjà utilisé"""
         driver = self.driver_manager.driver
@@ -644,8 +705,9 @@ class RegelementRobot(BaseRobot, WebResultMixin):
         """Enregistrer le règlement"""
         driver = self.driver_manager.driver
         try:
+            time.sleep(2)
             save_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_check")
-            driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", save_btn)
+            # driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", save_btn)
             time.sleep(0.5)
             save_btn.click()
 
