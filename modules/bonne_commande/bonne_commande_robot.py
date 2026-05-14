@@ -110,8 +110,8 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
 
                 if not articles_ok:
                     self.logger.error("" + "="*80)
-                    self.logger.error(f"❌ ÉCHEC PHASE 1 pour fournisseur {code_fournisseur}")
-                    self.logger.error("❌ ARRÊT DU PROCESSUS - BC NON GÉNÉRÉ pour ce fournisseur")
+                    self.logger.error(f" ÉCHEC PHASE 1 pour fournisseur {code_fournisseur}")
+                    self.logger.error(" ARRÊT DU PROCESSUS - BC NON GÉNÉRÉ pour ce fournisseur")
                     self.logger.error("="*80)
 
                     # Ajouter un résultat final d'échec pour ce fournisseur
@@ -133,9 +133,9 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                     self.logger.info("✨ Envoi des résultats vers l'endpoint web...")
                     web_result = self.send_results_to_web(email_achteur)
                     if web_result and web_result.get('success'):
-                        self.logger.info("✅ Résultats envoyés vers l'endpoint web avec succès")
+                        self.logger.info("Résultats envoyés vers l'endpoint web avec succès")
                     elif web_result and not web_result.get('success'):
-                        self.logger.warning(f"⚠️ Échec envoi web: {web_result.get('message')}")
+                        self.logger.warning(f" Échec envoi web: {web_result.get('message')}")
 
                     continue  # Passer au fournisseur suivant
 
@@ -147,8 +147,8 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
 
                 if not das_ok:
                     self.logger.error("" + "="*80)
-                    self.logger.error(f"❌ ÉCHEC PHASE 2 pour fournisseur {code_fournisseur}")
-                    self.logger.error("❌ ARRÊT DU PROCESSUS - BC NON GÉNÉRÉ pour ce fournisseur")
+                    self.logger.error(f" ÉCHEC PHASE 2 pour fournisseur {code_fournisseur}")
+                    self.logger.error(" ARRÊT DU PROCESSUS - BC NON GÉNÉRÉ pour ce fournisseur")
                     self.logger.error("="*80)
 
                     # Ajouter un résultat final d'échec pour ce fournisseur
@@ -170,18 +170,18 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                     self.logger.info("✨ Envoi des résultats vers l'endpoint web...")
                     web_result = self.send_results_to_web(email_achteur)
                     if web_result and web_result.get('success'):
-                        self.logger.info("✅ Résultats envoyés vers l'endpoint web avec succès")
+                        self.logger.info("Résultats envoyés vers l'endpoint web avec succès")
                     elif web_result and not web_result.get('success'):
-                        self.logger.warning(f"⚠️ Échec envoi web: {web_result.get('message')}")
+                        self.logger.warning(f" Échec envoi web: {web_result.get('message')}")
 
                     continue  # Passer au fournisseur suivant
 
                 # PHASE 3 : GÉNÉRER LE BON DE COMMANDE POUR CE FOURNISSEUR
                 self.logger.info("" + "="*80)
-                self.logger.info(f"✅ VALIDATION COMPLÈTE RÉUSSIE - Fournisseur {code_fournisseur}")
+                self.logger.info(f"VALIDATION COMPLÈTE RÉUSSIE - Fournisseur {code_fournisseur}")
                 self.logger.info("="*80)
-                self.logger.info(f"✅ Articles traités avec succès: {self.articles_traites}/{self.articles_traites + self.articles_echec}")
-                self.logger.info(f"✅ DAs traitées avec succès: {self.das_traitees}/{self.das_traitees + self.das_echec}")
+                self.logger.info(f"Articles traités avec succès: {self.articles_traites}/{self.articles_traites + self.articles_echec}")
+                self.logger.info(f"DAs traitées avec succès: {self.das_traitees}/{self.das_traitees + self.das_echec}")
 
                 bc_numbers = self._generer_bon_de_commande(data_fournisseur)
                 bc_genere = len(bc_numbers) > 0
@@ -219,9 +219,9 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                 web_result = self.send_results_to_web(email_achteur)
 
                 if web_result and web_result.get('success'):
-                    self.logger.info("✅ Résultats envoyés vers l'endpoint web avec succès")
+                    self.logger.info("Résultats envoyés vers l'endpoint web avec succès")
                 elif web_result and not web_result.get('success'):
-                    self.logger.warning(f"⚠️ Échec envoi web: {web_result.get('message')}")
+                    self.logger.warning(f" Échec envoi web: {web_result.get('message')}")
 
                 self.logger.info("" + "="*80)
                 self.logger.info(f"🎉 FOURNISSEUR {code_fournisseur} TRAITÉ AVEC SUCCÈS")
@@ -235,7 +235,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             self.validation_passed = True
 
         except Exception as e:
-            self.logger.error(f"❌ ERREUR CRITIQUE: {e}")
+            self.logger.error(f" ERREUR CRITIQUE: {e}")
             import traceback
             self.logger.error(traceback.format_exc())
 
@@ -290,7 +290,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             ]
         )
         
-        self.logger.info(f"✅ {len(df)} lignes lues")
+        self.logger.info(f"{len(df)} lignes lues")
         
         # Vérifier les données vides
         lignes_invalides = []
@@ -302,13 +302,13 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             
             if colonnes_vides:
                 lignes_invalides.append(idx)
-                self.logger.warning(f"⚠️ Ligne {idx+1} ignorée - Colonnes vides: {', '.join(colonnes_vides)}")
+                self.logger.warning(f" Ligne {idx+1} ignorée - Colonnes vides: {', '.join(colonnes_vides)}")
         
         if lignes_invalides:
             df = df.drop(df.index[lignes_invalides])
-            self.logger.warning(f"⚠️ {len(lignes_invalides)} ligne(s) invalide(s) ignorée(s)")
+            self.logger.warning(f" {len(lignes_invalides)} ligne(s) invalide(s) ignorée(s)")
         
-        self.logger.info(f"✅ {len(df)} lignes valides à traiter")
+        self.logger.info(f"{len(df)} lignes valides à traiter")
         return df
     
     def _regrouper_donnees(self, df: pd.DataFrame) -> Dict[str, Any]:
@@ -370,7 +370,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
     def _afficher_resume(self, fournisseurs: Dict[str, Any]):
         """Afficher un résumé de la structure par fournisseur"""
         self.logger.info("="*80)
-        self.logger.info("📊 RÉSUMÉ DU TRAITEMENT")
+        self.logger.info(" RÉSUMÉ DU TRAITEMENT")
         self.logger.info("="*80)
 
         self.logger.info(f"🏢 Nombre de fournisseurs: {len(fournisseurs)}")
@@ -390,10 +390,10 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                 self.logger.info(f"   • {da_num} ({da_info['acheteur']}): {len(da_info['articles'])} article(s)")
 
         self.logger.info(f"{'─'*80}")
-        self.logger.info("⚠️  MODE STRICT ACTIVÉ:")
-        self.logger.info("   ✅ TOUS les articles doivent réussir")
-        self.logger.info("   ✅ TOUTES les DAs doivent réussir")
-        self.logger.info("   ❌ Un seul échec = Arrêt complet")
+        self.logger.info("  MODE STRICT ACTIVÉ:")
+        self.logger.info("   TOUS les articles doivent réussir")
+        self.logger.info("   TOUTES les DAs doivent réussir")
+        self.logger.info("    Un seul échec = Arrêt complet")
         self.logger.info("="*80)
     
     def _traiter_tous_articles(self, structure: Dict[str, Any]) -> bool:
@@ -424,23 +424,23 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                 
                 if resultat['statut'] == 'Succes':
                     self.articles_traites += 1
-                    self.logger.info(f"✅ Article {code_article} traité avec succès ({self.articles_traites}/{total_articles})")
+                    self.logger.info(f"Article {code_article} traité avec succès ({self.articles_traites}/{total_articles})")
                 else:
                     self.articles_echec += 1
-                    self.logger.error(f"❌ ÉCHEC Article {code_article}: {resultat['message']}")
-                    self.logger.error(f"❌ ARRÊT IMMÉDIAT - Article en échec détecté")
+                    self.logger.error(f" ÉCHEC Article {code_article}: {resultat['message']}")
+                    self.logger.error(f" ARRÊT IMMÉDIAT - Article en échec détecté")
                     
                     self.save_report(incremental=True)
                     return False
                 
                 time.sleep(2)
         except Exception as e:
-            self.logger.error(f"❌ ERREUR lors du traitement des articles: {e}")
+            self.logger.error(f" ERREUR lors du traitement des articles: {e}")
             self.save_report(incremental=True)
             return False
         finally:
             
-            self.logger.info(f"✅ Articles traités: {self.articles_traites}, Échecs: {self.articles_echec}")
+            self.logger.info(f"Articles traités: {self.articles_traites}, Échecs: {self.articles_echec}")
             driver = self.driver_manager.driver
 
             driver.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
@@ -451,7 +451,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             s_page_close.click()
             time.sleep(2)
 
-        self.logger.info(f"✅ PHASE 1 RÉUSSIE: {self.articles_traites}/{total_articles} articles traités")
+        self.logger.info(f"PHASE 1 RÉUSSIE: {self.articles_traites}/{total_articles} articles traités")
         self.save_report(incremental=True)
         return True
     
@@ -481,22 +481,22 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                 
                 if resultat['statut'] == 'Succes':
                     self.das_traitees += 1
-                    self.logger.info(f"✅ DA {numero_da} traitée avec succès ({self.das_traitees}/{total_das})")
+                    self.logger.info(f"DA {numero_da} traitée avec succès ({self.das_traitees}/{total_das})")
                 else:
                     self.das_echec += 1
-                    self.logger.error(f"❌ ÉCHEC DA {numero_da}: {resultat['message']}")
-                    self.logger.error(f"❌ ARRÊT IMMÉDIAT - DA en échec détectée")
+                    self.logger.error(f" ÉCHEC DA {numero_da}: {resultat['message']}")
+                    self.logger.error(f" ARRÊT IMMÉDIAT - DA en échec détectée")
                     
                     self.save_report(incremental=True)
                     return False
                 
                 time.sleep(2)
         except Exception as e:
-            self.logger.error(f"❌ ERREUR lors du traitement des DAs: {e}")
+            self.logger.error(f" ERREUR lors du traitement des DAs: {e}")
             self.save_report(incremental=True)
             return False
         finally:
-            self.logger.info(f"✅ DAs traitées: {self.das_traitees}, Échecs: {self.das_echec}")
+            self.logger.info(f"DAs traitées: {self.das_traitees}, Échecs: {self.das_echec}")
             driver = self.driver_manager.driver
 
             driver.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
@@ -507,7 +507,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             s_page_close.click()
             time.sleep(2)
         
-        self.logger.info(f"✅ PHASE 2 RÉUSSIE: {self.das_traitees}/{total_das} DAs traitées")
+        self.logger.info(f"PHASE 2 RÉUSSIE: {self.das_traitees}/{total_das} DAs traitées")
         self.save_report(incremental=True)
         return True
     
@@ -556,7 +556,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             return bc_numbers
 
         except Exception as e:
-            self.logger.error(f"❌ Erreur génération bonne de commande: {e}")
+            self.logger.error(f" Erreur génération bonne de commande: {e}")
 
             # Capturer screenshot et popup en cas d'erreur
             error_info = self.handle_error_with_screenshot(
@@ -636,7 +636,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                 self.logger.info("BC_auto déjà cochée")
             else:
                 BC_auto_label.click()
-                self.logger.info("✅ BC_auto cochée")
+                self.logger.info("BC_auto cochée")
             
 
             # 3. Modifier le fournisseur
@@ -649,7 +649,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             changer_fournisseur.send_keys(code_fournisseur)
             if(changer_fournisseur.get_attribute('value').strip() != code_fournisseur):
                 resultat['message'] = f'Erreur de format du code fournisseur pour l\'article {code_article} (valeur: {code_fournisseur})'
-                self.logger.error(f"❌ {resultat['message']}")
+                self.logger.error(f" {resultat['message']}")
                 return resultat
             changer_fournisseur.send_keys(Keys.TAB)
             time.sleep(1)
@@ -671,14 +671,14 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             # prend juste 4 chiffres apres la virgule
             montant = f"{float(montant):.4f}"
             self.logger.info(f"💰 Modification Prix: {montant}")
-            change_tarif = self.get_input_by_label("Prix")
+            change_tarif = self.get_input_by_label("Prix (HT)")
             change_tarif.click()
             time.sleep(0.5)
             change_tarif.clear()
             change_tarif.send_keys(montant)
             # if(change_tarif.get_attribute('value').replace(',','.').strip() != montant):
             #     resultat['message'] = f'Erreur de format du tarif pour l\'article {code_article} (valeur: {montant})'
-            #     self.logger.error(f"❌ {resultat['message']}")
+            #     self.logger.error(f" {resultat['message']}")
             #     return resultat
             change_tarif.send_keys(Keys.TAB)
             time.sleep(1)
@@ -689,7 +689,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                 pre_elements = driver.find_elements(By.CSS_SELECTOR, "pre.s_alertbox_msg")
                 error_message = pre_elements[0].text
                 resultat['message'] = f'Tarif non valide de l\'article {code_article} (valeur: {montant}) \n {error_message}'
-                self.logger.error(f"❌ {resultat['message']}")
+                self.logger.error(f" {resultat['message']}")
 
                 # Capturer screenshot et popup
                 error_info = self.handle_error_with_screenshot(
@@ -709,23 +709,23 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             change_marque.send_keys(marque)
             if(change_marque.get_attribute('value').strip() != marque.strip()):
                 resultat['message'] = f'Erreur de format de la marque pour l\'article {code_article} (valeur: {marque})'
-                self.logger.error(f"❌ {resultat['message']}")
+                self.logger.error(f" {resultat['message']}")
                 return resultat
             change_marque.send_keys(Keys.TAB)
             time.sleep(1)
             
-            self.logger.info(f"✅ Marque modifiée: {marque}")
+            self.logger.info(f"Marque modifiée: {marque}")
             # 7. Enregistrer
             if self.enregistrer_article():
                 resultat['statut'] = 'Succes'
                 resultat['message'] = 'Article traité avec succès'
-                self.logger.info(f"✅ Article {code_article} traité")
+                self.logger.info(f"Article {code_article} traité")
             else:
                 resultat['message'] = 'Erreur lors de l\'enregistrement'
             time.sleep(20)
         except Exception as e:
             resultat['message'] = f'Erreur: {str(e)}'
-            self.logger.error(f"❌ Erreur traitement article: {e}")
+            self.logger.error(f" Erreur traitement article: {e}")
 
             # Capturer screenshot et popup en cas d'exception
             error_info = self.handle_error_with_screenshot(
@@ -785,14 +785,14 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             
 
             # 3. Validation acheteur
-            self.logger.info(f"✅ Validation acheteur: {acheteur}")
+            self.logger.info(f"Validation acheteur: {acheteur}")
             validation_acheteur = self.get_input_by_label("Validation Acheteur")
             label_validation_acheteur = driver.find_element(By.CSS_SELECTOR, f"label[for='{validation_acheteur.get_attribute('id')}']")
             if validation_acheteur.is_selected():
-                self.logger.info("✅ 1 - Case deja cochée")
+                self.logger.info("1 - Case deja cochée")
             else:
                 label_validation_acheteur.click()
-                self.logger.info("✅ 2 - Case cochée")
+                self.logger.info("2 - Case cochée")
 
                 self.logger.info("Case déjà cochée")
 
@@ -802,13 +802,13 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             if self.enregistrer_demande_achat():
                 resultat['statut'] = 'Succes'
                 resultat['message'] = 'DA traitée avec succès'
-                self.logger.info(f"✅ DA {numero_da} traitée")
+                self.logger.info(f"DA {numero_da} traitée")
             else:
                 resultat['message'] = 'Erreur lors de l\'enregistrement'
             time.sleep(20)
         except Exception as e:
             resultat['message'] = f'Erreur: {str(e)}'
-            self.logger.error(f"❌ Erreur traitement DA: {e}")
+            self.logger.error(f" Erreur traitement DA: {e}")
 
             # Capturer screenshot et popup en cas d'exception
             error_info = self.handle_error_with_screenshot(
@@ -836,7 +836,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             self.logger.info("💾 Enregistrement article...")
             return True
         except Exception as e:
-            self.logger.error(f"❌ Erreur enregistrement article: {e}")
+            self.logger.error(f" Erreur enregistrement article: {e}")
 
             # Capturer screenshot et popup en cas d'erreur
             self.handle_error_with_screenshot(
@@ -863,7 +863,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
 
             return True
         except Exception as e:
-            self.logger.error(f"❌ Erreur enregistrement DA: {e}")
+            self.logger.error(f" Erreur enregistrement DA: {e}")
 
             # Capturer screenshot et popup en cas d'erreur
             self.handle_error_with_screenshot(
@@ -944,14 +944,17 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                 # Renommer le fichier
                 os.rename(downloaded_pdf, new_path)
 
-                self.logger.info(f"✅ PDF téléchargé et renommé: {new_filename}")
+                self.logger.info(f"PDF téléchargé et renommé: {new_filename}")
                 return new_path
             else:
-                self.logger.warning("⚠️ Timeout: PDF non téléchargé")
+                self.logger.warning(" Timeout: PDF non téléchargé")
                 return None
 
         except Exception as e:
-            self.logger.error(f"❌ Erreur téléchargement PDF: {e}")
+            self.logger.error(f" Erreur téléchargement PDF: {e}")
             return None
 
-    
+    def _imprimer_bon_de_commande(self, bc_number: str):
+        """Imprimer la bonne de commande (fonctionnalité à implémenter si nécessaire)"""
+        self.logger.info(f"🖨️ Impression de la BC {bc_number} (fonctionnalité à implémenter)")
+        self.navigate_to_module(self.url_bonne_commande)
