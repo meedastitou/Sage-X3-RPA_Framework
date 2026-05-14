@@ -17,7 +17,7 @@ from modules.regelement.VairementInternationalRobot import VairementInternationa
 from modules.regelement.RegelementRobot_V3 import RegelementRobot
 from utils.queue_manager import get_next_task, update_task
 from modules.bonne_commande.bonne_commande_robot import BonneCommandeRobot
-from modules.receiption.ReceiptionRobot_v3 import ReceiptionRobot
+from modules.receiption.ReceiptionRobot_v2 import ReceiptionRobot
 # from modules.facturation.FacturationRobot import FacturationRobot
 from modules.facturation.FacturationRobot_V2 import FacturationRobotV2
 from core.logger import Logger
@@ -86,7 +86,7 @@ def main():
 
                 except Exception as e:
                     update_task(task['id'], "failed", error=str(e))
-                    logger.error(f"❌ Tâche {task['id']} échouée: {e}")
+                    logger.error(f" Tâche {task['id']} échouée: {e}")
                     import traceback
                     logger.error(traceback.format_exc())
                 
@@ -98,10 +98,10 @@ def main():
                 time.sleep(10)
         
         except KeyboardInterrupt:
-            logger.info("\n⚠️ Arrêt du worker demandé par l'utilisateur")
+            logger.info("\n Arrêt du worker demandé par l'utilisateur")
             break
         except Exception as e:
-            logger.error(f"❌ Erreur dans le worker: {e}")
+            logger.error(f" Erreur dans le worker: {e}")
             import traceback
             logger.error(traceback.format_exc())
             time.sleep(10)
