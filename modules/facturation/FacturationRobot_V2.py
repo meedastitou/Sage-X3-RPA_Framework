@@ -620,7 +620,6 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
 
     def clique_enregistrer(self):
         driver = self.driver_manager.driver
-        input("test")
         try:
             save_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_check")
             driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", save_btn)

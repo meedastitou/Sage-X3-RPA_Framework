@@ -929,7 +929,6 @@ class RegelementRobot(BaseRobot, WebResultMixin):
     def _enregistrer_regelement(self) -> bool:
         """Enregistrer le règlement"""
         driver = self.driver_manager.driver
-        input("test")
         try:
             time.sleep(2)
             save_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_check")
