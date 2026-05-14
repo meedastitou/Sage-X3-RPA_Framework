@@ -132,7 +132,7 @@ class BaseRobot(ABC):
             return True
 
         except Exception as e:
-            self.logger.error(f"❌ Erreur fermeture module: {e}")
+            self.logger.error(f" Erreur fermeture module: {e}")
             return False
 
     def add_result(self, result: Dict[str, Any]):
@@ -179,7 +179,7 @@ class BaseRobot(ABC):
             return self.rapport_path
             
         except Exception as e:
-            self.logger.error(f"❌ Erreur sauvegarde rapport: {e}")
+            self.logger.error(f" Erreur sauvegarde rapport: {e}")
             return None
     
     def generate_summary(self) -> Dict[str, Any]:
@@ -209,11 +209,11 @@ class BaseRobot(ABC):
         summary = self.generate_summary()
         
         self.logger.info("\n" + "="*80)
-        self.logger.info("📊 RÉSUMÉ FINAL")
+        self.logger.info(" RÉSUMÉ FINAL")
         self.logger.info("="*80)
         self.logger.info(f"Total: {summary['total']}")
         self.logger.info(f"Succès: {summary['succes']}")
-        self.logger.info(f"❌ Échecs: {summary['echecs']}")
+        self.logger.info(f" Échecs: {summary['echecs']}")
         
         if summary['total'] > 0:
             taux = (summary['succes'] / summary['total']) * 100
@@ -267,7 +267,7 @@ class BaseRobot(ABC):
             )
             return input_element
         except Exception as e:
-            self.logger.error(f"❌ Erreur: impossible de trouver l'input pour le label '{label_name}': {e}")
+            self.logger.error(f" Erreur: impossible de trouver l'input pour le label '{label_name}': {e}")
             raise
 
     def handle_popup(self, button_text: str, message: str) -> bool:
@@ -354,7 +354,7 @@ class BaseRobot(ABC):
                 self.logger.info("📸 Screenshot capturé avec succès")
                 return screenshot_b64
         except Exception as e:
-            self.logger.error(f"❌ Erreur lors de la capture screenshot: {e}")
+            self.logger.error(f" Erreur lors de la capture screenshot: {e}")
             return None
 
     def read_popup_message(self) -> Optional[str]:
@@ -407,7 +407,7 @@ class BaseRobot(ABC):
             return popup_message
 
         except Exception as e:
-            self.logger.error(f"❌ Erreur lors de la lecture popup: {e}")
+            self.logger.error(f" Erreur lors de la lecture popup: {e}")
             return None
 
     def handle_error_with_screenshot(self, error_message: str, context: str = "") -> Dict[str, Any]:
