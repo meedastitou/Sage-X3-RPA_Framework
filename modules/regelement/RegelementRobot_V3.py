@@ -420,8 +420,9 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                 # Facture FF : date de départ = date facture SQL, montant = montant de la ligne
                 # if not self._saisir_date_echeance_v2(date_echeance, num_facture, resultat, float(montant)):
                 #     return resultat
-                self._saisir_date_echeance(date_echeance)
-                
+                if not self._saisir_date_echeance(date_echeance):
+                    return resultat
+                self.wait_for_spinner_to_disappear(driver=driver)                
             else:
                 # Avance sans facture : date de départ = aujourd'hui, montant = montant de la ligne
                 if not self._saisir_date_echeance_avance(resultat, float(montant)):
@@ -713,15 +714,15 @@ class RegelementRobot(BaseRobot, WebResultMixin):
 
         date_echeance_input = self.get_input_by_label("Date échéance")
         date_echeance_input.click()
-        time.sleep(0.5)
+        time.sleep(1)
         date_echeance_input.clear()
+        time.sleep(1)
         date_echeance_input.send_keys(date_echeance)
         date_echeance_input.send_keys(Keys.TAB)
-        time.sleep(0.5)
+        time.sleep(3)
 
-        if not self.read_popup_message():
-            time.sleep(3)
-            self.handle_popup("OK", "120")
+        if self.read_popup_message():
+            self.handle_popup("OK", "+120")
 
             WebDriverWait(driver=self.driver_manager.driver, timeout=60).until(
                 EC.element_to_be_clickable((By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_close"))
@@ -729,11 +730,12 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             close_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_close")
             time.sleep(1)
             close_btn.click()
+            return False
 
         self.wait_for_spinner_to_disappear(driver=driver)
-
+        return True
         
-           
+        
 
     def _ajuster_date_et_enregistrer(self, num_facture: str, resultat: dict) -> bool:
         from datetime import timedelta
