@@ -286,9 +286,12 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
             WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located((By.CLASS_NAME, "s-grid-table-body"))
             )
-
+            
             # 3. Pour chaque code de reception, chercher et cocher
             for codeReception in list_codeReception:
+                
+                self._set_in_first_page()
+                self._get_page_of_receiption(codeReception=codeReception)
                 self.logger.info(f"Recherche de la reception: {codeReception}")
                 succes = self._cocher_reception(driver, codeReception)
                 resultats[codeReception] = succes
@@ -395,6 +398,58 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
         except Exception as e:
             self.logger.error(f"Erreur cochage checkbox {codeReception}: {e}")
             return False
+
+    # -----------------------------------------------------------------
+    # Chercher du BR 
+    # -----------------------------------------------------------------
+    
+    def _get_page_of_receiption(self, codeReception: str) -> dict[bool, str]:
+        """
+        chercher sur le BR dans les pages
+        """
+
+        driver = self.driver_manager.driver
+        target_row = None
+        attempt=0
+        while not target_row  and  attempt<10:
+            all_rows = driver.find_elements(
+                    By.CSS_SELECTOR,
+                    ".s-grid-table-body tr.s-grid-row.s-grid-navig-row"
+                )
+            self.logger.info(f"{len(all_rows)} lignes dans le tableau {attempt+1}")
+            for row in all_rows:
+                try:
+                    desc_div = row.find_element(By.CSS_SELECTOR, ".s-tree-node-desc-value")
+                    text = desc_div.text.strip()
+                    if text.startswith(codeReception):
+                        target_row = row
+                        self.logger.info(f"Ligne trouvee: {text}")
+                        break
+                except Exception:
+                    continue
+            
+            if not target_row:
+                self.logger.info("passe a page suivant ...")
+                next_button = driver.find_element(By.XPATH, '//*[@id="s_app_body"]/div/article/div[1]/div[2]/div[4]/div/article/div[1]/div[2]/div/a[3]')
+                next_button.click()
+                time.sleep(1)
+
+    
+    def _set_in_first_page(self):
+        """
+        Retourner a page paremier 
+        """
+        driver = self.driver_manager.driver
+        
+        WebDriverWait(driver, 10).until(
+            EC.invisibility_of_element_located((By.CSS_SELECTOR, "div.s_overlay"))
+        )
+        next_button = driver.find_element(By.XPATH, '//*[@id="s_app_body"]/div/article/div[1]/div[2]/div[4]/div/article/div[1]/div[2]/div/a[2]')
+        WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable(next_button)
+        )
+        next_button.click()
+        time.sleep(1)
 
     # ------------------------------------------------------------------
     # Saisie des informations de la facture
@@ -565,7 +620,7 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
 
     def clique_enregistrer(self):
         driver = self.driver_manager.driver
-
+        input("test")
         try:
             save_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_check")
             driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", save_btn)
@@ -575,25 +630,27 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
             self.wait_for_spinner_to_disappear(driver, 900000000)
 
             self.logger.info("Enregistrement clique")
-            confirmation_msg = WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.CLASS_NAME, "s_alertbox_title"))
-            )
-
             try:
-                header = driver.find_element(By.CLASS_NAME, "s_alertbox_header")
-                close_button = header.find_element(By.CLASS_NAME, "s_modal_close")
-                close_button.click()
-                self.logger.info(f"Popup de confirmation fermee: {confirmation_msg.text}")
-                time.sleep(1)
-            except Exception:
-                pass
+                msg = self.read_popup_message()
+                self.logger.info(f"Message de confirmation: {msg}")
+                if "ATTENTION : Montants".lower() in msg.lower():
+                    self.logger.warning("Le message de confirmation indique un probleme de montants")
+                    header = driver.find_element(By.CLASS_NAME, "s_alertbox_header")
+                    close_button = header.find_element(By.CLASS_NAME, "s_modal_close")
+                    close_button.click()
+                    time.sleep(1)
+                    return False
 
-            self.logger.info(f"Enregistrement reussi: {confirmation_msg.text}")
+            except Exception as e:
+                self.logger.warning(f"Impossible de fermer la popup de confirmation: {e}")
+                
+            self.logger.info(f"Enregistrement reussi")
             time.sleep(3)
-
+            return True
         except Exception as e:
             self.logger.error(f"Erreur enregistrement: {e}")
             driver.save_screenshot("ScreenShot/error_enregistrement.png")
+            return False
 
     # ------------------------------------------------------------------
     # Traitement d'un groupe (une facture fournisseur)
@@ -663,7 +720,15 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
                     return resultat
 
             time.sleep(2)
-            self.clique_enregistrer()
+            if not self.clique_enregistrer():
+                resultat['message'] = 'Erreur enregistrement'
+                error_info = self.handle_error_with_screenshot(
+                    error_message=resultat['message'],
+                    context=f"Fournisseur {codeFournisseur} - Enregistrement"
+                )
+                resultat['error_info'] = error_info
+                return resultat
+
             self.close_module()
 
             resultat['statut'] = 'Succes'
