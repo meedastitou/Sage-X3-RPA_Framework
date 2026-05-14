@@ -418,8 +418,16 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             # 10. REMPLIR DATE ECHEANCE
             if not avance:
                 # Facture FF : date de départ = date facture SQL, montant = montant de la ligne
-                if not self._saisir_date_echeance_v2(date_echeance, num_facture, resultat, float(montant)):
-                    return resultat
+                # if not self._saisir_date_echeance_v2(date_echeance, num_facture, resultat, float(montant)):
+                #     return resultat
+                date_echeance_input = self.get_input_by_label("Date échéance")                
+                date_echeance_input.click()
+                time.sleep(0.5)
+                date_echeance_input.clear()
+                date_echeance_input.send_keys(date_echeance)
+                date_echeance_input.send_keys(Keys.TAB)
+                time.sleep(0.5)
+                
             else:
                 # Avance sans facture : date de départ = aujourd'hui, montant = montant de la ligne
                 if not self._saisir_date_echeance_avance(resultat, float(montant)):
@@ -704,69 +712,20 @@ class RegelementRobot(BaseRobot, WebResultMixin):
         # self.logger.warning(f" Impossible de saisir la date échéance avance après 10 tentatives")
         return True
 
-    def _saisir_date_echeance(self, date_echeance: str, num_facture: str, resultat: dict) -> bool:
-        from datetime import timedelta
-        driver = self.driver_manager.driver
-        today = datetime.now().date()
-
-        date_ech = None
-        for fmt in ("%d/%m/%Y", "%d/%m/%y"):
-            try:
-                date_ech = datetime.strptime(date_echeance, fmt).date()
-                break
-            except (ValueError, TypeError):
-                continue
-        if date_ech is None:
-            date_ech = today + timedelta(days=1)
-            self.logger.warning(f"Date echeance illisible ({date_echeance}), utilisation de demain: {date_ech}")
-
-        if date_ech < today:
-            date_ech = today + timedelta(days=1)
-            self.logger.info(f"Date echeance < aujourd'hui, corrigee a: {date_ech.strftime('%d/%m/%Y')}")
-
-        self.logger.info(f"🔍 REMPLIR la Date echeance: {date_ech.strftime('%d/%m/%Y')}")
+    def _saisir_date_echeance(self, date_echeance: str) -> bool:
+        
+        
         date_echeance_input = self.get_input_by_label("Date échéance")
+        # date_str = date_ech.strftime("%d/%m/%Y")
+        date_echeance_input.click()
+        time.sleep(0.5)
+        date_echeance_input.clear()
+        date_echeance_input.send_keys(date_echeance)
+        date_echeance_input.send_keys(Keys.TAB)
+        time.sleep(0.5)
 
-        for attempt in range(10):
-            date_str = date_ech.strftime("%d/%m/%Y")
-            self.logger.info(f"[Tentative {attempt+1}] Saisie date echeance: {date_str}")
-            date_echeance_input.click()
-            time.sleep(0.5)
-            date_echeance_input.clear()
-            date_echeance_input.send_keys(date_str)
-            date_echeance_input.send_keys(Keys.TAB)
-            time.sleep(0.5)
-
-            popup_msg = self.read_popup_message()
-            if popup_msg and "Décaissements-30" in popup_msg:
-                self.logger.warning(f"Popup 'Décaissements-30%' après saisie date, +1 mois")
-                self.handle_popup("OK", popup_msg)
-                new_month = date_ech.month % 12 + 1
-                new_year = date_ech.year + (1 if date_ech.month == 12 else 0)
-                date_ech = date_ech.replace(month=new_month, year=new_year)
-                time.sleep(0.5)
-                continue
-            elif popup_msg is not None:
-                self.logger.warning(f" Popup détecté après saisie de la date d'échéance pour {num_facture}")
-                error_info = self.handle_error_with_screenshot(
-                    error_message="Popup détecté après saisie de la date d'échéance",
-                    context=f"Facture {num_facture} - Date échéance"
-                )
-                resultat['error_info'] = error_info
-                try:
-                    self.handle_popup("OK", popup_msg)
-                    close_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_close")
-                    driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", close_btn)
-                    time.sleep(0.5)
-                    close_btn.click()
-                except Exception as e:
-                    self.logger.error(f" Erreur fermeture popup: {e}")
-                return False
-            else:
-                return True
-
-        self.logger.warning(f" Impossible de saisir la date echeance après 10 tentatives pour {num_facture}")
-        return False
+        
+           
 
     def _ajuster_date_et_enregistrer(self, num_facture: str, resultat: dict) -> bool:
         from datetime import timedelta
