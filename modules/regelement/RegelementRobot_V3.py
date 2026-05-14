@@ -67,7 +67,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             email_f = df.iloc[0]['email_expediteur'] if 'email_expediteur' in df.columns else "astitoumd@gmail.com"
 
             self.logger.info(f"{'='*80}")
-            self.logger.info(f"📊 {len(df)} ligne(s) à traiter")
+            self.logger.info(f" {len(df)} ligne(s) à traiter")
             self.logger.info(f"{'='*80}")
             
             # 2. CONNEXION SAGE
@@ -111,7 +111,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                     self.fournisseurs_traites += 1
                 else:
                     self.fournisseurs_echec += 1
-                    self.logger.warning(f"⚠️ Échec ligne {idx + 1}, mais on continue...")
+                    self.logger.warning(f" Échec ligne {idx + 1}, mais on continue...")
                 
                 time.sleep(1)
             
@@ -133,13 +133,13 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             
             self.logger.info("="*80)
             self.logger.info("🎉 PROCESSUS TERMINÉ")
-            self.logger.info(f"✅ {self.fournisseurs_traites} ligne(s) traitée(s)")
-            self.logger.info(f"❌ {self.fournisseurs_echec} ligne(s) en échec")
+            self.logger.info(f" {self.fournisseurs_traites} ligne(s) traitée(s)")
+            self.logger.info(f" {self.fournisseurs_echec} ligne(s) en échec")
             self.logger.info(f"💳 {self.total_factures} règlement(s) créé(s)")
             self.logger.info("="*80)
             
         except Exception as e:
-            self.logger.error(f"❌ ERREUR CRITIQUE: {e}")
+            self.logger.error(f" ERREUR CRITIQUE: {e}")
             import traceback
             self.logger.error(traceback.format_exc())
             
@@ -180,7 +180,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
         
         df = self.excel_handler.read_excel(excel_file, required_columns=colonnes_requises)
         
-        self.logger.info(f"✅ {len(df)} ligne(s) lues")
+        self.logger.info(f" {len(df)} ligne(s) lues")
         
         # Validation des colonnes importantes
         lignes_invalides = []
@@ -197,13 +197,13 @@ class RegelementRobot(BaseRobot, WebResultMixin):
 
             if colonnes_vides:
                 lignes_invalides.append(idx)
-                self.logger.warning(f"⚠️ Ligne {idx+1} ignorée - Colonnes vides: {', '.join(colonnes_vides)}")
+                self.logger.warning(f" Ligne {idx+1} ignorée - Colonnes vides: {', '.join(colonnes_vides)}")
         
         if lignes_invalides:
             df = df.drop(df.index[lignes_invalides])
-            self.logger.warning(f"⚠️ {len(lignes_invalides)} ligne(s) invalide(s) ignorée(s)")
+            self.logger.warning(f" {len(lignes_invalides)} ligne(s) invalide(s) ignorée(s)")
         
-        self.logger.info(f"✅ {len(df)} ligne(s) valides à traiter")
+        self.logger.info(f" {len(df)} ligne(s) valides à traiter")
         return df
     
     def _traiter_ligne(self, row: pd.Series) -> Dict[str, Any]:
@@ -241,7 +241,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             self.logger.info(f"🏢 Fournisseur: {code_frs}")
             self.logger.info(f"📋 Facture: {num_facture} - ")
             self.logger.info(f"💰 Montant: {montant} | Chèque: {num_cheque}")
-            self.logger.info(f"📅 Date Réel: {date_reel} | Date Échéance: {date_echeance}")
+            self.logger.info(f" Date Réel: {date_reel} | Date Échéance: {date_echeance}")
 
             # =================================================================
             # verfier est-ce c'est un reglement de l'avancement sans facture ou pas
@@ -252,7 +252,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
 
             # 1. CRÉER LE RÈGLEMENT
             if not self._cree_regelement():
-                self.logger.warning(f"❌ Échec création règlement pour {num_facture}")
+                self.logger.warning(f" Échec création règlement pour {num_facture}")
                 error_info = self.handle_error_with_screenshot(
                     error_message='Erreur création règlement',
                     context=f"Facture {num_facture} - Création"
@@ -261,7 +261,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                 resultat['message'] = 'Erreur création règlement'
                 return resultat
             
-            self.logger.info(f"✅ Règlement créé")
+            self.logger.info(f" Règlement créé")
 
             # =================================================================
             # =================================================================
@@ -303,7 +303,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             reference_input.send_keys(Keys.TAB)
             time.sleep(0.5)
             if self.read_popup_message() is not None:
-                self.logger.warning(f"⚠️ Popup détecté après saisie de la référence de pièce pour {refference}")
+                self.logger.warning(f" Popup détecté après saisie de la référence de pièce pour {refference}")
                 error_info = self.handle_error_with_screenshot(
                     error_message='Popup détecté après saisie de la référence de pièce',
                     context=f"Facture {num_facture} - Référence pièce {refference}"
@@ -316,7 +316,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                     time.sleep(0.5)
                     close_btn.click()
                 except Exception as e:
-                    self.logger.error(f"❌ Erreur lors de la fermeture de la popup: {e}")
+                    self.logger.error(f" Erreur lors de la fermeture de la popup: {e}")
                 return resultat
             # =================================================================
             # =================================================================
@@ -362,7 +362,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             time.sleep(0.5)
 
             if self._check_num_cheque_deja_utilise(num_cheque):
-                self.logger.warning(f"⚠️ Numéro de chèque {num_cheque} déjà utilisé")
+                self.logger.warning(f" Numéro de chèque {num_cheque} déjà utilisé")
                 error_info = self.handle_error_with_screenshot(
                     error_message=f'Numéro de chèque {num_cheque} déjà utilisé',
                     context=f"Chèque {num_cheque}"
@@ -386,7 +386,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             tva_input.click()
             time.sleep(0.5)
             tva_input.clear()
-            tva_input.send_keys(tva)
+            tva_input.send_keys(str(round(float(tva), 2)))
             tva_input.send_keys(Keys.TAB)
             time.sleep(0.5)
 
@@ -404,7 +404,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             # =================================================================
             # verifier c'est une popup apparait
             if self.read_popup_message() is not None:
-                self.logger.warning(f"⚠️ Popup détecté après saisie de la date reel pour {num_facture}")
+                self.logger.warning(f" Popup détecté après saisie de la date reel pour {num_facture}")
                 error_info = self.handle_error_with_screenshot(
                     error_message='Popup détecté après saisie de la date reel',
                     context=f"Facture {num_facture} - Date réelle"
@@ -416,8 +416,14 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             # =================================================================
             # =================================================================
             # 10. REMPLIR DATE ECHEANCE
-            if not self._saisir_date_echeance(date_echeance, num_facture, resultat):
-                return resultat
+            if not avance:
+                # Facture FF : date de départ = date facture SQL, montant = montant de la ligne
+                if not self._saisir_date_echeance_v2(date_echeance, num_facture, resultat, float(montant)):
+                    return resultat
+            else:
+                # Avance sans facture : date de départ = aujourd'hui, montant = montant de la ligne
+                if not self._saisir_date_echeance_avance(resultat, float(montant)):
+                    return resultat
 
 
             # =================================================================
@@ -429,15 +435,18 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                 self.logger.info(f"🔍 REMPLIR les détails de paiement pour la facture ")       
                 if self._remplir_detail_simple(num_facture):
                     self.total_factures += 1
-                    self.logger.info(f"✅ Détail OK")
+                    self.logger.info(f" Détail OK")
+                    if not self._saisir_date_echeance_v2(date_echeance, num_facture, resultat, float(montant)):
+                        return resultat
+
                 else:
-                    self.logger.warning(f"⚠️ Détail échec")
+                    self.logger.warning(f" Détail échec")
                     error_info = self.handle_error_with_screenshot(
                         error_message=f'Échec remplissage détail paiement',
                         context=f"Chèque {num_cheque} - Détail paiement"
                     )
                     resultat['error_info'] = error_info
-                    self.logger.warning(f"⚠️ Erreur lors du remplissage du détail de paiement pour {num_facture}")
+                    self.logger.warning(f" Erreur lors du remplissage du détail de paiement pour {num_facture}")
                     return resultat
             else:
                 # juste clique sur le champ montant banque 
@@ -464,11 +473,22 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             # =================================================================
             # 10. AJUSTER DATE ECHEANCE + ENREGISTRER (apres detail paiement)
             # =================================================================
-            self._ajuster_date_et_enregistrer(num_facture, resultat)
+            # self._ajuster_date_et_enregistrer(num_facture, resultat)
+            if self._enregistrer_regelement():
+                WebDriverWait(driver, 15).until(
+                        EC.invisibility_of_element_located((By.CSS_SELECTOR, "div.s_overlay"))
+                    )
+                input_reg = self.get_input_by_label("No règlement", 65)
+                reg_num = input_reg.get_attribute("value")
+                self.logger.info(f"Reg {reg_num}")
+                resultat['statut'] = 'Succes'
+                resultat['message'] = f'Règlement créé pour {num_facture}, N° Règlement: {reg_num}'
+                
+            
             
         except Exception as e:
             resultat['message'] = f'Erreur: {str(e)}'
-            self.logger.error(f"❌ Erreur traitement ligne: {e}")
+            self.logger.error(f" Erreur traitement ligne: {e}")
             import traceback
             self.logger.error(traceback.format_exc())
             error_info = self.handle_error_with_screenshot(
@@ -479,6 +499,211 @@ class RegelementRobot(BaseRobot, WebResultMixin):
         
         return resultat
     
+    def _saisir_date_echeance_v2(self, date_echeance: str, num_facture: str, resultat: dict, montant_facture: float = 0.0) -> bool:
+        """
+        Calcule la date d'échéance optimale :
+        1. Récupère la date de la facture depuis SQL
+        2. Cherche le 1er mois (M+0 à M+5) où solde - montant > 0 ET date >= aujourd'hui
+        3. Si la date calculée est < aujourd'hui, continue à chercher le mois suivant (avec vérif solde)
+        4. Si aucun mois valide trouvé, fallback M+6 automatique
+        """
+        import calendar
+
+        driver = self.driver_manager.driver
+        today = datetime.now().date()
+
+        # 1. Date de la facture depuis SQL
+        date_facture = self._get_date_echeance_(num_facture)
+        if date_facture is None:
+            self.logger.warning(f"Date facture introuvable pour {num_facture}, fallback aujourd'hui")
+            date_facture = today
+        self.logger.info(f" Date facture SQL: {date_facture}, montant: {montant_facture}")
+
+        # 2. Soldes mensuels depuis SQL
+        soldes_par_mois = self._get_sold_par_mois(date_facture)
+        self.logger.info(f" Soldes mensuels: {soldes_par_mois}")
+
+        def dernier_jour_mois(annee, mois):
+            return calendar.monthrange(annee, mois)[1]
+
+        def mois_plus(base_date, delta):
+            m = base_date.month + delta
+            y = base_date.year + (m - 1) // 12
+            m = ((m - 1) % 12) + 1
+            j = dernier_jour_mois(y, m)
+            return base_date.replace(year=y, month=m, day=j)
+
+        # 3. Chercher M+0 à M+5 : solde > montant ET date >= aujourd'hui
+        date_echeance_calculee = None
+        for delta in range(6):
+            candidate = mois_plus(date_facture, delta)
+            cle = (candidate.year, candidate.month)
+            solde = soldes_par_mois.get(cle, 0.0)
+            self.logger.info(f"  → M+{delta} {candidate.year}/{candidate.month:02d}: solde={solde}, montant={montant_facture}, reste={solde - montant_facture}, date={candidate}")
+
+            if solde - montant_facture > 0 and candidate >= today:
+                date_echeance_calculee = candidate
+                self.logger.info(f" Mois retenu: M+{delta} → {date_echeance_calculee}")
+                break
+
+        # 4. Fallback M+6
+        if date_echeance_calculee is None:
+            date_echeance_calculee = mois_plus(date_facture, 6)
+            self.logger.info(f" Aucun mois valide (M+0→M+5), fallback M+6: {date_echeance_calculee}")
+
+        # 5. Si fallback aussi < aujourd'hui, prendre le mois courant ou suivant avec solde suffisant
+        if date_echeance_calculee < today:
+            self.logger.info(f"Date M+6 ({date_echeance_calculee}) encore < aujourd'hui, recherche mois futur avec solde...")
+            date_echeance_calculee = None
+            for delta in range(7, 13):
+                candidate = mois_plus(date_facture, delta)
+                cle = (candidate.year, candidate.month)
+                solde = soldes_par_mois.get(cle, 0.0)
+                self.logger.info(f"  → M+{delta} {candidate.year}/{candidate.month:02d}: solde={solde}, date={candidate}")
+                if candidate >= today and solde - montant_facture > 0:
+                    date_echeance_calculee = candidate
+                    self.logger.info(f" Mois futur retenu: M+{delta} → {date_echeance_calculee}")
+                    break
+            if date_echeance_calculee is None:
+                # Dernier recours : fin du mois prochain
+                date_echeance_calculee = mois_plus(today, 1)
+                self.logger.warning(f"Aucun mois futur avec solde, dernier recours: {date_echeance_calculee}")
+
+        # 6. Saisir dans Sage avec gestion popup Décaissements-30
+        date_echeance_input = self.get_input_by_label("Date échéance")
+        date_str = date_echeance_calculee.strftime("%d/%m/%Y")
+        date_echeance_input.click()
+        time.sleep(0.5)
+        date_echeance_input.clear()
+        date_echeance_input.send_keys(date_str)
+        date_echeance_input.send_keys(Keys.TAB)
+        time.sleep(0.5)
+        # for attempt in range(10):
+        #     self.logger.info(f"[Tentative {attempt+1}] Saisie date échéance: {date_str}")
+
+        #     popup_msg = self.read_popup_message()
+        #     if popup_msg and "Décaissements-30" in popup_msg:
+        #         self.logger.warning(f"Popup 'Décaissements-30%' détectée, +1 mois")
+        #         self.handle_popup("OK", popup_msg)
+        #         next_candidate = mois_plus(date_echeance_calculee, 1)
+        #         cle = (next_candidate.year, next_candidate.month)
+        #         solde = soldes_par_mois.get(cle, 0.0)
+        #         self.logger.info(f"  → Popup fallback {next_candidate.year}/{next_candidate.month:02d}: solde={solde}")
+        #         date_echeance_calculee = next_candidate
+        #         time.sleep(0.5)
+        #         continue
+        #     elif popup_msg is not None:
+        #         self.logger.warning(f" Popup inattendue: {popup_msg}")
+        #         error_info = self.handle_error_with_screenshot(
+        #             error_message="Popup inattendue après saisie de la date d'échéance",
+        #             context=f"Facture {num_facture} - Date échéance v2"
+        #         )
+        #         resultat['error_info'] = error_info
+        #         try:
+        #             self.handle_popup("OK", popup_msg)
+        #             close_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_close")
+        #             driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", close_btn)
+        #             time.sleep(0.5)
+        #             close_btn.click()
+        #         except Exception as e:
+        #             self.logger.error(f"Erreur fermeture popup: {e}")
+        #         return False
+        #     else:
+        #         return True
+
+        # self.logger.warning(f" Impossible de saisir la date échéance après 10 tentatives pour {num_facture}")
+        # return False
+
+        return True
+
+    def _saisir_date_echeance_avance(self, resultat: dict, montant_facture: float = 0.0) -> bool:
+        """
+        Pour avance sans facture : date de départ = aujourd'hui.
+        Cherche M+0 à M+5 (depuis aujourd'hui) où solde - montant > 0.
+        Fallback M+6 si aucun mois trouvé.
+        """
+        import calendar
+
+        driver = self.driver_manager.driver
+        today = datetime.now().date()
+
+        self.logger.info(f" Avance sans facture - date départ: {today}, montant: {montant_facture}")
+
+        soldes_par_mois = self._get_sold_par_mois(today)
+        self.logger.info(f" Soldes mensuels: {soldes_par_mois}")
+
+        def dernier_jour_mois(annee, mois):
+            return calendar.monthrange(annee, mois)[1]
+
+        def mois_plus(base_date, delta):
+            m = base_date.month + delta
+            y = base_date.year + (m - 1) // 12
+            m = ((m - 1) % 12) + 1
+            j = dernier_jour_mois(y, m)
+            return base_date.replace(year=y, month=m, day=j)
+
+        # Chercher M+0 à M+5 depuis aujourd'hui
+        date_echeance_calculee = None
+        for delta in range(6):
+            candidate = mois_plus(today, delta)
+            cle = (candidate.year, candidate.month)
+            solde = soldes_par_mois.get(cle, 0.0)
+            self.logger.info(f"  → M+{delta} {candidate.year}/{candidate.month:02d}: solde={solde}, montant={montant_facture}, reste={solde - montant_facture}")
+
+            if solde - montant_facture > 0:
+                date_echeance_calculee = candidate
+                self.logger.info(f" Mois retenu: M+{delta} → {date_echeance_calculee}")
+                break
+
+        # Fallback M+6
+        if date_echeance_calculee is None:
+            date_echeance_calculee = mois_plus(today, 6)
+            self.logger.info(f" Aucun mois valide (M+0→M+5), fallback M+6: {date_echeance_calculee}")
+
+        # Saisir dans Sage avec gestion popup Décaissements-30
+        date_echeance_input = self.get_input_by_label("Date échéance")
+        date_str = date_echeance_calculee.strftime("%d/%m/%Y")
+        date_echeance_input.click()
+        time.sleep(0.5)
+        date_echeance_input.clear()
+        date_echeance_input.send_keys(date_str)
+        # date_echeance_input.send_keys(Keys.TAB)
+        time.sleep(0.5)
+        # for attempt in range(10):
+
+        #     popup_msg = self.read_popup_message()
+        #     if popup_msg and "Décaissements-30" in popup_msg:
+        #         self.logger.warning(f"Popup 'Décaissements-30%' détectée, +1 mois")
+        #         self.handle_popup("OK", popup_msg)
+        #         next_candidate = mois_plus(date_echeance_calculee, 1)
+        #         cle = (next_candidate.year, next_candidate.month)
+        #         solde = soldes_par_mois.get(cle, 0.0)
+        #         self.logger.info(f"  → Popup fallback {next_candidate.year}/{next_candidate.month:02d}: solde={solde}")
+        #         date_echeance_calculee = next_candidate
+        #         time.sleep(0.5)
+        #         continue
+        #     elif popup_msg is not None:
+        #         self.logger.warning(f" Popup inattendue: {popup_msg}")
+        #         error_info = self.handle_error_with_screenshot(
+        #             error_message="Popup inattendue après saisie de la date d'échéance (avance)",
+        #             context="Avance sans facture - Date échéance"
+        #         )
+        #         resultat['error_info'] = error_info
+        #         try:
+        #             self.handle_popup("OK", popup_msg)
+        #             close_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_close")
+        #             driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", close_btn)
+        #             time.sleep(0.5)
+        #             close_btn.click()
+        #         except Exception as e:
+        #             self.logger.error(f"Erreur fermeture popup: {e}")
+        #         return False
+        #     else:
+        #         return True
+
+        # self.logger.warning(f" Impossible de saisir la date échéance avance après 10 tentatives")
+        return True
+
     def _saisir_date_echeance(self, date_echeance: str, num_facture: str, resultat: dict) -> bool:
         from datetime import timedelta
         driver = self.driver_manager.driver
@@ -522,7 +747,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                 time.sleep(0.5)
                 continue
             elif popup_msg is not None:
-                self.logger.warning(f"⚠️ Popup détecté après saisie de la date d'échéance pour {num_facture}")
+                self.logger.warning(f" Popup détecté après saisie de la date d'échéance pour {num_facture}")
                 error_info = self.handle_error_with_screenshot(
                     error_message="Popup détecté après saisie de la date d'échéance",
                     context=f"Facture {num_facture} - Date échéance"
@@ -535,12 +760,12 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                     time.sleep(0.5)
                     close_btn.click()
                 except Exception as e:
-                    self.logger.error(f"❌ Erreur fermeture popup: {e}")
+                    self.logger.error(f" Erreur fermeture popup: {e}")
                 return False
             else:
                 return True
 
-        self.logger.warning(f"❌ Impossible de saisir la date echeance après 10 tentatives pour {num_facture}")
+        self.logger.warning(f" Impossible de saisir la date echeance après 10 tentatives pour {num_facture}")
         return False
 
     def _ajuster_date_et_enregistrer(self, num_facture: str, resultat: dict) -> bool:
@@ -597,7 +822,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                 self.logger.info(f"Reg {reg_num}")
                 resultat['statut'] = 'Succes'
                 resultat['message'] = f'Règlement créé pour {num_facture}, N° Règlement: {reg_num}'
-                self.logger.info(f"✅ Règlement enregistré")
+                self.logger.info(f" Règlement enregistré")
                 enregistrement_ok = True
                 break
             else:
@@ -612,7 +837,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                     time.sleep(0.5)
                     continue
                 else:
-                    self.logger.warning(f"❌ Échec enregistrement règlement pour {num_facture}")
+                    self.logger.warning(f" Échec enregistrement règlement pour {num_facture}")
                     error_info = self.handle_error_with_screenshot(
                         error_message='Erreur enregistrement règlement',
                         context=f"Facture {num_facture} - Enregistrement"
@@ -664,7 +889,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
     def _afficher_resume(self, structure: Dict):
         """Afficher un résumé de la structure"""
         self.logger.info("="*80)
-        self.logger.info("📊 RÉSUMÉ DU TRAITEMENT")
+        self.logger.info(" RÉSUMÉ DU TRAITEMENT")
         self.logger.info("="*80)
         
         self.logger.info(f"🏢 {len(structure)} Fournisseur(s):")
@@ -689,26 +914,29 @@ class RegelementRobot(BaseRobot, WebResultMixin):
 
             if "s-disabled" in add_button.get_attribute("class"):
                 # Bouton désactivé 
-                self.logger.info("❌ Bouton Add désactivé, impossible de créer un nouveau règlement")
+                self.logger.info(" Bouton Add désactivé, impossible de créer un nouveau règlement")
                 return False
             else:
                 # Bouton activé
-                self.logger.info("✅ Nouveau règlement créé")
+                self.logger.info(" Nouveau règlement créé")
                 add_button.click()
                 time.sleep(2)
                 return True
         except Exception as e:
-            self.logger.error(f"❌ Erreur création règlement: {e}")
+            self.logger.error(f" Erreur création règlement: {e}")
             return False
 
     def _enregistrer_regelement(self) -> bool:
         """Enregistrer le règlement"""
         driver = self.driver_manager.driver
+        input("test")
         try:
             time.sleep(2)
             save_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_check")
             # driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", save_btn)
             time.sleep(0.5)
+            WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_check")))
+
             save_btn.click()
 
             time.sleep(5)
@@ -717,7 +945,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             try:
                 self.logger.info("⏳ Attente de la popup de confirmation...")
                 self.wait_for_element_to_appear(driver, By.CSS_SELECTOR, "a.s_modal_close", timeout=1000000)
-                self.logger.info("✅ Popup de confirmation détectée, fermeture...")
+                self.logger.info(" Popup de confirmation détectée, fermeture...")
                 s_page_close = driver.find_element(By.CSS_SELECTOR, "a.s_modal_close")
                 s_page_close.click()
                 time.sleep(2)
@@ -740,7 +968,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                         # Cliquer sur "Oui"
                         oui_button = driver.find_element(By.XPATH, "//a[@aria-label='Oui']")
                         oui_button.click()
-                        self.logger.info("✅ Confirmation abandon cliquée")
+                        self.logger.info(" Confirmation abandon cliquée")
                         time.sleep(1)
                         return False
                     except:
@@ -752,7 +980,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             
             return True
         except Exception as e:
-            self.logger.error(f"❌ Erreur enregistrement: {e}")
+            self.logger.error(f" Erreur enregistrement: {e}")
             return False
         
     def _gere_popup_fournisseur(self):
@@ -768,7 +996,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             # Cliquer sur OK
             ok_button = dialog.find_element(By.LINK_TEXT, "OK")
             ok_button.click()
-            self.logger.info("✅ Popup 'OK' cliquée")
+            self.logger.info(" Popup 'OK' cliquée")
             time.sleep(1)
         except:
             # Pas de popup
@@ -798,7 +1026,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             target_row = rows_fixed[0]
             cells_fixed = target_row.find_elements(By.CSS_SELECTOR, ".s-inplace-input")
             
-            self.logger.info(f"📊 {len(cells_fixed)} cellules trouvées")
+            self.logger.info(f" {len(cells_fixed)} cellules trouvées")
             time.sleep(5)
             # Cellule 1: DEC
             self.logger.info("Remplissage DEC...")
@@ -813,7 +1041,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             
             time.sleep(5)
             rows_scrool = driver.find_elements(By.CSS_SELECTOR, ".s-page-content-slot .s-grid-slot-table-scroll .s-grid-table-body tr.s-grid-row")
-            self.logger.info(f"📊 {len(rows_scrool)} ligne(s) trouvée(s) dans la partie scroll du tableau")
+            self.logger.info(f" {len(rows_scrool)} ligne(s) trouvée(s) dans la partie scroll du tableau")
             if not rows_scrool:
                 self.logger.warning("Aucune ligne trouvée dans le tableau")
                 return False
@@ -822,7 +1050,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             target_row = rows_scrool[0]
             cells_scrool = target_row.find_elements(By.CSS_SELECTOR, ".s-inplace-input")
             
-            self.logger.info(f"📊 {len(cells_scrool)} cellules trouvées")
+            self.logger.info(f" {len(cells_scrool)} cellules trouvées")
             # Cellule 2: FAFOU
             self.logger.info("Remplissage FAFOU...")
             if len(cells_scrool) > 0:
@@ -846,7 +1074,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                 time.sleep(1)
                 try:
                     if not self.handle_popup("OK", "ATTENTION ECHEANCE MISE A JOUR"):
-                        self.logger.warning(f"⚠️ Popup de mise à jour d'échéance détectée pour la facture {num_facture}, mais le bouton OK n'a pas été trouvé ou cliqué")   
+                        self.logger.warning(f" Popup de mise à jour d'échéance détectée pour la facture {num_facture}, mais le bouton OK n'a pas été trouvé ou cliqué")   
 
                         if self.handle_popup("OK", "Aucune échéance"):
                             close_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_close")
@@ -937,4 +1165,101 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                 conn.close()
             except:
                 pass
-                
+
+    def _get_date_echeance_(self, Facture: str):
+        """Retourne la date de la facture depuis SQL (objet date Python) ou None"""
+        import pyodbc
+        from datetime import date as date_type
+
+        try:
+            conn = pyodbc.connect(
+                "DRIVER={ODBC Driver 17 for SQL Server};"
+                "SERVER=192.168.1.241\\ERPX3;"
+                "DATABASE=x3;"
+                "UID=X3U;"
+                "PWD=SQL@2019;"
+            )
+            cursor = conn.cursor()
+            cursor.execute(f"SELECT DUDDAT_0 FROM BASE1.GACCDUDATE WHERE NUM_0='{Facture}'")
+            row = cursor.fetchone()
+            if row and row[0] is not None:
+                val = row[0]
+                if hasattr(val, 'date'):
+                    return val.date()
+                if isinstance(val, date_type):
+                    return val
+                return pd.to_datetime(str(val)).date()
+            else:
+                self.logger.warning(f"Aucune date trouvée pour la facture {Facture}")
+                return None
+        except Exception as e:
+            self.logger.error(f"Erreur récupération date facture {Facture}: {e}")
+            return None
+        finally:
+            try:
+                cursor.close()
+                conn.close()
+            except:
+                pass
+
+    def _get_sold_par_mois(self, date_facture) -> dict:
+        """
+        Retourne un dict {(annee, mois): total_mnt} pour tous les mois
+        à partir du mois de la facture jusqu'à M+6.
+        """
+        import pyodbc
+
+        annee_facture = date_facture.year if hasattr(date_facture, 'year') else int(str(date_facture)[:4])
+        mois_facture = date_facture.month if hasattr(date_facture, 'month') else int(str(date_facture)[5:7])
+
+        requete = f"""
+            WITH CombinedData AS (
+                SELECT
+                    XMNT_0 * 0.7 AS MNT,
+                    DUDDAT_0 AS DAT
+                FROM BASE1.XENDECS
+
+                UNION ALL
+
+                SELECT
+                    E.XMNT_0 AS MNT,
+                    D.DAT_0 AS DAT
+                FROM BASE1.XDATE D
+                LEFT JOIN BASE1.XDECECS E ON E.DUDDAT_0 = D.DAT_0
+            )
+            SELECT
+                YEAR(DAT) AS Annee,
+                MONTH(DAT) AS Mois,
+                SUM(ISNULL(MNT, 0)) AS Total_MNT
+            FROM CombinedData
+            WHERE DAT IS NOT NULL
+              AND (YEAR(DAT) > {annee_facture} OR (YEAR(DAT) = {annee_facture} AND MONTH(DAT) >= {mois_facture}))
+            GROUP BY YEAR(DAT), MONTH(DAT)
+            ORDER BY Annee ASC, Mois ASC;
+        """
+
+        try:
+            conn = pyodbc.connect(
+                "DRIVER={ODBC Driver 17 for SQL Server};"
+                "SERVER=192.168.1.241\\ERPX3;"
+                "DATABASE=x3;"
+                "UID=X3U;"
+                "PWD=SQL@2019;"
+            )
+            cursor = conn.cursor()
+            cursor.execute(requete)
+            rows = cursor.fetchall()
+            result = {}
+            for row in rows:
+                annee, mois, total = int(row[0]), int(row[1]), float(row[2]) if row[2] is not None else 0.0
+                result[(annee, mois)] = total
+            return result
+        except Exception as e:
+            self.logger.error(f"Erreur récupération soldes par mois: {e}")
+            return {}
+        finally:
+            try:
+                cursor.close()
+                conn.close()
+            except:
+                pass
