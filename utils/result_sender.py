@@ -69,7 +69,7 @@ class ResultSender:
             }
             
         except requests.exceptions.RequestException as e:
-            self.logger.error(f"❌ Erreur envoi: {e}")
+            self.logger.error(f" Erreur envoi: {e}")
             return {
                 'success': False,
                 'status_code': getattr(e.response, 'status_code', None) if hasattr(e, 'response') else None,
@@ -129,7 +129,7 @@ class ResultSender:
             }
             
         except requests.exceptions.RequestException as e:
-            self.logger.error(f"❌ Erreur envoi: {e}")
+            self.logger.error(f" Erreur envoi: {e}")
             return {
                 'success': False,
                 'status_code': getattr(e.response, 'status_code', None) if hasattr(e, 'response') else None,
@@ -169,7 +169,7 @@ class ResultSender:
             return self.send_json(data, headers)
             
         except Exception as e:
-            self.logger.error(f"❌ Erreur encodage fichier: {e}")
+            self.logger.error(f" Erreur encodage fichier: {e}")
             return {
                 'success': False,
                 'error': str(e),

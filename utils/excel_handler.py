@@ -39,7 +39,7 @@ class ExcelHandler:
             return df
             
         except Exception as e:
-            self.logger.error(f"❌ Erreur lecture Excel: {e}")
+            self.logger.error(f" Erreur lecture Excel: {e}")
             raise
     
     def write_excel(self, df: pd.DataFrame, filepath: str, sheet_name: str = 'Sheet1'):
@@ -59,7 +59,7 @@ class ExcelHandler:
             self.logger.info(f"💾 Excel sauvegardé: {filepath}")
             
         except Exception as e:
-            self.logger.error(f"❌ Erreur écriture Excel: {e}")
+            self.logger.error(f" Erreur écriture Excel: {e}")
             raise
     
     def validate_data(self, df: pd.DataFrame, rules: Dict[str, Any]) -> List[str]:

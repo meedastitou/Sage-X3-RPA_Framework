@@ -12,6 +12,7 @@ import mysql.connector
 from mysql.connector import Error as MySQLError
 
 from config.settings import DATABASE_CONFIG
+from core.logger import Logger
 
 
 class DBHandler:
@@ -28,8 +29,9 @@ class DBHandler:
     """
 
     def __init__(self):
-        self.logger = logging.getLogger('db_handler')
+        self.logger = Logger.get_logger('DBHandler', 'db')
         self._conn = None
+        self.logger.info("Initialisation du DBHandler...")
         self._connect()
 
     # ------------------------------------------------------------------
@@ -38,6 +40,7 @@ class DBHandler:
 
     def _connect(self):
         try:
+            self.logger.info("Tentative de connexion a MySQL...")
             self._conn = mysql.connector.connect(
                 host=DATABASE_CONFIG['host'],
                 port=DATABASE_CONFIG['port'],
@@ -52,6 +55,7 @@ class DBHandler:
         except MySQLError as e:
             self.logger.error(f"Connexion MySQL echouee: {e}")
             self._conn = None
+            raise  # Re-raise the exception to fail __init__
 
     def _ensure_connected(self) -> bool:
         """Reconnecte si la connexion est perdue."""
