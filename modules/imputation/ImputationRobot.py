@@ -28,7 +28,7 @@ class ImputationRobot(BaseRobot, WebResultMixin):
 
         self.excel_handler = ExcelHandler()
 
-        self.url_imputation = "http://192.168.1.252:8124/syracuse-main/html/main.html?url=%2Ftrans%2Fx3%2Ferp%2FPREPROD%2F%24sessions%3Ff%3DIPTACPTFOU%252F2%252F%252FM%252F%26profile%3D~(loc~%27fr-FR~role~%2754edbf16-8938-46d0-bd92-a4f5e0d8f4f1~ep~%2764a56978-56ab-46f1-8d83-ed18f7fa6484~appConn~())"
+        self.url_imputation = "http://192.168.1.241:8124/syracuse-main/html/main.html?url=%2Ftrans%2Fx3%2Ferp%2FPREPROD%2F%24sessions%3Ff%3DIPTACPTFOU%252F2%252F%252FM%252F%26profile%3D~(loc~%27fr-FR~role~%2754edbf16-8938-46d0-bd92-a4f5e0d8f4f1~ep~%2764a56978-56ab-46f1-8d83-ed18f7fa6484~appConn~())"
         
         try:
             self.logger.info("Initialisation de la connexion a la base de donnees...")
@@ -75,17 +75,17 @@ class ImputationRobot(BaseRobot, WebResultMixin):
                 facture = row['Facture']
                 
                 # Naviguer vers le module de Imputation
-                self.logger.info("🚀 Navigation vers le module de Imputation...")
+                self.logger.info("Navigation vers le module de Imputation...")
                 self.navigate_to_module(self.url_imputation)
 
 
                 self.logger.info(f"Traitement de la ligne {idx+1}: CodeFrs={code_frs}, N_BC={n_bc}, Reglement={reglement}, Facture={facture}")
                 if self._traiter_ligne_imputation(code_frs, n_bc, reglement, facture):
-                    self.logger.info(f"✅ Ligne {idx+1} : {code_frs}, {reglement}, {facture} traitée avec succès")
+                    self.logger.info(f"Ligne {idx+1} : {code_frs}, {reglement}, {facture} traitée avec succès")
                     self.add_result({reglement + " , " + facture : True})
                     
                 else:
-                    self.logger.error(f"❌ Erreur lors du traitement de la ligne {idx+1} : {code_frs}, {reglement}, {facture}")
+                    self.logger.error(f" Erreur lors du traitement de la ligne {idx+1} : {code_frs}, {reglement}, {facture}")
                     self.add_result({reglement + " , " + facture : False})
  
             self.logger.info(self.resultats) 
@@ -126,7 +126,7 @@ class ImputationRobot(BaseRobot, WebResultMixin):
         
         df = self.excel_handler.read_excel(excel_file, required_columns=colonnes_requises)
         
-        self.logger.info(f"✅ {len(df)} ligne(s) lues")
+        self.logger.info(f"{len(df)} ligne(s) lues")
         
         # Validation des colonnes importantes
         lignes_invalides = []
@@ -138,13 +138,13 @@ class ImputationRobot(BaseRobot, WebResultMixin):
 
             if colonnes_vides:
                 lignes_invalides.append(idx)
-                self.logger.warning(f"⚠️ Ligne {idx+1} ignorée - Colonnes vides: {', '.join(colonnes_vides)}")
+                self.logger.warning(f" Ligne {idx+1} ignorée - Colonnes vides: {', '.join(colonnes_vides)}")
         
         if lignes_invalides:
             df = df.drop(df.index[lignes_invalides])
-            self.logger.warning(f"⚠️ {len(lignes_invalides)} ligne(s) invalide(s) ignorée(s)")
+            self.logger.warning(f" {len(lignes_invalides)} ligne(s) invalide(s) ignorée(s)")
         
-        self.logger.info(f"✅ {len(df)} ligne(s) valides à traiter")
+        self.logger.info(f"{len(df)} ligne(s) valides à traiter")
         return df
     
     def _traiter_ligne_imputation(self, code_frs: str, n_bc: str, reglement: str, facture: str):
