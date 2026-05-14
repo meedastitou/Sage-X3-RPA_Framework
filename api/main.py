@@ -149,7 +149,7 @@ def execute_lettrage(task_id: str, excel_file: str, url: str, headless: bool):
         logger.info(f"Tâche lettrage terminée: {task_id}")
         
     except Exception as e:
-        logger.error(f"❌ Erreur tâche lettrage {task_id}: {e}")
+        logger.error(f" Erreur tâche lettrage {task_id}: {e}")
         tasks_status[task_id]['status'] = 'failed'
         tasks_status[task_id]['completed_at'] = datetime.now().isoformat()
         tasks_status[task_id]['error'] = str(e)
@@ -184,7 +184,7 @@ def execute_bonne_commande(task_id: str, excel_file: str, headless: bool):
         logger.info(f"Tâche bonne commande terminée: {task_id}")
         
     except Exception as e:
-        logger.error(f"❌ Erreur tâche bonne commande {task_id}: {e}")
+        logger.error(f" Erreur tâche bonne commande {task_id}: {e}")
         tasks_status[task_id]['status'] = 'failed'
         tasks_status[task_id]['completed_at'] = datetime.now().isoformat()
         tasks_status[task_id]['error'] = str(e)
@@ -217,7 +217,7 @@ def save_dataframe_to_excel(donnees: List[Dict[str, Any]], email_expediteur: str
     # Sauvegarder en Excel
     df.to_excel(file_path, index=False)
 
-    logger.info(f"📊 Données JSON converties en Excel: {file_path}")
+    logger.info(f" Données JSON converties en Excel: {file_path}")
 
     return str(file_path)
 
@@ -244,7 +244,7 @@ def save_facturation_to_excel(donnees: List[Dict[str, Any]], email_expediteur: s
 
     df.to_excel(file_path, index=False)
 
-    logger.info(f"📊 Données facturation converties en Excel: {file_path}")
+    logger.info(f" Données facturation converties en Excel: {file_path}")
 
     return str(file_path)
 
@@ -271,7 +271,7 @@ def save_regelement_to_excel(donnees: List[Dict[str, Any]], email_expediteur: st
 
     df.to_excel(file_path, index=False)
 
-    logger.info(f"📊 Données règlement converties en Excel: {file_path}")
+    logger.info(f" Données règlement converties en Excel: {file_path}")
 
     return str(file_path)
 
@@ -287,7 +287,7 @@ def save_imputation_to_excel(donnees: List[Dict[str, Any]], email_expediteur: st
     filename = f"api_data_IMP_{uuid.uuid4()}.xlsx"
     file_path = UPLOAD_DIR / filename
     df.to_excel(file_path, index=False)
-    logger.info(f"📊 Données imputation converties en Excel: {file_path}")
+    logger.info(f" Données imputation converties en Excel: {file_path}")
     return str(file_path)
 
 
@@ -315,7 +315,7 @@ def save_receiption_to_excel(donnees: List[Dict[str, Any]], email_expediteur: st
 
     df.to_excel(file_path, index=False)
 
-    logger.info(f"📊 Données réception converties en Excel: {file_path}")
+    logger.info(f" Données réception converties en Excel: {file_path}")
 
     return str(file_path)
 
@@ -346,7 +346,7 @@ def save_da_to_excel(donnees: List[Dict[str, Any]], email_expediteur: str) -> st
         # Pour chaque ligne, créer une nouvelle ligne avec l'observation
         for ligne in lignes:
             row = {
-                'Demandeur': "AABIDI ABDELKADER",
+                'Demandeur': "EL ABBADI Abdelaziz",
                 'Observation': observation,
                 'code_article': ligne.get('code_sage', ''),
                 'quantite': ligne.get('effectif', 0)
@@ -363,7 +363,7 @@ def save_da_to_excel(donnees: List[Dict[str, Any]], email_expediteur: str) -> st
 
     df.to_excel(file_path, index=False)
 
-    logger.info(f"📊 Données demande d'achat converties en Excel: {file_path}")
+    logger.info(f" Données demande d'achat converties en Excel: {file_path}")
 
     return str(file_path)
 
@@ -927,7 +927,7 @@ async def upload_file(file: UploadFile = File(...)):
         }
         
     except Exception as e:
-        logger.error(f"❌ Erreur upload: {e}")
+        logger.error(f" Erreur upload: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
