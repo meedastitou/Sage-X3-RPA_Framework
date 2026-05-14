@@ -978,6 +978,9 @@ class RegelementRobot(BaseRobot, WebResultMixin):
         driver = self.driver_manager.driver
         
         try:
+            WebDriverWait(driver, 15).until(
+                        EC.invisibility_of_element_located((By.CSS_SELECTOR, "div.s_overlay"))
+                    )
             # Attendre le tableau
             WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, ".s-grid-slot-table-fixed"))
@@ -996,6 +999,9 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             
             self.logger.info(f" {len(cells_fixed)} cellules trouvées")
             time.sleep(5)
+            WebDriverWait(driver, 15).until(
+                        EC.invisibility_of_element_located((By.CSS_SELECTOR, "div.s_overlay"))
+                    )
             # Cellule 1: DEC
             self.logger.info("Remplissage DEC...")
             if len(cells_fixed) > 0:
@@ -1006,7 +1012,9 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                 cell_dec.send_keys("DEC")
                 cell_dec.send_keys(Keys.TAB)
                 time.sleep(0.3)
-            
+            WebDriverWait(driver, 15).until(
+                        EC.invisibility_of_element_located((By.CSS_SELECTOR, "div.s_overlay"))
+                    )
             time.sleep(5)
             rows_scrool = driver.find_elements(By.CSS_SELECTOR, ".s-page-content-slot .s-grid-slot-table-scroll .s-grid-table-body tr.s-grid-row")
             self.logger.info(f" {len(rows_scrool)} ligne(s) trouvée(s) dans la partie scroll du tableau")
