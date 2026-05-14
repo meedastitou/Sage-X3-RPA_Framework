@@ -299,7 +299,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             reference_input.click()
             time.sleep(0.5)
             reference_input.clear()
-            reference_input.send_keys(refference)
+            reference_input.send_keys(refference.replace(" ", ""))
             reference_input.send_keys(Keys.TAB)
             time.sleep(0.5)
             if self.read_popup_message() is not None:
