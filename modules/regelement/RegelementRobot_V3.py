@@ -978,6 +978,8 @@ class RegelementRobot(BaseRobot, WebResultMixin):
         driver = self.driver_manager.driver
         
         try:
+            self.wait_for_spinner_to_disappear(driver=driver)
+
             WebDriverWait(driver, 15).until(
                         EC.invisibility_of_element_located((By.CSS_SELECTOR, "div.s_overlay"))
                     )
