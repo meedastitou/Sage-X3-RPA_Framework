@@ -33,7 +33,7 @@ class DemmandeAchatRobot(BaseRobot, WebResultMixin):
 
         try:
             self.logger.info("Initialisation de la connexion a la base de données...")
-            self.db = DBHandler()
+            # self.db = DBHandler()
             self.logger.info(f"Connexion à la base de données ettablie avec succès. {self.db}")
         except Exception as e:
             self.logger.error(f"Erreur lors de l'initialisation de la base de données: {e}")
@@ -217,16 +217,21 @@ class DemmandeAchatRobot(BaseRobot, WebResultMixin):
             self.logger.error("Échec de la saisie des lignes de la demmande d'achat.")
             return {'status': False, "resultat": f"error au momant detail {res_ligne['resultat']}"}
 
-        input("Appuyez sur Entrée pour continuer...")
+        # input("Appuyez sur Entrée pour continuer...")
+        time.sleep(10)
         # enregistrer la demmande d'achat
-        # if not self._enregistrer_demmande_achat():
-        #     self.logger.error("Échec de l'enregistrement de la demmande d'achat.")
-            # return
+        if not self._enregistrer_demmande_achat():
+            self.logger.error("Échec de l'enregistrement de la demmande d'achat.")
+            return
         # recuperer le numero de la demmande d'achat créée
-        numero = self._recuperer_numero_demmande_achat()
-        if numero == "N/A":
-            self.logger.error("Échec de la récupération du numéro de la demmande d'achat.")
-    
+        try:
+            numero = self._recuperer_numero_demmande_achat()
+            if numero == "N/A":
+                self.logger.error("Échec de la récupération du numéro de la demmande d'achat.")
+        except Exception as e:
+            self.logger.error(f"Erreur lors de la récupération du numéro de la demmande d'achat: {e}")
+            numero = "N/A"
+
     def _saisir_entete_demmande_achat(self, data: pd.DataFrame) -> dict[bool, Union[bool,str]]:
         try:
             driver = self.driver_manager.driver
@@ -267,6 +272,9 @@ class DemmandeAchatRobot(BaseRobot, WebResultMixin):
             
             for index, article in data.iterrows():
 
+                time.sleep(1)
+                self.handle_popup("OK", "Zone obligatoire")
+
                 # Récupérer les lignes de la table
                 rows_fixed = driver.find_elements(By.CSS_SELECTOR, ".s-page-content-slot .s-grid-slot-table-fixed .s-grid-fixed-table-body tr.s-grid-row")
                 
@@ -277,11 +285,12 @@ class DemmandeAchatRobot(BaseRobot, WebResultMixin):
                 self.logger.info("Remplissage Code Article...")
                 cell_article = cells_fixed[0]
                 cell_article.click()
-                time.sleep(3)
+            
+                time.sleep(5)
                 cell_article.clear()
                 cell_article.send_keys(article['code_article'])
                 cell_article.send_keys(Keys.TAB)
-                time.sleep(0.3)
+                time.sleep(3)
 
 
                 rows_scrool = driver.find_elements(By.CSS_SELECTOR, ".s-page-content-slot .s-grid-slot-table-scroll .s-grid-table-body tr.s-grid-row")
@@ -330,48 +339,70 @@ class DemmandeAchatRobot(BaseRobot, WebResultMixin):
                 time.sleep(0.3)
                 
                 # Remplissage Marque 
-                self.logger.info(f"Remplissage Marque PAIE 07/25...")
+                self.logger.info(f"Remplissage Marque {data['Observation'].iloc[0]}...")
                 cell_marque = cells_scrool[9]
                 cell_marque.click()
                 time.sleep(1)
                 cell_marque.clear()
-                cell_marque.send_keys("PAIE 07/25")
+                cell_marque.send_keys(data['Observation'].iloc[0])
                 cell_marque.send_keys(Keys.TAB)
                 time.sleep(3)
                 
-                # # Remplissage Compte 
+                grid_body = self.driver_manager.driver.find_element(By.CSS_SELECTOR, "div.s-grid-slot-table-scroll")
+                # write grid_body to file
+                with open("grid_body.html", "w", encoding="utf-8") as f:
+                    f.write(grid_body.get_attribute("outerHTML"))
+
+                # self.scroll_horizontal(grid_body, 500)
+
+
+                # Remplissage Compte 
                 # self.logger.info(f"Remplissage Compte 61221000...")
-                # cell_compte = cells_scrool[15]
+                # cell_compte = cells_scrool[16]
                 # cell_compte.click()
-                # time.sleep(1)
-                # cell_compte.clear()
-                # cell_compte.send_keys("61221000")
-                # cell_compte.send_keys(Keys.TAB)
                 # time.sleep(3)
                 
                 # Remplissage Service 
-                self.logger.info(f"Remplissage Service ...") 
-                cell_service = cells_scrool[25]
-                cell_service.click()
-                time.sleep(5)
-                cell_service.clear()
-                cell_service.send_keys("ADMINS006")
-                cell_service.send_keys(Keys.TAB) 
-                time.sleep(3)
+                i=1
+                while i==1:
+                    self.logger.info(f"Remplissage Service ...") 
+                    cell_service = cells_scrool[25]
+                    cell_service.click()
+                    time.sleep(2)
+                    cell_service.clear()
+                    cell_service.send_keys("ADMINS006")
+                    time.sleep(2)
+                    if cell_service.get_attribute("value") == "ADMINS006":
+                        self.logger.info(f"Service rempli avec succès.{ cell_service.get_attribute('value') } ")
+                        cell_service.send_keys(Keys.TAB) 
+                        time.sleep(3)
+                        i=0
+
                 # Récupérer les lignes de la table
                 rows_fixed = driver.find_elements(By.CSS_SELECTOR, ".s-page-content-slot .s-grid-slot-table-fixed .s-grid-fixed-table-body tr.s-grid-row")
-                
-                # Prendre la ligne correspondante à l'index de l'article
-                target_row = rows_fixed[index]
-                cells_fixed = target_row.find_elements(By.CSS_SELECTOR, ".s-inplace-input")
-                
 
+                # WebDriverWait(driver, 20).until(
+                #     EC.text_to_be_present_in_element_value(cells_scrool[25], "ADMINS006") # Attendre que le spinner de chargement disparaisse
+                # )
+                # Prendre la ligne correspondante à l'index de l'article
+                target_row = rows_fixed[(index+1)]
+                cells_fixed = target_row.find_elements(By.CSS_SELECTOR, ".s-inplace-input")
+                cell_article = cells_fixed[0]
+                cell_article.click()
+                time.sleep(5)
+                cell_article.clear()
+                cell_article.send_keys(Keys.ESCAPE)
+                WebDriverWait(driver, 20).until(
+                    EC.invisibility_of_element_located((By.CSS_SELECTOR, "div.s_overlay")) # Attendre que le spinner de chargement disparaisse
+                )
                 # utilise driver pour sleep
                 WebDriverWait(driver, 10).until(
                     EC.element_to_be_clickable(cells_fixed[0])
                 )
-            
+                self.handle_popup("OK", "Zone obligatoire")
 
+            
+            
             return {'status' : True, "resultat" : ""}
         except Exception as e:
             self.logger.error(f"Erreur lors de la saisie des lignes de la demmande d'achat: {e}")
@@ -417,7 +448,19 @@ class DemmandeAchatRobot(BaseRobot, WebResultMixin):
             return "N/A"
 
         return "N/A"
-
+    
+    def scroll_horizontal(self, element, pixels: int = 100):
+        """
+        Scroll horizontalement un élément
+        
+        Args:
+            element: WebElement à scroller
+            pixels: Nombre de pixels à scroller (positif = droite, négatif = gauche)
+        """
+        self.driver_manager.driver.execute_script(
+            f"arguments[0].scrollLeft += {pixels};", 
+            element
+        )
     def _enregistrer_demmande_achat(self) -> bool:
         """ Enregistrer la demmande d'achat """
         driver = self.driver_manager.driver
