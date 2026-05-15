@@ -17,7 +17,7 @@ from modules.regelement.VairementInternationalRobot import VairementInternationa
 from modules.regelement.RegelementRobot_V3 import RegelementRobot
 from utils.queue_manager import get_next_task, update_task
 from modules.bonne_commande.bonne_commande_robot import BonneCommandeRobot
-from modules.receiption.ReceiptionRobot_v2 import ReceiptionRobot
+from modules.receiption.ReceiptionRobot_v3 import ReceiptionRobot
 # from modules.facturation.FacturationRobot import FacturationRobot
 from modules.facturation.FacturationRobot_V2 import FacturationRobotV2
 from core.logger import Logger

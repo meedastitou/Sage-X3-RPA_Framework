@@ -314,7 +314,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
     def _regrouper_donnees(self, df: pd.DataFrame) -> Dict[str, Any]:
         """Regrouper les données par Fournisseur → DA → Articles"""
         self.logger.info("="*80)
-        self.logger.info("🔄 REGROUPEMENT DES DONNÉES PAR FOURNISSEUR")
+        self.logger.info(" REGROUPEMENT DES DONNÉES PAR FOURNISSEUR")
         self.logger.info("="*80)
 
         # Structure: {code_fournisseur: {email, tel, das, tous_articles}}
@@ -323,7 +323,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
         for _, row in df.iterrows():
             code_fournisseur = str(row['Code_Fournisseur'])
             email = str(row['Email_Fournisseur'])
-            tel = str(row['TEL_Fournisseu'])
+            tel = str(row['TEL_Fournisseur'])
             numero_da = str(row['Numero_DA'])
             acheteur = str(row['Acheteur'])
             code_article = str(row['Code_Article'])
@@ -403,7 +403,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
 
         driver = self.driver_manager.driver
         self.wait_for_spinner_to_disappear(driver, timeout=90000)
-
+        self.wait_stabilite(timeout=90000)
         total_articles = len(structure['tous_articles'])
 
         try: 
@@ -411,7 +411,12 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                 self.logger.info(f"{'─'*80}")
                 self.logger.info(f"📦 Article {idx}/{total_articles}: {code_article}")
                 self.logger.info(f"{'─'*80}")
-                
+                self.wait_stabilite(timeout=90000)
+
+                if  float(info_article['montant']) < 1 or str(info_article['montant']).strip() == '0.0' or str(info_article['montant']).strip().lower() == 'nan':
+                    self.logger.warning(f" Montant non défini pour l'article {code_article}")
+                    continue
+
                 resultat = self.traiter_article(
                     code_article=code_article,
                     code_fournisseur=structure['fournisseur'],
@@ -619,6 +624,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             chercher_article.send_keys(code_article)
             chercher_article.send_keys(Keys.TAB)
             time.sleep(1)
+            self.wait_stabilite(timeout=90000)
 
             table_body = articles_section.find_element(By.CLASS_NAME, "s-grid-table-body")
 
@@ -628,7 +634,8 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
 
             click_on_article.click()
             time.sleep(1)
-            
+            self.wait_stabilite(timeout=90000)
+
             # 0. verifier if BC_auto is checked
             BC_auto_input = self.get_input_by_label("BC Auto.")
             BC_auto_label = driver.find_element(By.CSS_SELECTOR, f"label[for='{BC_auto_input.get_attribute('id')}']")
@@ -640,7 +647,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             
 
             # 3. Modifier le fournisseur
-            self.logger.info(f"🔄 Modification fournisseur: {code_fournisseur}")
+            self.logger.info(f" Modification fournisseur: {code_fournisseur}")
             changer_fournisseur = self.get_input_by_label("Fournisseur")
             time.sleep(0.5)
             changer_fournisseur.click()
@@ -655,18 +662,20 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             time.sleep(1)
 
             # 4. Modifier l'affaire
-            self.logger.info(f"🔄 Modification affaire: {affaire}")
+            self.logger.info(f" Modification affaire: {affaire}")
+            changer_affaire = self.get_input_by_label("Affaire")
+            time.sleep(0.5)
+            changer_affaire.click()
+            time.sleep(0.5)
+            changer_affaire.clear()
             if not(affaire == 'nan' or affaire.strip() == ''):
-                changer_affaire = self.get_input_by_label("Affaire")
-                time.sleep(0.5)
-                changer_affaire.click()
-                time.sleep(0.5)
-                changer_affaire.clear()
                 changer_affaire.send_keys(affaire)
                 changer_affaire.send_keys(Keys.TAB)
                 time.sleep(1)
-            
-
+            else:
+                changer_affaire.send_keys("")
+                changer_affaire.send_keys(Keys.TAB)
+                time.sleep(1)
             # 5. Modifier le tarif
             # prend juste 4 chiffres apres la virgule
             montant = f"{float(montant):.4f}"
@@ -675,7 +684,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             change_tarif.click()
             time.sleep(0.5)
             change_tarif.clear()
-            change_tarif.send_keys(montant)
+            change_tarif.send_keys(str(round(float(montant), 4)))
             # if(change_tarif.get_attribute('value').replace(',','.').strip() != montant):
             #     resultat['message'] = f'Erreur de format du tarif pour l\'article {code_article} (valeur: {montant})'
             #     self.logger.error(f" {resultat['message']}")
@@ -822,7 +831,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
     def enregistrer_article(self) -> bool:
         """Enregistrer les modifications de l'article"""
         driver = self.driver_manager.driver
-        
+        #input("Appuyez sur Entrée pour enregistrer l'article (pour debug)")
         try:
             save_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_save")
             driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", save_btn)

@@ -289,8 +289,11 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
             
             # 3. Pour chaque code de reception, chercher et cocher
             for codeReception in list_codeReception:
+                self.logger.info(f"wait stabilite avant selection {codeReception}...")
                 self.wait_stabilite()
+                self.logger.info(f"Stabilite atteinte, debut selection {codeReception}")
                 self._set_in_first_page()
+                self.logger.info(f"Recherche de la reception {codeReception} dans les pages...")
                 self._get_page_of_receiption(codeReception=codeReception)
                 self.logger.info(f"Recherche de la reception: {codeReception}")
                 succes = self._cocher_reception(driver, codeReception)
@@ -442,18 +445,32 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
         Retourner a page paremier 
         """
         driver = self.driver_manager.driver
+        try:
+
+            self.logger.info("fonction de Retour a la premiere page...")
+            WebDriverWait(driver, 10).until(
+                EC.invisibility_of_element_located((By.CSS_SELECTOR, "div.s_overlay"))
+            )
+
+            
+            prvuis_button = driver.find_element(By.XPATH, '//*[@id="s_app_body"]/div/article/div[1]/div[2]/div[4]/div/article/div[1]/div[2]/div/a[2]')
+            WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable(prvuis_button)
+            )
+            self.logger.info("Clique 1 sur le bouton pour retourner a la premiere page...")
+            prvuis_button.click()
+
+
+            prvuis_button = driver.find_element(By.XPATH, '//*[@id="s_app_body"]/div/article/div[1]/div[2]/div[4]/div/article/div[1]/div[2]/div/a[2]')
+            WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable(prvuis_button)
+            )
+            time.sleep(1)
+        except Exception as e:
+            self.logger.error(f"Erreur lors du retour a la premiere page: {e}")
+            import traceback
+            traceback.print_exc()
         
-        WebDriverWait(driver, 10).until(
-            EC.invisibility_of_element_located((By.CSS_SELECTOR, "div.s_overlay"))
-        )
-        next_button = driver.find_element(By.XPATH, '//*[@id="s_app_body"]/div/article/div[1]/div[2]/div[4]/div/article/div[1]/div[2]/div/a[2]')
-        WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable(next_button)
-        )
-        for i in range(6):
-            time.sleep(0.5)
-            next_button.click()
-        time.sleep(1)
 
     # ------------------------------------------------------------------
     # Saisie des informations de la facture
