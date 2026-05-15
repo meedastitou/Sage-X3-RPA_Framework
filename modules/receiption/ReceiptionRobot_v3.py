@@ -406,8 +406,7 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
                     time.sleep(0.3)
 
                 resultat['bcs_traites'] += 1
-
-            input("Vérifier les données de la réception, puis appuyez sur Entrée pour continuer...")
+ 
             # 5. ENREGISTRER LA RÉCEPTION (une seule fois pour tous les BCs du même BLFrs)
             if self._enregistrer_reception():
                 resultat['statut'] = 'Succes'
@@ -919,7 +918,6 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
     def _enregistrer_reception(self) -> bool:
         """Enregistrer la réception"""
         driver = self.driver_manager.driver
-        input("dsf")
         try:
             save_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_check")
             driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", save_btn)
