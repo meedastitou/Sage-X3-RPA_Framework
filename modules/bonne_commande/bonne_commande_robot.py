@@ -282,7 +282,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                 'Acheteur', 
                 'Code_Fournisseur',
                 'Email_Fournisseur',
-                'TEL_Fournisseu', 
+                'TEL_Fournisseur', 
                 'Code_Article', 
                 'Montant',
                 'Marque',
