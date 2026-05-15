@@ -433,6 +433,8 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
                 next_button = driver.find_element(By.XPATH, '//*[@id="s_app_body"]/div/article/div[1]/div[2]/div[4]/div/article/div[1]/div[2]/div/a[3]')
                 next_button.click()
                 time.sleep(1)
+            
+            attempt = attempt + 1
 
     
     def _set_in_first_page(self):

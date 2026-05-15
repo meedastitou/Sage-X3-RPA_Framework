@@ -444,13 +444,17 @@ class BaseRobot(ABC):
     def wait_stabilite(self, timeout : int = 60):
         driver = self.driver_manager.driver
         try:
+            self.logger.info("waiting ajax watcher ....")
             WebDriverWait(driver, timeout).until(
                 lambda d: d.find_element(By.ID, "s_app_ajax_watcher").text == "0"
             )
             time.sleep(1)
+            self.logger.info("waiting long spin .....")
             WebDriverWait(driver, timeout).until(
                 EC.invisibility_of_element_located((By.ID, "s_lock_long_spin"))
             )
+            time.sleep(1)
+            self.logger.info("waiting s_overlay ...")
             WebDriverWait(driver, timeout).until(
                 EC.invisibility_of_element_located((By.CSS_SELECTOR, "div.s_overlay"))
             )
