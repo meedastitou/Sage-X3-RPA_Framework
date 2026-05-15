@@ -440,3 +440,21 @@ class BaseRobot(ABC):
             self.logger.error(f"Message popup: {popup_msg}")
 
         return error_info
+
+    def wait_stabilite(self, timeout : int = 60):
+        driver = self.driver_manager.driver
+        try:
+            WebDriverWait(driver, timeout).until(
+                lambda d: d.find_element(By.ID, "s_app_ajax_watcher").text == "0"
+            )
+            time.sleep(1)
+            WebDriverWait(driver, timeout).until(
+                EC.invisibility_of_element_located((By.ID, "s_lock_long_spin"))
+            )
+            WebDriverWait(driver, timeout).until(
+                EC.invisibility_of_element_located((By.CSS_SELECTOR, "div.s_overlay"))
+            )
+            return True
+        except Exception as e:
+            self.logger.info(e)
+            return False

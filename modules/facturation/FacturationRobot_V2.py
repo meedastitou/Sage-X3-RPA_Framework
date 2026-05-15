@@ -289,7 +289,7 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
             
             # 3. Pour chaque code de reception, chercher et cocher
             for codeReception in list_codeReception:
-                
+                self.wait_stabilite()
                 self._set_in_first_page()
                 self._get_page_of_receiption(codeReception=codeReception)
                 self.logger.info(f"Recherche de la reception: {codeReception}")
@@ -448,7 +448,9 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
         WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable(next_button)
         )
-        next_button.click()
+        for i in range(6):
+            time.sleep(0.5)
+            next_button.click()
         time.sleep(1)
 
     # ------------------------------------------------------------------
