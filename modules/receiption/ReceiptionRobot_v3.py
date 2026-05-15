@@ -31,7 +31,7 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
         self.driver_manager.headless = headless
         
         # URL du module réceptions d'achat
-        self.url_receiption = "http://192.168.1.252:8124/syracuse-main/html/main.html?url=%2Ftrans%2Fx3%2Ferp%2FPREPROD%2F%24sessions%3Ff%3DGESPTH2%252F2%252F%252FM%252F%26profile%3D~(loc~%27fr-FR~role~%2765059cf7-11e9-4b40-bac9-66ef183fb4e1~ep~%2764a56978-56ab-46f1-8d83-ed18f7fa6484~appConn~())"
+        self.url_receiption = "http://192.168.1.241:8124/syracuse-main/html/main.html?url=%2Ftrans%2Fx3%2Ferp%2FBASE1%2F%24sessions%3Ff%3DGESPTH2%252F2%252F%252FM%252F%26profile%3D~(loc~%27fr-FR~role~%279844eacb-4f96-4301-8b0c-dbe4f4d48e4d~ep~%27cb006c17-58a5-4b98-9f2b-474ec03472a3~appConn~())"
         
         # Compteurs
         self.fournisseurs_traites = 0
@@ -919,7 +919,7 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
     def _enregistrer_reception(self) -> bool:
         """Enregistrer la réception"""
         driver = self.driver_manager.driver
-        
+        input("dsf")
         try:
             save_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_check")
             driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", save_btn)
