@@ -82,7 +82,7 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
                     self.fournisseurs_traites += 1
                 else:
                     self.fournisseurs_echec += 1
-                    self.logger.warning(f"⚠️ Échec fournisseur {code_frs}, mais on continue...")
+                    self.logger.warning(f" Échec fournisseur {code_frs}, mais on continue...")
             
             # # 7. BILAN FINAL
             self.add_result({
@@ -102,13 +102,13 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
             
             self.logger.info("="*80)
             self.logger.info("🎉 PROCESSUS TERMINÉ")
-            self.logger.info(f"✅ {self.fournisseurs_traites} fournisseur(s) traité(s)")
-            self.logger.info(f"❌ {self.fournisseurs_echec} fournisseur(s) en échec")
+            self.logger.info(f"{self.fournisseurs_traites} fournisseur(s) traité(s)")
+            self.logger.info(f" {self.fournisseurs_echec} fournisseur(s) en échec")
             self.logger.info(f"📦 {self.total_articles} article(s) traité(s)")
             self.logger.info("="*80)
             
         except Exception as e:
-            self.logger.error(f"❌ ERREUR CRITIQUE: {e}")
+            self.logger.error(f" ERREUR CRITIQUE: {e}")
             import traceback
             self.logger.error(traceback.format_exc())
             
@@ -147,7 +147,7 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
         
         df = self.excel_handler.read_excel(excel_file, required_columns=colonnes_requises)
         
-        self.logger.info(f"✅ {len(df)} ligne(s) lues")
+        self.logger.info(f"{len(df)} ligne(s) lues")
         
         # Validation des colonnes importantes (observation est optionnelle)
         lignes_invalides = []
@@ -159,13 +159,13 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
 
             if colonnes_vides:
                 lignes_invalides.append(idx)
-                self.logger.warning(f"⚠️ Ligne {idx+1} ignorée - Colonnes vides: {', '.join(colonnes_vides)}")
+                self.logger.warning(f" Ligne {idx+1} ignorée - Colonnes vides: {', '.join(colonnes_vides)}")
         
         if lignes_invalides:
             df = df.drop(df.index[lignes_invalides])
-            self.logger.warning(f"⚠️ {len(lignes_invalides)} ligne(s) invalide(s) ignorée(s)")
+            self.logger.warning(f" {len(lignes_invalides)} ligne(s) invalide(s) ignorée(s)")
         
-        self.logger.info(f"✅ {len(df)} ligne(s) valides à traiter")
+        self.logger.info(f"{len(df)} ligne(s) valides à traiter")
         return df
     
     def _regrouper_donnees(self, df: pd.DataFrame) -> Dict[str, Any]:
@@ -305,7 +305,7 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
     def _afficher_resume(self, structure: Dict):
         """Afficher un résumé de la structure"""
         self.logger.info("="*80)
-        self.logger.info("📊 RÉSUMÉ DU TRAITEMENT")
+        self.logger.info(" RÉSUMÉ DU TRAITEMENT")
         self.logger.info("="*80)
         
         self.logger.info(f"🏢 {len(structure)} Fournisseur(s):")
@@ -364,11 +364,11 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
             else:
                 resultat['message'] = f'{resultat["bcs_traites"]} BC OK, {resultat["bcs_echec"]} BC échec'
             
-            self.logger.info(f"✅ Fournisseur {code_frs}: {resultat['message']}")
+            self.logger.info(f"Fournisseur {code_frs}: {resultat['message']}")
             
         except Exception as e:
             resultat['message'] = f'Erreur: {str(e)}'
-            self.logger.error(f"❌ Erreur fournisseur {code_frs}: {e}")
+            self.logger.error(f" Erreur fournisseur {code_frs}: {e}")
         finally:
             # Fermer le module avec confirmation d'abandon
             self.close_module(confirm_abandon=True)
@@ -393,9 +393,9 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
         try:
             # 0. CRÉER LA RÉCEPTION
             if self._cree_reception():
-                self.logger.info(f"✅ Réception créée pour BC {n_bc}")
+                self.logger.info(f"Réception créée pour BC {n_bc}")
             else:
-                self.logger.warning(f"❌ Échec création réception pour BC {n_bc}")
+                self.logger.warning(f" Échec création réception pour BC {n_bc}")
                 resultat['message'] = 'Erreur création réception'
                 return resultat
             
@@ -432,13 +432,13 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
             bl_input.send_keys(Keys.TAB)
             time.sleep(0.5)
 
-            self.logger.info("✅ Header rempli")
+            self.logger.info("Header rempli")
 
             # 2. SÉLECTIONNER LE BC
             self.logger.info(f"🔍 Sélection BC: {n_bc}")
 
             if not self._selectionner_articles_par_bc(n_bc, articles):
-                self.logger.warning(f"❌ Aucun article sélectionné pour BC {n_bc}")
+                self.logger.warning(f" Aucun article sélectionné pour BC {n_bc}")
                 resultat['message'] = f'Aucun article sélectionné pour BC {n_bc}'
                 return resultat
             
@@ -449,9 +449,9 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
                 if self._remplir_article_dans_ligne(article, idx):
                     resultat['articles_traites'] += 1
                     self.total_articles += 1
-                    self.logger.info(f"   ✅ Article {article['code']} OK")
+                    self.logger.info(f"   Article {article['code']} OK")
                 else:
-                    self.logger.warning(f"   ⚠️ Article {article['code']} échec")
+                    self.logger.warning(f"    Article {article['code']} échec")
 
                 time.sleep(0.5)
 
@@ -459,13 +459,13 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
             if self._enregistrer_reception():
                 resultat['statut'] = 'Succes'
                 resultat['message'] = f'{resultat["articles_traites"]}/{len(articles)} article(s) traité(s)'
-                self.logger.info(f"✅ BC {n_bc} enregistré")
+                self.logger.info(f"BC {n_bc} enregistré")
             else:
                 resultat['message'] = 'Erreur enregistrement'
             
         except Exception as e:
             resultat['message'] = f'Erreur: {str(e)}'
-            self.logger.error(f"❌ Erreur BC {n_bc}: {e}")
+            self.logger.error(f" Erreur BC {n_bc}: {e}")
         
         return resultat
     
@@ -478,16 +478,16 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
 
             if "s-disabled" in add_button.get_attribute("class"):
                 # Bouton désactivé 
-                self.logger.info("❌ Bouton Add désactivé, impossible de créer une nouvelle réception")
+                self.logger.info(" Bouton Add désactivé, impossible de créer une nouvelle réception")
                 return False
             else:
                 # Bouton activé
-                self.logger.info("✅ Nouvelle réception créée")
+                self.logger.info("Nouvelle réception créée")
                 add_button.click()
                 time.sleep(2)
                 return True
         except Exception as e:
-            self.logger.error(f"❌ Erreur création réception: {e}")
+            self.logger.error(f" Erreur création réception: {e}")
             return False
 
         # try:
@@ -497,11 +497,11 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
         #     creer_btn.click()
         #     time.sleep(2)
         
-        #     self.logger.info("✅ Nouvelle réception créée")
+        #     self.logger.info("Nouvelle réception créée")
         #     return True
             
         # except Exception as e:
-        #     self.logger.error(f"❌ Erreur création réception: {e}")
+        #     self.logger.error(f" Erreur création réception: {e}")
         #     return False
 
     def _selectionner_bc(self, n_bc: str) -> bool:
@@ -546,16 +546,16 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
                         except:
                             pass
                         
-                        self.logger.info(f"✅ BC {n_bc} sélectionné")
+                        self.logger.info(f"BC {n_bc} sélectionné")
                         return True
                 except:
                     continue
             
-            self.logger.error(f"❌ BC {n_bc} non trouvé")
+            self.logger.error(f" BC {n_bc} non trouvé")
             return False
             
         except Exception as e:
-            self.logger.error(f"❌ Erreur sélection BC: {e}")
+            self.logger.error(f" Erreur sélection BC: {e}")
             return False
 
     def _selectionner_articles_par_bc(self, n_bc: str, articles: List[Dict]) -> bool:
@@ -581,10 +581,10 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
                     EC.element_to_be_clickable((By.XPATH, "//a[@title='Sélection commandes']"))
                 )
                 commandes_btn.click()
-                self.logger.info("✅ Section 'Sélection commandes' ouverte")
+                self.logger.info("Section 'Sélection commandes' ouverte")
                 time.sleep(1)
             except:
-                self.logger.warning("⚠️ Bouton 'Sélection commandes' non trouvé, tableau déjà ouvert")
+                self.logger.warning(" Bouton 'Sélection commandes' non trouvé, tableau déjà ouvert")
             
             # 2. Attendre le tableau
             WebDriverWait(driver, 10).until(
@@ -594,7 +594,7 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
             
             # 3. Récupérer toutes les lignes
             rows = driver.find_elements(By.CSS_SELECTOR, ".s-grid-table-body tr.s-grid-row")
-            self.logger.info(f"📊 {len(rows)} ligne(s) trouvée(s) dans le tableau")
+            self.logger.info(f" {len(rows)} ligne(s) trouvée(s) dans le tableau")
             
             # Variables de suivi
             bc_trouve = False
@@ -637,7 +637,7 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
                         if n_bc in ligne_text:
                             bc_trouve = True
                             bc_row = row
-                            self.logger.info(f"✅ BC trouvé: {ligne_text}")
+                            self.logger.info(f"BC trouvé: {ligne_text}")
                             
                             # Vérifier si le BC a un bouton expand (plier/déplier)
                             try:
@@ -652,11 +652,11 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
                                     
                                     # Recharger les lignes après le dépliage
                                     rows = driver.find_elements(By.CSS_SELECTOR, ".s-grid-table-body tr.s-grid-row")
-                                    self.logger.info(f"📊 {len(rows)} ligne(s) après dépliage")
+                                    self.logger.info(f" {len(rows)} ligne(s) après dépliage")
                                 else:
-                                    self.logger.info("✅ BC déjà déplié")
+                                    self.logger.info("BC déjà déplié")
                             except:
-                                self.logger.info("✅ BC sans bouton expand (déjà ouvert)")
+                                self.logger.info("BC sans bouton expand (déjà ouvert)")
                     
                     # NIVEAU 1 = Ligne Article (enfant)
                     elif niveau == 1:
@@ -668,7 +668,7 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
                         for code_article in articles_attendus.keys():
                             # Vérifier si la ligne commence par le code article
                             if ligne_text.startswith(code_article):
-                                self.logger.info(f"   ✅ Article trouvé: {ligne_text}")
+                                self.logger.info(f"   Article trouvé: {ligne_text}")
                                 
                                 # Récupérer la checkbox
                                 checkbox = row.find_element(By.CSS_SELECTOR, "input[type='checkbox']")
@@ -703,18 +703,18 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
                                 break
                 
                 except Exception as e:
-                    self.logger.debug(f"⚠️ Erreur ligne {idx}: {e}")
+                    self.logger.debug(f" Erreur ligne {idx}: {e}")
                     continue
             
             # 5. Vérifier si le BC a été trouvé
             if not bc_trouve:
-                self.logger.error(f"❌ BC {n_bc} non trouvé dans le tableau")
+                self.logger.error(f" BC {n_bc} non trouvé dans le tableau")
                 return False
             
             # 6. Afficher les articles manquants
             articles_manquants = [code for code, trouve in articles_attendus.items() if not trouve]
             if articles_manquants:
-                self.logger.warning(f"⚠️ Articles non trouvés dans {n_bc}: {', '.join(articles_manquants)}")
+                self.logger.warning(f" Articles non trouvés dans {n_bc}: {', '.join(articles_manquants)}")
             
             # 7. Gérer la popup de confirmation "Voulez-vous remplacer..."
             time.sleep(1)
@@ -723,17 +723,17 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
                     EC.element_to_be_clickable((By.XPATH, "//a[@aria-label='Oui']"))
                 )
                 oui_btn.click()
-                self.logger.info("✅ Popup 'Oui' cliquée")
+                self.logger.info("Popup 'Oui' cliquée")
                 time.sleep(1)
             except:
                 self.logger.debug("ℹ️ Pas de popup de confirmation")
             
-            self.logger.info(f"✅ {articles_trouves}/{len(articles)} article(s) sélectionné(s) pour BC {n_bc}")
+            self.logger.info(f"{articles_trouves}/{len(articles)} article(s) sélectionné(s) pour BC {n_bc}")
             
             return articles_trouves > 0
             
         except Exception as e:
-            self.logger.error(f"❌ Erreur sélection articles: {e}")
+            self.logger.error(f" Erreur sélection articles: {e}")
             import traceback
             self.logger.error(traceback.format_exc())
             driver.save_screenshot(f"error_selection_bc_{n_bc}.png")
@@ -778,7 +778,7 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
             # Attendre la modale
             modal = driver.find_element(By.CLASS_NAME, "s_modal_dialog")
             if not modal.is_displayed():
-                self.logger.warning("   ⚠️ Modale non visible")
+                self.logger.warning("    Modale non visible")
                 return False
 
             # Basculer vers l'iframe de la modale
@@ -800,11 +800,11 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
             ok_button.click()
             time.sleep(0.5)
 
-            self.logger.info(f"   ✅ Observation ajoutée: {observation}")
+            self.logger.info(f"   Observation ajoutée: {observation}")
             return True
 
         except Exception as e:
-            self.logger.error(f"   ❌ Erreur lors de l'ajout de l'observation: {e}")
+            self.logger.error(f"    Erreur lors de l'ajout de l'observation: {e}")
             # Revenir au contenu principal en cas d'erreur
             try:
                 driver.switch_to.default_content()
@@ -829,7 +829,7 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
             )
             # Trouver toutes les lignes
             rows = table.find_elements(By.CSS_SELECTOR, ".s-grid-table-body tr.s-grid-row")
-            self.logger.info(f"📊 {len(rows)} ligne(s) dans le tableau pour remplissage")
+            self.logger.info(f" {len(rows)} ligne(s) dans le tableau pour remplissage")
             
             # Chercher la ligne avec cet article
             target_row = None
@@ -937,13 +937,13 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
             #     msg = alert.text
                 
             #     if "Avertissement" in msg or "Erreur" in msg:
-            #         self.logger.error(f"❌ {msg}")
+            #         self.logger.error(f" {msg}")
             #         return False
             #     else:
-            #         self.logger.info(f"✅ {msg}")
+            #         self.logger.info(f"{msg}")
             #         return True
             # except:
-            #     self.logger.info("✅ Enregistré")
+            #     self.logger.info("Enregistré")
             #     return True
             time.sleep(4)
             s_page_close = driver.find_element(By.CSS_SELECTOR, "a.s_page_close")
@@ -951,7 +951,7 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
             time.sleep(2)
             return True
         except Exception as e:
-            self.logger.error(f"❌ Erreur enregistrement: {e}")
+            self.logger.error(f" Erreur enregistrement: {e}")
             return False
         
     def _gere_popup_fournisseur(self):
@@ -967,7 +967,7 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
             # Cliquer sur OK
             ok_button = dialog.find_element(By.LINK_TEXT, "OK")
             ok_button.click()
-            self.logger.info("✅ Popup 'Oui' cliquée")
+            self.logger.info("Popup 'Oui' cliquée")
             time.sleep(1)
         except:
             # Pas de popup
