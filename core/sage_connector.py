@@ -6,7 +6,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
-from config.settings import SAGE_CONFIG
+from config.settings import SAGE_CONFIG, SAGE_CONFIG_TEST
 from core.driver_manager import DriverManager
 from core.logger import Logger
 from selenium.webdriver.common.keys import Keys
@@ -61,17 +61,17 @@ class SageConnector:
                     EC.element_to_be_clickable((By.XPATH, "//button[text()='OK']"))
                 )
                 ok_button.click()
-                self.logger.info("✅ Popup fermée")
+                self.logger.info("Popup fermée")
             except:
                 pass
             
             time.sleep(2)
             self.is_connected = True
-            self.logger.info("✅ Connexion Sage X3 réussie")
+            self.logger.info("Connexion Sage X3 réussie")
             return True
             
         except Exception as e:
-            self.logger.error(f"❌ Erreur connexion Sage X3: {e}")
+            self.logger.error(f" Erreur connexion Sage X3: {e}")
             self.is_connected = False
             return False
     
@@ -96,11 +96,11 @@ class SageConnector:
                 EC.presence_of_element_located((By.CSS_SELECTOR, "body"))
             )
             
-            self.logger.info("✅ Module chargé")
+            self.logger.info("Module chargé")
             return True
             
         except Exception as e:
-            self.logger.error(f"❌ Erreur navigation module: {e}")
+            self.logger.error(f" Erreur navigation module: {e}")
             return False
     
     def handle_refresh_popup(self) -> bool:
@@ -115,7 +115,7 @@ class SageConnector:
                 EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Actualiser')]"))
             )
             actualiser_btn.click()
-            self.logger.info("✅ Popup 'Actualiser' cliquée")
+            self.logger.info("Popup 'Actualiser' cliquée")
             time.sleep(2)
             return True
         except:
@@ -146,15 +146,15 @@ class SageConnector:
                     EC.presence_of_element_located((By.CSS_SELECTOR, "body"))
                 )
                 
-                self.logger.info(f"✅ Actualisation réussie (tentative {attempt})")
+                self.logger.info(f"Actualisation réussie (tentative {attempt})")
                 return True
                 
             except Exception as e:
-                self.logger.warning(f"⚠️ Échec tentative {attempt}: {e}")
+                self.logger.warning(f" Échec tentative {attempt}: {e}")
                 if attempt < max_attempts:
                     time.sleep(3)
                 else:
-                    self.logger.error(f"❌ Échec après {max_attempts} tentatives")
+                    self.logger.error(f" Échec après {max_attempts} tentatives")
                     return False
         
         return False
@@ -180,7 +180,7 @@ class SageConnector:
         if self.driver_manager:
             self.driver_manager.stop()
         self.is_connected = False
-        self.logger.info("✅ Déconnexion Sage X3")
+        self.logger.info("Déconnexion Sage X3")
     
     def click_oui_if_popup(self,driver, timeout=3):
         """Clique sur Oui si un popup avec bouton Oui apparaît"""
@@ -192,13 +192,13 @@ class SageConnector:
             popup = WebDriverWait(driver, timeout).until(
                 EC.presence_of_element_located((By.CLASS_NAME, "s_alertbox_footer"))
             )
-            self.logger.info("⚠️ Popup de confirmation détectée, tentative de clic sur 'Oui'")
+            self.logger.info(" Popup de confirmation détectée, tentative de clic sur 'Oui'")
             # Chercher le bouton Oui dans le popup
             time.sleep(1)  # Petite pause pour s'assurer que le popup est complètement chargé
             oui_button = popup.find_element(By.XPATH, "//a[@aria-label='Oui' and contains(@class, 's_alertbox_textLink')]")
             oui_button.click()
             time.sleep(2)  # Attendre que l'action se fasse
-            self.logger.info("✅ Clic sur 'Oui' réussi")
+            self.logger.info("Clic sur 'Oui' réussi")
                
         except:
             # Si le popup n'est pas trouvé, ne rien faire

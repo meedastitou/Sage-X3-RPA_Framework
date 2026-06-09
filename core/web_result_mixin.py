@@ -57,7 +57,7 @@ class WebResultMixin:
         logger.info("🌐 ENVOI DES RÉSULTATS VERS L'ENDPOINT WEB")
         logger.info("="*80)
         logger.info(f"📡 URL: {self.web_endpoint_config['url']}")
-        logger.info(f"📊 Mode: {self.web_endpoint_config['mode']}")
+        logger.info(f" Mode: {self.web_endpoint_config['mode']}")
         
         try:
             # Formater les données selon le type de robot
@@ -100,14 +100,14 @@ class WebResultMixin:
                         logger.info(f"Envoi réussi (tentative {attempt}/{retry_count})")
                         break
                     else:
-                        logger.warning(f"⚠️ Échec tentative {attempt}/{retry_count}: {result.get('message')}")
+                        logger.warning(f" Échec tentative {attempt}/{retry_count}: {result.get('message')}")
                         if attempt < retry_count:
                             delay = self.web_endpoint_config['retry_delay']
                             logger.info(f"⏳ Nouvelle tentative dans {delay}s...")
                             time.sleep(delay)
                 
                 except Exception as e:
-                    logger.error(f"❌ Erreur tentative {attempt}/{retry_count}: {e}")
+                    logger.error(f" Erreur tentative {attempt}/{retry_count}: {e}")
                     if attempt < retry_count:
                         delay = self.web_endpoint_config['retry_delay']
                         logger.info(f"⏳ Nouvelle tentative dans {delay}s...")
@@ -124,7 +124,7 @@ class WebResultMixin:
             return result
         
         except Exception as e:
-            logger.error(f"❌ Erreur envoi web: {e}")
+            logger.error(f" Erreur envoi web: {e}")
             import traceback
             logger.error(traceback.format_exc())
             return {
@@ -206,6 +206,6 @@ class WebResultMixin:
                         self.logger.info(f"📄 PDF BC ajouté aux données: {self.pdf_bc_path}")
             except Exception as e:
                 if hasattr(self, 'logger'):
-                    self.logger.warning(f"⚠️ Impossible d'ajouter le PDF BC: {e}")
+                    self.logger.warning(f" Impossible d'ajouter le PDF BC: {e}")
 
         return data
