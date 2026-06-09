@@ -924,8 +924,9 @@ async def list_ff_non_regles():
         for row in rows:
             if row.ModePaiement == "LCR" and row.Ecart >= 0:
                 result.donnees.append({
+                    "Code_Frs": row.CodeFournisseur,
                     "N_Facture": row.NumFacture,
-                    "Reference": row.Reference,
+                    "Refference": row.Reference,
                     "Montant": row.ResteAPayer,
                     "TVA": row.MontantTVA,
                     "type_regelement": _TYPE_REGLEMENT_.get(row.ModePaiement)
