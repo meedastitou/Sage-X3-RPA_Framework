@@ -21,7 +21,7 @@ SAGE_CONFIG = {
     'url': os.getenv('SAGE_URL', 'http://192.168.1.241:8124/'),
     'username': os.getenv('SAGE_USERNAME', 'CPT02'),
     'titular': os.getenv('SAGE_TITULAR', 'CPT02 Comptable 02'),
-    'password': os.getenv('SAGE_PASSWORD', 'RPA@2026'),
+    'password': os.getenv('SAGE_PASSWORD', 'CPT@2026'),
     'environment': os.getenv('SAGE_ENVIRONMENT', 'PREPROD'),
     'timeout': int(os.getenv('SAGE_TIMEOUT', '10')),
 }
@@ -48,8 +48,8 @@ DATABASE_CONFIG = {
     'host': os.getenv('DB_HOST', 'localhost'),
     'port': int(os.getenv('DB_PORT', '3306')),
     'database': os.getenv('DB_NAME', 'sage_rpa'),
-    'username': os.getenv('DB_USER', 'admin'),
-    'password': os.getenv('DB_PASSWORD', 'password'),
+    'username': os.getenv('DB_USER', 'root'),
+    'password': os.getenv('DB_PASSWORD', 'root123'),
     'driver': os.getenv('DB_DRIVER', 'mysql'),  # mysql, postgresql, sqlserver
 }
 
@@ -87,7 +87,11 @@ MODULES_CONFIG = {
         'enabled': False,
     }
 }
-
+_TYPE_REGLEMENT_ = {
+    "LCR": 1,
+    "CHQ": 2,
+    "VIR": 3,
+}
 # Créer les dossiers s'ils n'existent pas
 for directory in [DATA_DIR, INPUT_DIR, OUTPUT_DIR, LOGS_DIR]:
     directory.mkdir(parents=True, exist_ok=True)
