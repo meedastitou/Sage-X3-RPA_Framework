@@ -3,11 +3,12 @@
 Classe de base pour tous les robots RPA
 """
 from abc import ABC, abstractmethod
-from datetime import datetime, time
+from datetime import datetime
 from typing import Dict, Any, Optional, List
 import pandas as pd
 from pathlib import Path
 import base64
+import time
 
 from core.sage_connector import SageConnector
 from core.driver_manager import DriverManager
@@ -445,19 +446,25 @@ class BaseRobot(ABC):
         driver = self.driver_manager.driver
         try:
             self.logger.info("waiting ajax watcher ....")
-            WebDriverWait(driver, timeout).until(
-                lambda d: d.find_element(By.ID, "s_app_ajax_watcher").text == "0"
-            )
+            while True:
+                    ajax_watcher = driver.find_element(By.ID, "s_app_ajax_watcher")
+                    self.logger.info(f"ajax watcher text: {ajax_watcher.text}")
+                    if ajax_watcher.text == "":
+                        break
+                    time.sleep(1)
+            # WebDriverWait(driver, timeout).until(
+            #     lambda d: d.find_element(By.ID, "s_app_ajax_watcher").text == "0"
+            # )
             time.sleep(1)
             self.logger.info("waiting long spin .....")
             WebDriverWait(driver, timeout).until(
                 EC.invisibility_of_element_located((By.ID, "s_lock_long_spin"))
             )
             time.sleep(1)
-            self.logger.info("waiting s_overlay ...")
-            WebDriverWait(driver, timeout).until(
-                EC.invisibility_of_element_located((By.CSS_SELECTOR, "div.s_overlay"))
-            )
+            # self.logger.info("waiting s_overlay ...")
+            # WebDriverWait(driver, timeout).until(
+            #     EC.invisibility_of_element_located((By.CSS_SELECTOR, "div.s_overlay"))
+            # )
             return True
         except Exception as e:
             self.logger.info(e)
