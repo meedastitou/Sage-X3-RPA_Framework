@@ -27,10 +27,10 @@ from modules.lettrage.lettrage_robot import LettrageRobot
 from modules.bonne_commande.bonne_commande_robot import BonneCommandeRobot
 from modules.imputation.ImputationRobot import ImputationRobot
 from core.logger import Logger
-
+from config.settings import _TYPE_REGLEMENT_
 # Importer le queue manager
 from utils.queue_manager import add_task, load_queue
-
+from query.query_ff import query_ff
 app = FastAPI(
     title="Sage X3 RPA API",
     description="API REST pour déclencher les robots d'automatisation Sage X3",
@@ -899,6 +899,45 @@ async def trigger_demmande_achat_from_data(request: DemmandAchatDataRequest):
         error=None
     )
 
+
+@app.get("/api/list_ff_non_regles")
+async def list_ff_non_regles():
+    """
+    Lister les factures fournisseurs non réglées
+    """
+    import pyodbc
+
+    try:
+        # executer la requete SQL pour récupérer les factures non réglées
+        conn = pyodbc.connect(
+                "DRIVER={ODBC Driver 17 for SQL Server};"
+                "SERVER=192.168.1.241\\ERPX3;"
+                "DATABASE=x3;"
+                "UID=X3U;"
+                "PWD=SQL@2019;"
+            )
+        cursor = conn.cursor()
+        cursor.execute(query_ff)
+        rows = cursor.fetchall()
+
+        # charge RegelementDataRequest avec les données récupérées 
+        result = RegelementDataRequest(donnees=[], email_expediteur="", headless=False)
+        for row in rows:
+            if row.ModePaiement == "LCR" and row.Ecart >= 0:
+                result.donnees.append({
+                    "N_Facture": row.NumFacture,
+                    "Reference": row.Reference,
+                    "Montant": row.ResteAPayer,
+                    "TVA": row.MontantTVA,
+                    "type_regelement": _TYPE_REGLEMENT_.get(row.ModePaiement)
+                })
+                result.email_expediteur = None
+                result.headless = False
+        return result
+        
+    except Exception as e:
+        logger.error(f" Erreur lecture factures non réglées: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/upload")
 async def upload_file(file: UploadFile = File(...)):
