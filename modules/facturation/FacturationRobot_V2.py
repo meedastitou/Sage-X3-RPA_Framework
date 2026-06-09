@@ -451,21 +451,19 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
             WebDriverWait(driver, 10).until(
                 EC.invisibility_of_element_located((By.CSS_SELECTOR, "div.s_overlay"))
             )
-
             
+            # for i in range(5):
+            self.wait_stabilite()
             prvuis_button = driver.find_element(By.XPATH, '//*[@id="s_app_body"]/div/article/div[1]/div[2]/div[4]/div/article/div[1]/div[2]/div/a[2]')
             WebDriverWait(driver, 10).until(
                 EC.element_to_be_clickable(prvuis_button)
             )
-            self.logger.info("Clique 1 sur le bouton pour retourner a la premiere page...")
+            self.logger.info(f"Clique {i+1} sur le bouton pour retourner a la premiere page...")
             prvuis_button.click()
 
 
-            prvuis_button = driver.find_element(By.XPATH, '//*[@id="s_app_body"]/div/article/div[1]/div[2]/div[4]/div/article/div[1]/div[2]/div/a[2]')
-            WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable(prvuis_button)
-            )
             time.sleep(1)
+
         except Exception as e:
             self.logger.error(f"Erreur lors du retour a la premiere page: {e}")
             import traceback
@@ -604,11 +602,13 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
                     time.sleep(1)   
             except Exception:
                 self.logger.info("Pas de popup de changement de dépôt après saisie du DFF")
-        
-            date_input.clear()
-            date_input.send_keys(Date)
-            date_input.send_keys(Keys.TAB)
-            time.sleep(1)
+
+            if date_input.get_attribute('value') == "":
+                self.logger.warning("Le champ de date est vide, saisie de la date...")
+                date_input.clear()
+                date_input.send_keys(Date)
+                date_input.send_keys(Keys.TAB)
+                time.sleep(1)
 
             # No fact.fou
             factureFrs_input = self.get_input_by_label("No fact.fou")
