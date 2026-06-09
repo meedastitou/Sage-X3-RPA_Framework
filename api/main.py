@@ -856,7 +856,6 @@ async def trigger_demmande_achat_from_data(request: DemmandAchatDataRequest):
     }
     ```
     """
-    print(request.donnees)
     if not request.email_expediteur:
         raise HTTPException(status_code=400, detail="email_expediteur est requis")
     required_columns_entite = ['observation', 'marque']
