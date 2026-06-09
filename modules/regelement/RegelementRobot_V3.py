@@ -96,7 +96,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                         'error_info': None
                     }
                     self.add_result(resultat)
-                    break
+                    continue
                 time.sleep(5)
                 self.wait_for_spinner_to_disappear(self.driver_manager.driver, timeout=90000)
                 self.wait_for_element_to_appear(self.driver_manager.driver, By.CSS_SELECTOR, "div.s-page-content-slot", timeout=60000)
