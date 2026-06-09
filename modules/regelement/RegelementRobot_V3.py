@@ -418,10 +418,10 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             # 10. REMPLIR DATE ECHEANCE
             if not avance:
                 # Facture FF : date de départ = date facture SQL, montant = montant de la ligne
-                # if not self._saisir_date_echeance_v2(date_echeance, num_facture, resultat, float(montant)):
-                #     return resultat
-                if not self._saisir_date_echeance(date_echeance):
+                if not self._saisir_date_echeance_v2(date_echeance, num_facture, resultat, float(montant)):
                     return resultat
+                # if not self._saisir_date_echeance(date_echeance):
+                #     return resultat
                 self.wait_for_spinner_to_disappear(driver=driver)                
             else:
                 # Avance sans facture : date de départ = aujourd'hui, montant = montant de la ligne
@@ -465,6 +465,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                 label_endo = driver.find_element(By.CSS_SELECTOR, f"label[for='{endo_input.get_attribute('id')}']")
                 label_endo.click()
                 time.sleep(0.5)
+                self.wait_stabilite()
                 tier_endo_input = self.get_input_by_label("Tiers Endo.")
                 tier_endo_input.click()
                 time.sleep(0.5)
@@ -472,6 +473,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                 tier_endo_input.send_keys(tier_endo)
                 tier_endo_input.send_keys(Keys.TAB)
                 time.sleep(0.5)
+                self.wait_stabilite()
 
             # =================================================================
             # 10. AJUSTER DATE ECHEANCE + ENREGISTRER (apres detail paiement)
@@ -581,6 +583,20 @@ class RegelementRobot(BaseRobot, WebResultMixin):
         date_echeance_input.send_keys(date_str)
         date_echeance_input.send_keys(Keys.TAB)
         time.sleep(0.5)
+        self.wait_stabilite()
+        if self.read_popup_message():
+            self.handle_popup("OK", "+120")
+
+            WebDriverWait(driver=self.driver_manager.driver, timeout=60).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_close"))
+            )
+            close_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_close")
+            time.sleep(1)
+            close_btn.click()
+            return False
+
+        self.wait_for_spinner_to_disappear(driver=driver)
+        return True
         # for attempt in range(10):
         #     self.logger.info(f"[Tentative {attempt+1}] Saisie date échéance: {date_str}")
 
