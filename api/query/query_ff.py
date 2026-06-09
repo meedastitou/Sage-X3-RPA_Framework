@@ -44,6 +44,8 @@ query_ff = """
             AND (F.enReception + F.enFacturation + F.facture 
                 + F.retourNF + F.Soldedépart + F.Réglement) > 0
             AND G.NUM_0 LIKE 'FF%'
+            AND P.BPR_0<>'T3691'
+
     )
 
     -- 4. Sélection finale avec alignement parfait des tris (Ordre Croissant du Reste à Payer)
