@@ -458,7 +458,7 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
             WebDriverWait(driver, 10).until(
                 EC.element_to_be_clickable(prvuis_button)
             )
-            self.logger.info(f"Clique {i+1} sur le bouton pour retourner a la premiere page...")
+            self.logger.info(f"Clique {1} sur le bouton pour retourner a la premiere page...")
             prvuis_button.click()
 
 
