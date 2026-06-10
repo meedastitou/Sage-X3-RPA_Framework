@@ -228,6 +228,8 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             montant = str(row['Montant'])
             num_cheque = self._get_num_cheque_from_db(row['type_regelement'])  # Récupérer le numéro de chèque depuis la base de données
             tva = str(row['TVA']) if not pd.isna(row['TVA']) else ""
+            if float(tva) == 0.0:
+                tva = "0.1"  # pour éviter les problèmes de champ obligatoire dans le cas ou tva = 0    
             tier_endo = str(row['tier_endo']).strip() if 'tier_endo' in row and not pd.isna(row.get('tier_endo', None)) and str(row['tier_endo']).strip() != '' else None
             # date reel c'est date d'aujourd'hui
             date_reel = datetime.now().strftime('%d/%m/%Y')
@@ -297,7 +299,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             time.sleep(1)
 
             self._gere_popup_fournisseur()
-
+            self.wait_stabilite()
             # =================================================================
             # =================================================================
             # 3. REMPLIR LA FACTURE DANS LE CHAMPS DE COMMANTAIRE
@@ -309,7 +311,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             commentaire_input.send_keys(num_facture)
             commentaire_input.send_keys(Keys.TAB)
             time.sleep(0.5)
-
+            self.wait_stabilite()
             # =================================================================
             # =================================================================
             # 4. REMPLIR LA REFÉRENCE DE PIECE
@@ -321,6 +323,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             reference_input.send_keys(refference.replace(" ", ""))
             reference_input.send_keys(Keys.TAB)
             time.sleep(0.5)
+            self.wait_stabilite()
             if self.read_popup_message() is not None:
                 self.logger.warning(f" Popup détecté après saisie de la référence de pièce pour {refference}")
                 error_info = self.handle_error_with_screenshot(
@@ -340,6 +343,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             # =================================================================
             # =================================================================
             # 5. SAIISIR Libelle
+            self.wait_stabilite()
             self.logger.info(f"🔍 REMPLIR le Libelle: {num_cheque}")
             libelle_input = self.get_input_by_label("Libellé")
             libelle_input.click()
@@ -348,14 +352,14 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             libelle_input.send_keys(num_cheque + "/BMCE/BRIQUETERIE JBEL A")
             libelle_input.send_keys(Keys.TAB)
             time.sleep(0.5)
-
+            self.wait_stabilite()
             banque_input = self.get_input_by_label("Banque", 96) # id de champ banque est change de 95 a 96 dans le cas de reglement de l'avance sans facture
             banque_input.click()
             time.sleep(0.5)
             banque_input.send_keys("B01")
             banque_input.send_keys(Keys.TAB)
             time.sleep(0.5)
-
+            self.wait_stabilite()
             # =================================================================
             # =================================================================
             # 6. REMPLIR MONTANT
@@ -367,7 +371,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             montant_input.send_keys(montant)
             montant_input.send_keys(Keys.TAB)
             time.sleep(0.5)
-            
+            self.wait_stabilite()
             # =================================================================
             # =================================================================
             # 7. SÉLECTIONNER Numero cheque
@@ -379,7 +383,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             num_cheque_input.send_keys(num_cheque)
             num_cheque_input.send_keys(Keys.TAB)
             time.sleep(0.5)
-
+            self.wait_stabilite()
             if self._check_num_cheque_deja_utilise(num_cheque):
                 self.logger.warning(f" Numéro de chèque {num_cheque} déjà utilisé")
                 error_info = self.handle_error_with_screenshot(
@@ -388,7 +392,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                 )
                 resultat['error_info'] = error_info
                 return resultat
-           
+            self.wait_stabilite()
             Etablisstpayeur_input = self.get_input_by_label("Etablisst payeur")
             Etablisstpayeur_input.click()
             time.sleep(0.5)
@@ -396,7 +400,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             Etablisstpayeur_input.send_keys("BMCE")
             Etablisstpayeur_input.send_keys(Keys.TAB)
             time.sleep(0.5)
-
+            self.wait_stabilite()
             # =================================================================
             # =================================================================
             # 8. REMPLIR TVA
@@ -408,7 +412,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             tva_input.send_keys(str(round(float(tva), 2)))
             tva_input.send_keys(Keys.TAB)
             time.sleep(0.5)
-
+            self.wait_stabilite()
             # =================================================================
             # =================================================================
             # 9. REMPLIR DATE REEL
@@ -420,6 +424,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             date_reel_input.send_keys(date_reel)
             date_reel_input.send_keys(Keys.TAB)
             time.sleep(0.5)
+            self.wait_stabilite()
             # =================================================================
             # verifier c'est une popup apparait
             if self.read_popup_message() is not None:
