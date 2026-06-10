@@ -436,7 +436,8 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                 resultat['error_info'] = error_info
                 return resultat
 
-            self.wait_for_spinner_to_disappear(driver=driver)
+            # self.wait_for_spinner_to_disappear(driver=driver)
+            self.wait_stabilite()
             # =================================================================
             # =================================================================
             # 10. REMPLIR DATE ECHEANCE
@@ -446,7 +447,8 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                     return resultat
                 # if not self._saisir_date_echeance(date_echeance):
                 #     return resultat
-                self.wait_for_spinner_to_disappear(driver=driver)                
+                # self.wait_for_spinner_to_disappear(driver=driver)    
+                self.wait_stabilite()            
             else:
                 # Avance sans facture : date de départ = aujourd'hui, montant = montant de la ligne
                 if not self._saisir_date_echeance_avance(resultat, float(montant)):
