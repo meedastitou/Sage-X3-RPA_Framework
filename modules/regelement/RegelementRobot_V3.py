@@ -250,6 +250,25 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             avance = False if num_facture.startswith("FF") else True
             self.logger.info(f"🔍 Type de règlement: {'Avance sans facture' if avance else 'Règlement avec facture'}")
 
+            # =====================================================================================
+            # Comparer le montant de la facture FF avec le montant de la facture fournisseur DFF
+            # si y une ecart de montant entre la facture FF et la facture fournisseur DFF entre 5dh ou -5dh alors robot va prendre le montant de la facture fournisseur DFF 
+            # si l'ecart de montant entre la facture FF et la facture fournisseur DFF superieur a 5dh ou inferieur a -5dh alors robot va eviter de faire le reglement.
+            # =====================================================================================
+            if not avance:
+                montant_facture_frs = self._get_montant_facture_frs(num_facture)
+                if montant_facture_frs is not None:
+                    ecart = float(montant) - montant_facture_frs
+                    self.logger.info(f" Montant facture fournisseur (DFF): {montant_facture_frs} | Écart: {ecart}")
+                    if abs(ecart) > 5:
+                        self.logger.warning(f" Écart de montant supérieur à 5 DH pour {num_facture}, évitement du règlement.")
+                        resultat['message'] = f'Écart de montant de {ecart} DH entre la facture FF et la facture fournisseur DFF, évitement du règlement.'
+                        return resultat
+                    else:
+                        self.logger.info(f" Écart de montant de {ecart} DH pour {num_facture}, ajustement du montant au montant de la facture fournisseur DFF.")
+                        montant = str(montant_facture_frs)
+
+            
             # 1. CRÉER LE RÈGLEMENT
             if not self._cree_regelement():
                 self.logger.warning(f" Échec création règlement pour {num_facture}")
@@ -751,8 +770,6 @@ class RegelementRobot(BaseRobot, WebResultMixin):
         self.wait_for_spinner_to_disappear(driver=driver)
         return True
         
-        
-
     def _ajuster_date_et_enregistrer(self, num_facture: str, resultat: dict) -> bool:
         from datetime import timedelta
         driver = self.driver_manager.driver
@@ -1251,6 +1268,38 @@ class RegelementRobot(BaseRobot, WebResultMixin):
         except Exception as e:
             self.logger.error(f"Erreur récupération soldes par mois: {e}")
             return {}
+        finally:
+            try:
+                cursor.close()
+                conn.close()
+            except:
+                pass
+
+    def _get_montant_facture_frs(self, num_facture: str) -> float:
+        """Récupérer le montant de la facture depuis SQL"""
+        import pyodbc
+        query_montant_dff = f"""SELECT XMNT_0 AS MONTANT_DFF FROM BASE1.PINVOICE PIN
+                                LEFT JOIN BASE1.XDEPFACT DPF ON DPF.XNUM_0 = PIN.XDFF_0
+                                WHERE NUM_0 = ' {num_facture}'"""
+        try:
+            conn = pyodbc.connect(
+                "DRIVER={ODBC Driver 17 for SQL Server};"
+                "SERVER=192.168.1.241\\ERPX3;"
+                "DATABASE=x3;"
+                "UID=X3U;"
+                "PWD=SQL@2019;"
+            )
+            cursor = conn.cursor()
+            cursor.execute(query_montant_dff)
+            row = cursor.fetchone()
+            if row and row[0] is not None:
+                return float(row[0])
+            else:
+                self.logger.warning(f"Aucun montant trouvé pour la facture {num_facture}")
+                return None
+        except Exception as e:
+            self.logger.error(f"Erreur récupération montant facture {num_facture}: {e}")
+            return None
         finally:
             try:
                 cursor.close()
