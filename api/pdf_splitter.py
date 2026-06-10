@@ -9,7 +9,6 @@ import zipfile
 from pathlib import Path
 from datetime import datetime
 
-import pdfplumber
 from pypdf import PdfReader, PdfWriter
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import StreamingResponse, JSONResponse
@@ -64,42 +63,40 @@ async def split_pdf(file: UploadFile = File(...)):
 
     pdf_bytes = await file.read()
 
-    # Lire le PDF avec pypdf pour le split
+    # Lire le PDF avec pypdf pour le split et l'extraction de texte
     reader = PdfReader(io.BytesIO(pdf_bytes))
     total_pages = len(reader.pages)
 
     if total_pages == 0:
         raise HTTPException(status_code=400, detail="Le PDF est vide")
 
-    # Extraire le texte de chaque page avec pdfplumber
     zip_buffer = io.BytesIO()
     results = []
 
-    with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf_plumber:
-        with zipfile.ZipFile(zip_buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
-            for i, page in enumerate(pdf_plumber.pages):
-                text = page.extract_text() or ""
+    with zipfile.ZipFile(zip_buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+        for i, page in enumerate(reader.pages):
+            text = page.extract_text() or ""
 
-                # Extraire le matricule
-                matricule = extract_matricule(text)
-                filename = f"{matricule}.pdf" if matricule else f"page_{i + 1}.pdf"
+            # Extraire le matricule
+            matricule = extract_matricule(text)
+            filename = f"{matricule}.pdf" if matricule else f"page_{i + 1}.pdf"
 
-                # Créer un PDF d'une seule page
-                writer = PdfWriter()
-                writer.add_page(reader.pages[i])
+            # Créer un PDF d'une seule page
+            writer = PdfWriter()
+            writer.add_page(page)
 
-                page_buffer = io.BytesIO()
-                writer.write(page_buffer)
-                page_buffer.seek(0)
+            page_buffer = io.BytesIO()
+            writer.write(page_buffer)
+            page_buffer.seek(0)
 
-                # Ajouter au ZIP
-                zf.writestr(filename, page_buffer.read())
+            # Ajouter au ZIP
+            zf.writestr(filename, page_buffer.read())
 
-                results.append({
-                    "page": i + 1,
-                    "matricule": matricule,
-                    "filename": filename
-                })
+            results.append({
+                "page": i + 1,
+                "matricule": matricule,
+                "filename": filename
+            })
 
     zip_buffer.seek(0)
 
@@ -126,16 +123,16 @@ async def split_pdf_info(file: UploadFile = File(...)):
 
     results = []
 
-    with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
-        for i, page in enumerate(pdf.pages):
-            text = page.extract_text() or ""
-            matricule = extract_matricule(text)
-            results.append({
-                "page": i + 1,
-                "matricule": matricule,
-                "filename": f"{matricule}.pdf" if matricule else f"page_{i + 1}.pdf",
-                "texte_extrait": text[:200].strip()
-            })
+    reader = PdfReader(io.BytesIO(pdf_bytes))
+    for i, page in enumerate(reader.pages):
+        text = page.extract_text() or ""
+        matricule = extract_matricule(text)
+        results.append({
+            "page": i + 1,
+            "matricule": matricule,
+            "filename": f"{matricule}.pdf" if matricule else f"page_{i + 1}.pdf",
+            "texte_extrait": text[:200].strip()
+        })
 
     return JSONResponse({
         "total_pages": len(results),
@@ -157,26 +154,25 @@ async def split_pdf_save(file: UploadFile = File(...)):
     reader = PdfReader(io.BytesIO(pdf_bytes))
     results = []
 
-    with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
-        for i, page in enumerate(pdf.pages):
-            text = page.extract_text() or ""
-            matricule = extract_matricule(text)
-            filename = f"{matricule}.pdf" if matricule else f"page_{i + 1}.pdf"
-            output_path = OUTPUT_DIR / filename
+    for i, page in enumerate(reader.pages):
+        text = page.extract_text() or ""
+        matricule = extract_matricule(text)
+        filename = f"{matricule}.pdf" if matricule else f"page_{i + 1}.pdf"
+        output_path = OUTPUT_DIR / filename
 
-            # Créer le PDF individuel
-            writer = PdfWriter()
-            writer.add_page(reader.pages[i])
+        # Créer le PDF individuel
+        writer = PdfWriter()
+        writer.add_page(page)
 
-            with open(output_path, "wb") as f:
-                writer.write(f)
+        with open(output_path, "wb") as f:
+            writer.write(f)
 
-            results.append({
-                "page": i + 1,
-                "matricule": matricule,
-                "filename": filename,
-                "path": str(output_path)
-            })
+        results.append({
+            "page": i + 1,
+            "matricule": matricule,
+            "filename": filename,
+            "path": str(output_path)
+        })
 
     return JSONResponse({
         "total_pages": len(results),
