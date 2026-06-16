@@ -113,7 +113,7 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
                 facture_frs_str = str(facture_frs)
                 nom = str(first_row.get('Nom', ''))
                 type_f = str(first_row['TypeF']).strip() if 'TypeF' in first_row and str(first_row.get('TypeF', '')).strip() != '' else 'FAF'
-
+                dossier_import = first_row.get("DossierImport", "")
                 try:
                     if pd.api.types.is_numeric_dtype(type(first_row['Date'])):
                         date_obj = pd.Timestamp('1899-12-30') + pd.Timedelta(days=float(first_row['Date']))
@@ -149,7 +149,8 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
                     Date=date,
                     list_codeReception=list_br,
                     nom=nom,
-                    typeF=type_f
+                    typeF=type_f,
+                    dossier_import=dossier_import
                 )
 
                 # Mettre a jour le resultat en DB apres traitement
@@ -248,6 +249,86 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
                 if self.db:
                     self.db.close()
 
+    def selection_multiple_bons ( self, list_codeReception: List[str], typeF: str = "FCF") -> Dict[str, bool]:
+        """
+        dans le tableau de section "lignes" selectionne la commande (BC)  
+
+        Args:
+            list_codeReception: Liste des codes a selectionner
+            typeF: FCF → Sélection commandes
+
+        Returns:
+            dict {code: True/False} indiquant le succes pour chaque code
+        """
+        driver = self.driver_manager.driver
+        resultats = {br: False for br in list_codeReception}
+        
+        # Trouver la section avec le header "Lignes"
+        lignes_section = driver.find_element(By.XPATH, 
+            "//div[@class='s-h1-titles-h1-title-text' and text()='Lignes']/ancestor::section[@class='s-h1']"
+        )
+        # scrool to the section
+        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", lignes_section)
+        time.sleep(1)
+        i=1
+        j=0
+        while i>0:
+            lignes_section = driver.find_element(By.XPATH, 
+            "//div[@class='s-h1-titles-h1-title-text' and text()='Lignes']/ancestor::section[@class='s-h1']")
+            # Dans cette section, trouver le tableau
+            table_fixed = lignes_section.find_element(By.CSS_SELECTOR, "table.s-grid-fixed-table-body")
+            self.logger.info("Tableau des lignes trouve")
+            first_ligne_fixed = table_fixed.find_element(By.XPATH, f".//tr[{i}]")
+            # Trouver le premier élément de la table /tr/td[3]/div/a
+            first_element = first_ligne_fixed.find_element(By.XPATH, ".//td[3]/div/a")
+            self.logger.info("Premier element de la table trouve")
+            print(first_element.get_attribute("class"))
+            first_element.click()
+            self.wait_stabilite()
+            # command_element = driver.find_element(By.XPATH, '//*[@id="s_app_over"]/div[2]/div/div/div[2]/ul/li[2]/a[@text="Commande"]')
+            command_element = self.driver_manager.driver.find_element(By.XPATH, '//*[@id="s_app_over"]/div[2]/div/div/div[2]/ul/li/a')
+            command_element.click()
+            print(command_element)
+            # command_element.click()
+            self.wait_stabilite()
+
+            table_scroll = lignes_section.find_element(By.CSS_SELECTOR, "table.s-grid-table-body")
+            self.logger.info("Tableau déroulant des lignes trouve")
+            first_ligne_scroll = table_scroll.find_element(By.XPATH, f".//tr[{i}]")
+            input_ = first_ligne_scroll.find_element(By.XPATH, ".//td[1]/div/input")
+            self.logger.info("Champ de saisie trouve")
+            input_.click()
+            self.wait_stabilite()
+            input_.send_keys(list_codeReception[0])
+            input_.send_keys(Keys.TAB)
+            self.wait_stabilite()
+
+            chercher_bc = first_ligne_scroll.find_element(By.XPATH, ".//td[2]/div/a[1]")
+            chercher_bc.click()
+            self.wait_stabilite()
+            # uhe popup s'affiche avec tous les lignes de ce bon de commande, il faut selectionner le premiere ligne et si il y a plusieurs il faut repeter ce fonction mais dans deuxieme lignes
+            # traitement de la selection les ligne de ce bon de commande 
+            lignes = driver.find_elements(By.XPATH, 
+                "//article[@class='s_modal_content']//tr[contains(@class, 's-record-selector-row')]"
+            )
+            total_lignes = len(lignes)
+            j=total_lignes
+            ligne = driver.find_element(By.XPATH, 
+            f"//article[@class='s_modal_content']//tr[contains(@class, 's-record-selector-row')][{i}]"
+            )
+            ligne.click()
+            self.wait_stabilite()
+            if i == j:
+                break
+            else :
+                i=i+1
+                compte = first_ligne_scroll.find_element(By.XPATH, ".//td[15]/div/input")
+                compte.click()
+                self.wait_stabilite()
+                compte.send_keys(Keys.ENTER)
+                self.wait_stabilite()   
+
+        input("sf")
     # ------------------------------------------------------------------
     # Selection de PLUSIEURS receptions
     # ------------------------------------------------------------------
@@ -475,7 +556,7 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
     # ------------------------------------------------------------------
 
     def saisi_information(self, typeF, codeFournisseur, factureFournisseur, DFF, Date,
-                          list_codeReception: List[str], nom=""):
+                          list_codeReception: List[str], nom="", dossier_import=""):
         """
         Saisit les informations de la facture et selectionne TOUS les codes reception.
 
@@ -523,6 +604,19 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
             AncienCode_input.send_keys(Keys.TAB)
             time.sleep(1)
 
+            if typeF == "FCF" :
+                if dossier_import:
+                    DossierImport_input = self.get_input_by_label("N°Dosseir Import")
+                    DossierImport_input.click()
+                    self.wait_stabilite()
+                    DossierImport_input.clear()
+                    DossierImport_input.send_keys(dossier_import)
+                    DossierImport_input.send_keys(Keys.TAB)
+                    self.wait_stabilite()
+                else:
+                    self.logger.warning("au cas de FCF le dossier d'import est obligatoir")
+                    return False
+
             # N°Depot (DFF)
             DFF_input = self.get_input_by_label("N°Dépôt")
             DFF_input.click()
@@ -544,16 +638,21 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
                     time.sleep(1)   
             except Exception:
                 self.logger.info("Pas de popup de changement de dépôt après saisie du DFF")
-
-            # Selectionner TOUS les codes reception (ou retours si AVR)
-            resultats_selection = self.selection_multiple_receptions(list_codeReception, typeF=typeF)
-            echecs = [br for br, ok in resultats_selection.items() if not ok]
-            if echecs:
-                self.logger.warning(f"Receptions non selectionnees: {echecs}")
-                # On continue quand meme avec les receptions qui ont reussi
-                if all(not ok for ok in resultats_selection.values()):
-                    self.logger.error("Aucune reception n'a pu etre selectionnee")
-                    return False
+            
+            resultats_selection = {}
+            if typeF == 'FCF':
+                resultats_selection = self.selection_multiple_bons(list_codeReception, typeF=typeF)
+                pass
+            else:
+                # Selectionner TOUS les codes reception (ou retours si AVR)
+                resultats_selection = self.selection_multiple_receptions(list_codeReception, typeF=typeF)
+                echecs = [br for br, ok in resultats_selection.items() if not ok]
+                if echecs:
+                    self.logger.warning(f"Receptions non selectionnees: {echecs}")
+                    # On continue quand meme avec les receptions qui ont reussi
+                    if all(not ok for ok in resultats_selection.values()):
+                        self.logger.error("Aucune reception n'a pu etre selectionnee")
+                        return False
 
             time.sleep(2)
 
@@ -677,12 +776,13 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
     # ------------------------------------------------------------------
 
     def traiter_fournisseur(self, url, codeFournisseur, factureFournisseur, DFF, Date,
-                            list_codeReception: List[str], nom="", typeF="FAF"):
+                            list_codeReception: List[str], nom="", typeF="FAF", dossier_import=""):
         """
         Traite un groupe : une facture fournisseur avec plusieurs codes reception.
 
         Args:
             list_codeReception: Liste de codes BR a selectionner
+            dossier_import: Dossier d'importation
         """
         self.logger.info("="*80)
         self.logger.info(f"TRAITEMENT : {nom if nom else codeFournisseur}")
@@ -709,19 +809,21 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
                 DFF=DFF,
                 Date=Date,
                 list_codeReception=list_codeReception,
-                nom=nom
+                nom=nom,
+                dossier_import=dossier_import
             ):
                 self.logger.warning("Erreur saisie, tentative d'actualisation...")
 
                 if self.sage_connector.refresh_with_popup_handling():
                     if not self.saisi_information(
-                        typeF="FAF",
+                        typeF=typeF,
                         codeFournisseur=codeFournisseur,
                         factureFournisseur=factureFournisseur,
                         DFF=DFF,
                         Date=Date,
                         list_codeReception=list_codeReception,
-                        nom=nom
+                        nom=nom,
+                        dossier_import=dossier_import
                     ):
                         resultat['message'] = 'Erreur saisie apres actualisation'
                         error_info = self.handle_error_with_screenshot(
