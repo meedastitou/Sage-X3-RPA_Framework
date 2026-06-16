@@ -550,6 +550,11 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             date_facture = today
         self.logger.info(f" Date facture SQL: {date_facture}, montant: {montant_facture}")
 
+        # Si la date de facture est dans le passé, partir de aujourd'hui pour le calcul des mois
+        if date_facture < today:
+            self.logger.info(f" Date facture ({date_facture}) < aujourd'hui ({today}), base de calcul: aujourd'hui")
+            date_facture = today
+
         # 2. Soldes mensuels depuis SQL
         soldes_par_mois = self._get_sold_par_mois(date_facture)
         self.logger.info(f" Soldes mensuels: {soldes_par_mois}")
@@ -604,8 +609,10 @@ class RegelementRobot(BaseRobot, WebResultMixin):
         date_echeance_input = self.get_input_by_label("Date échéance")
         date_str = date_echeance_calculee.strftime("%d/%m/%Y")
         date_echeance_input.click()
-        time.sleep(0.5)
+        # time.sleep(0.5)
+        self.wait_stabilite()
         date_echeance_input.clear()
+        self.wait_stabilite()
         date_echeance_input.send_keys(date_str)
         date_echeance_input.send_keys(Keys.TAB)
         time.sleep(0.5)
