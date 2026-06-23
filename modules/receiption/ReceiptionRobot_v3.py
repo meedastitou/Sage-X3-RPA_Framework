@@ -254,6 +254,7 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
             article = {
                 'code': str(row['CodeArticle']).strip(),
                 'quantite': str(row['Quantite']),
+                'n_bc': n_bc,  # Numéro BC pour identifier la bonne ligne si même article dans plusieurs BC
                 'n_b_transport': str(row['N_B_transport']) if not pd.isna(row['N_B_transport']) else '',
                 'matricule': str(row['Matricule']) if not pd.isna(row['Matricule']) else '',
                 'poids': str(row['Poids']) if not pd.isna(row['Poids']) else '',
@@ -791,9 +792,11 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
         """Remplir les données d'un article dans le tableau des lignes.
         Si plusieurs lignes existent pour le même article (multi-BC), distribue
         la quantité voulue en remplissant chaque ligne jusqu'à son max.
+        Filtre par numéro de BC si disponible dans l'article.
         """
         driver = self.driver_manager.driver
-        self.logger.info(f"🖊️ Remplissage article {article['code']} (qty={article['quantite']}) ligne {ligne_num}")
+        n_bc = article.get('n_bc', '')  # Numéro BC pour filtrer
+        self.logger.info(f"🖊️ Remplissage article {article['code']} (BC={n_bc}, qty={article['quantite']}) ligne {ligne_num}")
 
         try:
             WebDriverWait(driver, 10).until(
@@ -804,27 +807,51 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
                 "//section[contains(@class, 's-h1')]//div[contains(text(), 'Lignes')]/ancestor::section//table[contains(@class, 's-grid-table-body')]"
             )
             rows = table.find_elements(By.CSS_SELECTOR, ".s-grid-table-body tr.s-grid-row")
-            self.logger.info(f"0 {len(rows)} ligne(s) dans le tableau pour remplissage")
+            self.logger.info(f"📋 {len(rows)} ligne(s) dans le tableau pour remplissage")
 
-            # Trouver TOUTES les lignes contenant ce code article
+            # Trouver TOUTES les lignes contenant ce code article ET correspondant au BC
             article_rows = []  # list of (row_element, row_number, cells)
             rn = 1
             for row in rows:
                 try:
                     cells = row.find_elements(By.CSS_SELECTOR, ".s-inplace-input")
+
+                    # Vérifier si cette ligne contient le code article
+                    article_found = False
                     for cell in cells:
-                        if cell.get_attribute('value') and article['code'] in cell.get_attribute('value'):
-                            article_rows.append((row, rn, cells))
+                        cell_value = cell.get_attribute('value')
+                        if cell_value and article['code'] in cell_value:
+                            article_found = True
                             break
+
+                    if article_found:
+                        # Si n_bc est spécifié, vérifier qu'il correspond
+                        if n_bc:
+                            bc_match = False
+                            # Chercher le BC dans les premières colonnes (généralement cells[0] ou cells[1])
+                            for idx in range(min(3, len(cells))):
+                                cell_val = cells[idx].get_attribute('value') or ''
+                                if n_bc in cell_val:
+                                    bc_match = True
+                                    break
+
+                            if bc_match:
+                                article_rows.append((row, rn, cells))
+                                self.logger.debug(f"   Ligne {rn}: article {article['code']} + BC {n_bc} ✓")
+                            else:
+                                self.logger.debug(f"   Ligne {rn}: article {article['code']} trouvé mais BC différent, ignoré")
+                        else:
+                            # Pas de filtre BC, ajouter la ligne
+                            article_rows.append((row, rn, cells))
                 except Exception:
                     pass
                 rn += 1
 
             if not article_rows:
-                self.logger.warning(f"Article {article['code']} non trouvé dans tableau")
+                self.logger.warning(f"Article {article['code']} (BC={n_bc}) non trouvé dans tableau")
                 return False
 
-            self.logger.info(f"   📍 {len(article_rows)} ligne(s) trouvée(s) pour {article['code']}")
+            self.logger.info(f"   📍 {len(article_rows)} ligne(s) trouvée(s) pour {article['code']} (BC={n_bc})")
 
             # Parser la quantité voulue
             try:
