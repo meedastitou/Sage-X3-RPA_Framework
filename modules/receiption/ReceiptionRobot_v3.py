@@ -793,6 +793,9 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
         Si plusieurs lignes existent pour le même article (multi-BC), distribue
         la quantité voulue en remplissant chaque ligne jusqu'à son max.
         Filtre par numéro de BC si disponible dans l'article.
+
+        Note: Le BC est dans la table fixe (s-grid-fixed-table-body),
+        l'article est dans la table principale (s-grid-table-body).
         """
         driver = self.driver_manager.driver
         n_bc = article.get('n_bc', '')  # Numéro BC pour filtrer
@@ -803,10 +806,40 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
                 EC.presence_of_element_located((By.CSS_SELECTOR, ".s-grid-table-body"))
             )
 
-            table = driver.find_element(By.XPATH,
-                "//section[contains(@class, 's-h1')]//div[contains(text(), 'Lignes')]/ancestor::section//table[contains(@class, 's-grid-table-body')]"
+            # Récupérer la section "Lignes"
+            section_lignes = driver.find_element(By.XPATH,
+                "//section[contains(@class, 's-h1')]//div[contains(text(), 'Lignes')]/ancestor::section"
             )
-            rows = table.find_elements(By.CSS_SELECTOR, ".s-grid-table-body tr.s-grid-row")
+
+            # Table fixe (contient le numéro de BC)
+            fixed_table = section_lignes.find_element(By.CSS_SELECTOR, "table.s-grid-fixed-table-body")
+            fixed_rows = fixed_table.find_elements(By.CSS_SELECTOR, "tr.s-grid-row")
+
+            # Construire un dictionnaire: numéro de ligne -> valeur BC
+            bc_par_ligne = {}
+            for fixed_row in fixed_rows:
+                try:
+                    # Récupérer le numéro de ligne depuis l'index
+                    row_index_td = fixed_row.find_element(By.CSS_SELECTOR, "td.s-grid-row-index")
+                    row_num = int(row_index_td.text.strip())
+
+                    # Récupérer la valeur du BC (dans les inputs de la table fixe)
+                    fixed_inputs = fixed_row.find_elements(By.CSS_SELECTOR, ".s-inplace-input")
+                    bc_value = ''
+                    for inp in fixed_inputs:
+                        val = inp.get_attribute('value') or ''
+                        if val:
+                            bc_value = val
+                            break
+                    bc_par_ligne[row_num] = bc_value
+                except Exception:
+                    pass
+
+            self.logger.debug(f"   BC par ligne: {bc_par_ligne}")
+
+            # Table principale (contient les articles)
+            main_table = section_lignes.find_element(By.CSS_SELECTOR, "table.s-grid-table-body")
+            rows = main_table.find_elements(By.CSS_SELECTOR, "tr.s-grid-row")
             self.logger.info(f"📋 {len(rows)} ligne(s) dans le tableau pour remplissage")
 
             # Trouver TOUTES les lignes contenant ce code article ET correspondant au BC
@@ -825,21 +858,14 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
                             break
 
                     if article_found:
-                        # Si n_bc est spécifié, vérifier qu'il correspond
+                        # Si n_bc est spécifié, vérifier qu'il correspond (depuis la table fixe)
                         if n_bc:
-                            bc_match = False
-                            # Chercher le BC dans les premières colonnes (généralement cells[0] ou cells[1])
-                            for idx in range(min(3, len(cells))):
-                                cell_val = cells[idx].get_attribute('value') or ''
-                                if n_bc in cell_val:
-                                    bc_match = True
-                                    break
-
-                            if bc_match:
+                            bc_de_ligne = bc_par_ligne.get(rn, '')
+                            if n_bc in bc_de_ligne:
                                 article_rows.append((row, rn, cells))
-                                self.logger.debug(f"   Ligne {rn}: article {article['code']} + BC {n_bc} ✓")
+                                self.logger.debug(f"   Ligne {rn}: article {article['code']} + BC {bc_de_ligne} ✓")
                             else:
-                                self.logger.debug(f"   Ligne {rn}: article {article['code']} trouvé mais BC différent, ignoré")
+                                self.logger.debug(f"   Ligne {rn}: article {article['code']} trouvé mais BC={bc_de_ligne} != {n_bc}, ignoré")
                         else:
                             # Pas de filtre BC, ajouter la ligne
                             article_rows.append((row, rn, cells))
