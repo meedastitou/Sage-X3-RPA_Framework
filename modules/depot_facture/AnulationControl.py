@@ -199,6 +199,18 @@ class AnulationControl(BaseRobot, WebResultMixin):
                 annulation_control_label.click()
                 self.logger.info("Annulation Control cochée")
 
+
+            frs_endosse_input = self.get_input_by_label("Frs Endossé")
+            frs_endosse_input_value = frs_endosse_input.get_attribute('value')
+            if frs_endosse_input_value == '' or frs_endosse_input_value is None:
+                code_frs_input = self.get_input_by_label("Code Frs")
+                code_frs_input_value = code_frs_input.get_attribute('value')
+                frs_endosse_input.clear()
+                self.wait_stabilite()
+                frs_endosse_input.send_keys(code_frs_input_value)
+                frs_endosse_input.send_keys(Keys.TAB)
+                self.wait_stabilite()
+
             if self.enregistrer_dff():
                 resultat["statut"] = "success"
             else:
