@@ -98,6 +98,11 @@ class ImputationDataRequest(BaseModel):
     donnees: List[Dict[str, Any]]
     email_expediteur: str
     headless: bool = True
+class DFFAnnulationControlRequest(BaseModel):
+    """Requête pour déclencher l'annulation Control avec données JSON"""
+    donnees: List[Dict[str, Any]]
+    email_expediteur: str
+    headless: bool = True
 
 class DemmandAchatDataRequest(BaseModel):
     """Requête pour déclencher la demande d'achat avec données JSON"""
