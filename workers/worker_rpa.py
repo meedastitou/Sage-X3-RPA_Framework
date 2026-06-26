@@ -20,6 +20,7 @@ from modules.bonne_commande.bonne_commande_robot import BonneCommandeRobot
 from modules.receiption.ReceiptionRobot_v3 import ReceiptionRobot
 # from modules.facturation.FacturationRobot import FacturationRobot
 from modules.facturation.FacturationRobot_V2 import FacturationRobotV2
+from modules.depot_facture.AnulationControl import AnulationControl
 from core.logger import Logger
 
 logger = Logger.get_logger('WorkerRPA', 'workers')
@@ -77,6 +78,10 @@ def main():
                     elif task_type == 'demmande_achat':
                         logger.info("Lancement du DemmandeAchatRobot...")
                         robot = DemmandeAchatRobot()
+                        robot.run(excel_file=task['file'])
+                    elif task_type == 'dff_annulation_control':
+                        logger.info("Lancement du DFFAnnulationControl...")
+                        robot = AnulationControl()
                         robot.run(excel_file=task['file'])
                     else:
                         raise ValueError(f"Type de tâche inconnu: {task_type}")

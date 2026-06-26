@@ -22,7 +22,7 @@ def add_task(file_path, email, task_type="bon_commande", societe=None):
     tasks = load_queue()
 
     # Valider le type de tâche
-    valid_types = ["bon_commande", "receiption", "facturation", "regelement", "vairement", "imputation", "demmande_achat"]
+    valid_types = ["bon_commande", "receiption", "facturation", "regelement", "vairement", "imputation", "demmande_achat", "dff_annulation_control"]
     if task_type not in valid_types:
         raise ValueError(f"Type de tâche invalide. Doit être: {', '.join(valid_types)}")
 

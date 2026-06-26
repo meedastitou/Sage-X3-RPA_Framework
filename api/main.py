@@ -290,6 +290,19 @@ def save_imputation_to_excel(donnees: List[Dict[str, Any]], email_expediteur: st
     logger.info(f" Données imputation converties en Excel: {file_path}")
     return str(file_path)
 
+def save_dff_annulation_control_to_excel(donnees: List[Dict[str, Any]], email_expediteur: str) -> str:
+    """
+    Convertir les données JSON annulation control de dff en fichier Excel temporaire
+
+    Colonnes requises: DFF
+    """
+    df = pd.DataFrame(donnees)
+    df['email_expediteur'] = email_expediteur
+    filename = f"api_data_DFF_AC_{uuid.uuid4()}.xlsx"
+    file_path = UPLOAD_DIR / filename
+    df.to_excel(file_path, index=False)
+    logger.info(f" Données imputation converties en Excel: {file_path}")
+    return str(file_path)
 
 def save_receiption_to_excel(donnees: List[Dict[str, Any]], email_expediteur: str) -> str:
     """
@@ -898,6 +911,60 @@ async def trigger_demmande_achat_from_data(request: DemmandAchatDataRequest):
         error=None
     )
 
+@app.post("/api/dff_annulation_control/data", response_model=TaskStatus)
+async def trigger_dff_annulation_control_from_data(request : DFFAnnulationControlRequest):
+    """
+    Déclencher une tâche annulation control avec données JSON
+    Les données sont converties en Excel et enqueued pour le worker
+
+    Colonnes requises: DFF
+
+    Exemple:
+    ```json
+    {
+        "donnees": [
+            {
+                "DFF": "DFF12312"
+            }
+        ],
+        "email_expediteur": "user@example.com",
+        "headless": true
+    }
+    ```
+    """
+    if not request.email_expediteur:
+        raise HTTPException(status_code=400, detail="email_expediteur est requis")
+
+    required_columns = ['DFF']
+    if request.donnees:
+        first_row = request.donnees[0]
+        missing = [col for col in required_columns if col not in first_row]
+        if missing:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Colonnes manquantes: {', '.join(missing)}. Requises: {', '.join(required_columns)}"
+            )
+
+    excel_file = save_dff_annulation_control_to_excel(request.donnees, request.email_expediteur)
+
+    task_id = add_task(
+        file_path=excel_file,
+        email=request.email_expediteur,
+        task_type="imputation"
+    )
+
+    logger.info(f"📋 Tâche imputation (JSON) enqueued: {task_id}")
+
+    return TaskStatus(
+        task_id=task_id,
+        status='pending',
+        module='dff_annulation_control',
+        started_at=None,
+        completed_at=None,
+        result=None,
+        error=None
+    )
+
 
 @app.get("/api/list_ff_non_regles")
 async def list_ff_non_regles():
@@ -986,7 +1053,7 @@ async def get_task_status(task_id: str):
             return TaskStatus(
                 task_id=task['id'],
                 status=task['status'],
-                module='bonne_commande_api',
+                module=task['task_type'],
                 started_at=task.get('started_at'),
                 completed_at=task.get('completed_at'),
                 result=None,
