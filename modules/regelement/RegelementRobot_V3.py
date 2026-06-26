@@ -97,6 +97,20 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                     }
                     self.add_result(resultat)
                     continue
+                
+                if not self._verifie_sold_fournisseur(row) : 
+                    self.logger.info("le solde fournisseur ne permet pas de saise ce regelement, s'il vous plait contacter M. PDG")
+                    resultat = {
+                        'type': 'Ligne',
+                        'statut': 'Echec',
+                        'code_frs': str(row['Code_Frs']),
+                        # return N_facture si non vide sinon return empty string
+                        'num_facture': str(row['N_Facture']) if 'N_Facture' in row and not pd.isna(row['N_Facture']) else "",
+                        'message': 'Le solde fournisseur est insuffisant pour créer ce règlement.',
+                        'error_info': None
+                    }
+                    self.add_result(resultat)
+                    continue
                 time.sleep(5)
                 self.wait_for_spinner_to_disappear(self.driver_manager.driver, timeout=90000)
                 self.wait_for_element_to_appear(self.driver_manager.driver, By.CSS_SELECTOR, "div.s-page-content-slot", timeout=60000)
@@ -1282,6 +1296,101 @@ class RegelementRobot(BaseRobot, WebResultMixin):
         except Exception as e:
             self.logger.error(f"Erreur récupération soldes par mois: {e}")
             return {}
+        finally:
+            try:
+                cursor.close()
+                conn.close()
+            except:
+                pass
+    
+    def _verifie_sold_fournisseur(self, row : pd.DataFrame):
+        """"verifier le montant de reglement avec sold de fournisseur"""
+        try:
+            code_fournisseur = row['Code_Frs']
+            montant_reg = row['Montant']
+            sold_fournisseur = self._get_sold_fournisseur(code_fournisseur=code_fournisseur) or 0.0
+
+
+            if montant_reg > sold_fournisseur :
+                # recuperer l id de la demande
+                demande_id = row['demande_id']
+                self.logger.info(f"id de la demande {demande_id} ")
+                
+                if self._get_status_demande(int(demande_id)) == 'valide_pdg':
+                    self.logger.info(f"la damsnde {demande_id} est valide par pdg")
+                    return True
+                
+                self.logger.info(f"la demand non trouve {demande_id}")
+                return False
+        except Exception as e : 
+            self.logger.error(e)
+            return False
+    
+    def _get_status_demande(self, demande_id: int):
+        """ Recuperer status d'un demande avance """
+        import mysql.connector
+        query_demand_id = f"""SELECT * FROM avances_demandes where id = {demande_id}"""
+        # Establish connection
+        conn = mysql.connector.connect(
+            host="192.168.1.211",
+            user="root",
+            password="root123",
+            database="facturation"
+        )
+
+        # Create cursor
+        cursor = conn.cursor(dictionary=True)
+
+        # Execute query
+        cursor.execute(query_demand_id)
+        row = cursor.fetchone()
+        print(row)
+        if row and row is not None:
+            print(row['statut'])
+            self.logger.info(row['statut'])
+            return row['statut']
+        else:
+            self.logger.warning(f"id de la demande non trouve {demande_id}")
+            return None
+
+    def _get_sold_fournisseur(self, code_fournisseur: str):
+        """ recuperer sold fournisseur"""
+        import pyodbc
+        # Requete pour recuperer le solde fournisseur
+        QUERY_SOLDE_FOURNISSEUR = f"""
+        SELECT
+            (
+            F.Soldedépart +
+            F.enReception +
+            F.enFacturation +
+            F.facture +
+            F.retourNF +
+            F.Réglement +
+            F.ECART_AUT
+            ) AS Solde
+        FROM BASE1.SITUATION_FOU F
+        WHERE F.BPRNUM_0 = '{code_fournisseur}'
+        """
+
+        try:
+            conn = pyodbc.connect(
+                "DRIVER={ODBC Driver 17 for SQL Server};"
+                "SERVER=192.168.1.241\\ERPX3;"
+                "DATABASE=x3;"
+                "UID=X3U;"
+                "PWD=SQL@2019;"
+            )
+            cursor = conn.cursor()
+            cursor.execute(QUERY_SOLDE_FOURNISSEUR)
+            row = cursor.fetchone()
+            if row and row[0] is not None:
+                return float(row[0])
+            else:
+                self.logger.warning(f"Aucun Resultat trouve de ce fournisseur {code_fournisseur}")
+                return None
+        except Exception as e:
+            self.logger.error(f"Erreur récupération sold fournisseur {code_fournisseur}: {e}")
+            return None
         finally:
             try:
                 cursor.close()
