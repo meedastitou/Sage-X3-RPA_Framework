@@ -4,6 +4,7 @@ Module BonneCommand - Robot principal OPTIMISÉ avec VALIDATION STRICTE
 Si UN SEUL échec → ARRÊT COMPLET, pas de génération de BC
 Envoi automatique des résultats vers endpoint web
 """
+from email.mime import message
 from typing import Dict, Any, List
 import pandas as pd
 from selenium.webdriver.common.by import By
@@ -45,7 +46,8 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
         self.url_article = "http://192.168.1.241:8124/syracuse-main/html/main.html?url=%2Ftrans%2Fx3%2Ferp%2FBASE1%2F%24sessions%3Ff%3DGESITM%252F2%252F%252FM%252F%26profile%3D~(loc~%27fr-FR~role~%278ecdb3d1-8ca7-40ca-af08-76cb58c70740~ep~%27cb006c17-58a5-4b98-9f2b-474ec03472a3~appConn~())"
         self.url_demande_achat = "http://192.168.1.241:8124/syracuse-main/html/main.html?url=%2Ftrans%2Fx3%2Ferp%2FBASE1%2F%24sessions%3Ff%3DGESPSH%252F2%252F%252FM%252F%26profile%3D~(loc~%27fr-FR~role~%278ecdb3d1-8ca7-40ca-af08-76cb58c70740~ep~%27cb006c17-58a5-4b98-9f2b-474ec03472a3~appConn~())"
         self.url_bonne_commande = "http://192.168.1.241:8124/syracuse-main/html/main.html?url=%2Ftrans%2Fx3%2Ferp%2FBASE1%2F%24sessions%3Ff%3DXBCAUTO%252F2%252F%252FM%252F"
-
+        self.home_url = "http://192.168.1.241:8124/syracuse-main/html/main.html?url=%3Frepresentation%3Dhome.%2524landing%26profile%3D~(loc~%27fr-FR~role~%279844eacb-4f96-4301-8b0c-dbe4f4d48e4d~ep~%27cb006c17-58a5-4b98-9f2b-474ec03472a3~appConn~())"
+        
         # Compteurs pour validation stricte
         self.articles_traites = 0
         self.articles_echec = 0
@@ -529,8 +531,23 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             # Naviguer vers le module bonne de commande
             self.navigate_to_module(self.url_bonne_commande)
             # generation automatique de la BC
-            time.sleep(5)
-            self.wait_for_spinner_to_disappear(driver, timeout=900000000)
+            time.sleep(10)
+            # self.wait_for_spinner_to_disappear(driver, timeout=900000000)
+            self.wait_stabilite(timeout=120)
+
+
+            # gerer les popups s'il existes 
+            try:
+                WebDriverWait(driver, 2).until(
+                    EC.visibility_of_element_located((By.XPATH, f'//pre[@class="s_alertbox_title" and contains(text(), "Erreur de l\'application")]'))
+                )
+                popup_button = driver.find_element(By.XPATH, f"//a[@aria-label='OK']")
+                popup_button.click()
+                time.sleep(1)
+            except:
+                # Pas de popup ou autre type de popup
+                pass
+
             self.wait_for_element_to_appear(driver, By.CSS_SELECTOR, ".s-inplace-input.s-readonly", timeout=900000000)
 
             bc_inputs = driver.find_elements(By.CSS_SELECTOR, ".s-inplace-input.s-readonly")
@@ -551,12 +568,12 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             self.logger.info(f"Liste: {bc_numbers}")
 
             # Télécharger le PDF de la BC
-            if bc_numbers:
-                code_frs = structure.get('fournisseur', '')
-                pdf_path = self._telecharger_pdf_bc(code_fournisseur=code_frs, bc_numbers=bc_numbers)
-                if pdf_path:
-                    self.pdf_bc_path = pdf_path
-                    self.logger.info(f"📄 PDF BC stocké: {pdf_path}")
+            # if bc_numbers:
+            #     code_frs = structure.get('fournisseur', '')
+            #     pdf_path = self._telecharger_pdf_bc(code_fournisseur=code_frs, bc_numbers=bc_numbers)
+            #     if pdf_path:
+            #         self.pdf_bc_path = pdf_path
+            #         self.logger.info(f"📄 PDF BC stocké: {pdf_path}")
 
             return bc_numbers
 
@@ -576,10 +593,9 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             self.logger.info("🔒 Fermeture du module Bonne de Commande")
             driver = self.driver_manager.driver
 
+            self.navigate_to_module(self.home_url)
             driver.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
-            time.sleep(0.5)
-            driver.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
-
+            time.sleep(5)
             s_page_close = driver.find_element(By.CSS_SELECTOR, "a.s_page_close")
             s_page_close.click()
             time.sleep(2)
