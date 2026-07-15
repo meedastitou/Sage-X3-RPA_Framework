@@ -481,7 +481,8 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                 
                 resultat = self.traiter_demande_achat(
                     numero_da=numero_da,
-                    acheteur=info_da['acheteur']
+                    acheteur=info_da['acheteur'],
+                    articles=info_da['articles']
                 )
                 
                 self.add_result(resultat)
@@ -762,7 +763,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             pass
         return resultat
     
-    def traiter_demande_achat(self, numero_da: str, acheteur: str) -> Dict[str, Any]:
+    def traiter_demande_achat(self, numero_da: str, acheteur: str, articles: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
         Traiter une demande d'achat
         
@@ -823,6 +824,12 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
 
             time.sleep(1)
 
+
+            if not self.valider_article_dans_da(articles):
+                resultat['message'] = f'Erreur lors de la validation des articles dans la DA {numero_da}'
+                self.logger.error(f" {resultat['message']}")
+                return resultat
+
             # 4. Enregistrer
             if self.enregistrer_demande_achat():
                 resultat['statut'] = 'Succes'
@@ -844,6 +851,75 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
 
         return resultat
     
+
+    def valider_article_dans_da(self, articles: List[Dict[str, Any]]):
+        """Valider les articles dans la DA"""
+        driver = self.driver_manager.driver
+
+        for article in articles:
+            code_article = article['code']
+            self.logger.info(f"Validation de l'article {code_article} dans la DA")
+            try:
+                
+                # Récupérer la section "Lignes"
+                section_lignes = driver.find_element(By.XPATH,
+                    "//section[contains(@class, 's-h1')]//div[contains(text(), 'Lignes')]/ancestor::section"
+                )
+
+                # Table fixe (contient le numéro de BC)
+                fixed_table = section_lignes.find_element(By.CSS_SELECTOR, "table.s-grid-fixed-table-body")
+                fixed_rows = fixed_table.find_elements(By.CSS_SELECTOR, "tr.s-grid-row")
+
+
+                # Trouver la ligne de l'article (CORRECTION 1)
+                article_row = None
+                article_index = 0
+                
+                for i, row in enumerate(fixed_rows, start=1):
+                    try:
+                        # Chercher le code article dans la première colonne (td[2])
+                        cell = row.find_element(By.CSS_SELECTOR, ".s-inplace-input")
+                        if cell.get_attribute("value").strip() == code_article:
+                            article_row = row
+                            article_index = i
+                            break
+                    except Exception as e:
+                        self.logger.error(f"Erreur lors de la recherche de l'article {code_article}: {e}")
+                        continue
+                
+                if article_row is None:
+                    self.logger.warning(f"⚠️ Article {code_article} non trouvé")
+                    return False  # Retourner False si l'article n'est pas trouvé pour arrêter le traitement
+                    
+                
+                self.logger.info(f"✅ Article {code_article} trouvé à la ligne {article_index}")
+
+
+                scroll_table = section_lignes.find_element(By.CSS_SELECTOR, "table.s-grid-table-body")
+                scroll_rows = scroll_table.find_elements(By.CSS_SELECTOR, "tr.s-grid-row")
+
+                tr_article = scroll_rows[article_index - 1]
+                check_active = tr_article.find_element(By.XPATH, ".//td[49]/div/div/label")
+                check_active.click()
+
+                # Trouver la case à cocher "Valider"
+                valider_checkbox = article_row.find_element(By.XPATH, ".//td[5]//input[@type='checkbox']")
+                if not valider_checkbox.is_selected():
+                    valider_checkbox.click()
+                    self.logger.info(f"Article {code_article} validé")
+                else:
+                    self.logger.info(f"Article {code_article} déjà validé")
+                return True
+            except Exception as e:
+                self.logger.error(f"Erreur lors de la validation de l'article {code_article}: {e}")
+
+                # Capturer screenshot et popup en cas d'erreur
+                self.handle_error_with_screenshot(
+                    error_message=str(e),
+                    context=f"Validation Article {code_article} dans DA"
+                )
+                return False
+
     def enregistrer_article(self) -> bool:
         """Enregistrer les modifications de l'article"""
         driver = self.driver_manager.driver
