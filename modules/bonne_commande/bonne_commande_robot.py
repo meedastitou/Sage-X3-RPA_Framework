@@ -44,7 +44,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
 
         # URLs des modules
         self.url_article = "http://192.168.1.241:8124/syracuse-main/html/main.html?url=%2Ftrans%2Fx3%2Ferp%2FBASE1%2F%24sessions%3Ff%3DGESITM%252F2%252F%252FM%252F%26profile%3D~(loc~%27fr-FR~role~%278ecdb3d1-8ca7-40ca-af08-76cb58c70740~ep~%27cb006c17-58a5-4b98-9f2b-474ec03472a3~appConn~())"
-        self.url_demande_achat = "http://192.168.1.241:8124/syracuse-main/html/main.html?url=%2Ftrans%2Fx3%2Ferp%2FBASE1%2F%24sessions%3Ff%3DGESPSH%252F2%252F%252FM%252F%26profile%3D~(loc~%27fr-FR~role~%278ecdb3d1-8ca7-40ca-af08-76cb58c70740~ep~%27cb006c17-58a5-4b98-9f2b-474ec03472a3~appConn~())"
+        self.url_demande_achat = "http://192.168.1.241:8124/syracuse-main/html/main.html?url=%2Ftrans%2Fx3%2Ferp%2FBASE1%2F%24sessions%3Ff%3DCONSCPD%252F2%252F%252FM%252F%26profile%3D~(loc~%27fr-FR~role~%279844eacb-4f96-4301-8b0c-dbe4f4d48e4d~ep~%27cb006c17-58a5-4b98-9f2b-474ec03472a3~appConn~())"
         self.url_bonne_commande = "http://192.168.1.241:8124/syracuse-main/html/main.html?url=%2Ftrans%2Fx3%2Ferp%2FBASE1%2F%24sessions%3Ff%3DXBCAUTO%252F2%252F%252FM%252F"
         self.home_url = "http://192.168.1.241:8124/syracuse-main/html/main.html?url=%3Frepresentation%3Dhome.%2524landing%26profile%3D~(loc~%27fr-FR~role~%279844eacb-4f96-4301-8b0c-dbe4f4d48e4d~ep~%27cb006c17-58a5-4b98-9f2b-474ec03472a3~appConn~())"
         
@@ -146,7 +146,6 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                 self.logger.info(f"📋 PHASE 2 : TRAITEMENT DES DEMANDES D'ACHAT - Fournisseur {code_fournisseur}")
                 self.logger.info("="*80)
                 das_ok = self._traiter_toutes_das(data_fournisseur)
-
                 if not das_ok:
                     self.logger.error("" + "="*80)
                     self.logger.error(f" ÉCHEC PHASE 2 pour fournisseur {code_fournisseur}")
@@ -464,6 +463,8 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
     
     def _traiter_toutes_das(self, structure: Dict[str, Any]) -> bool:
         """Traiter toutes les DAs UNIQUES avec validation stricte"""
+
+        # TODO : changement url 
         self.navigate_to_module(self.url_demande_achat)
         time.sleep(5)
 
@@ -479,12 +480,10 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                 self.logger.info(f"   Articles: {len(info_da['articles'])}")
                 self.logger.info(f"{'─'*80}")
                 
-                resultat = self.traiter_demande_achat(
+                resultat = self.valider_article_da_v1(
                     numero_da=numero_da,
-                    acheteur=info_da['acheteur'],
                     articles=info_da['articles']
                 )
-                
                 self.add_result(resultat)
                 
                 if resultat['statut'] == 'Succes':
@@ -762,7 +761,8 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
         finally:
             pass
         return resultat
-    
+
+    #@deprecated(reason="Cette méthode est obsolète et sera supprimée dans les futures versions. Utilisez `valider_article_da_v1` à la place.")   
     def traiter_demande_achat(self, numero_da: str, acheteur: str, articles: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
         Traiter une demande d'achat
@@ -851,7 +851,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
 
         return resultat
     
-
+    #@deprecated(reason="Cette méthode est obsolète et sera supprimée dans les futures versions.")
     def valider_article_dans_da(self, articles: List[Dict[str, Any]]):
         """Valider les articles dans la DA"""
         driver = self.driver_manager.driver
@@ -919,6 +919,99 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                     context=f"Validation Article {code_article} dans DA"
                 )
                 return False
+
+    def valider_article_da_v1(self, numero_da:str, articles: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Valider les articles dans la DA (version améliorée)"""
+
+        resultat = {
+            'type': 'Demande_Achat',
+            'numero_da': numero_da,
+            'statut': 'Echec',
+            'message': ''
+        }
+
+        driver = self.driver_manager.driver
+        #print(f"Validation des articles dans la DA {numero_da}...")
+        # print(f"Articles à valider: {[article['code'] for article in articles]}")
+        for article in articles:
+            code_article = article['code']
+            self.logger.info(f"Validation de l'article {code_article} dans la DA")
+            try:
+                # recherecher sur la DA
+                input_da_recherche = self.get_input_by_label("N° demande début")
+                input_da_recherche.click()
+                time.sleep(0.5)
+                input_da_recherche.clear()
+                input_da_recherche.send_keys(numero_da)
+                input_da_recherche.send_keys(Keys.TAB)
+                time.sleep(1)
+
+                input_da_recherche_fin = self.get_input_by_label("N° demande fin")
+                input_da_recherche_fin.click()
+                time.sleep(0.5)
+                input_da_recherche_fin.clear()
+                input_da_recherche_fin.send_keys(numero_da)
+                input_da_recherche_fin.send_keys(Keys.TAB)
+                time.sleep(1)
+
+                # clique sur la button de recherche
+                section_lignes = driver.find_element(By.XPATH,
+                    '//*[@id="s_app_body"]/div/article/div[1]/header/div[1]/div/div[2]/div[2]/a[@title="Recherche"]'
+                )
+                section_lignes.click()
+                time.sleep(1)   
+                self.wait_stabilite(timeout=90000)
+                WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "table.s-grid-table-body"))
+                )
+                time.sleep(10)
+                table_body = driver.find_element(By.CSS_SELECTOR, "table.s-grid-table-body")
+                rows = table_body.find_elements(By.CSS_SELECTOR, "tr.s-grid-row")
+
+                # Trouver la ligne de l'article
+                article_row = None
+                for row in rows:
+                    try:
+                        cell = row.find_elements(By.CSS_SELECTOR, "input")
+                        #self.logger.info(f"Vérification de la ligne: {cell[1].get_attribute('value')} {cell[0].get_attribute('value')} {cell[7].get_attribute('value')}")
+                        if cell[1].get_attribute("value").strip() == numero_da and cell[7].get_attribute("value").strip() == code_article:
+                            self.logger.info(f"Article {code_article} trouvé dans la DA {numero_da}")
+
+                            article_row = row
+                            id_of_input = cell[0].get_attribute("id")
+                            self.logger.info(f"ID de l'input trouvé: {id_of_input}")
+                            label = driver.find_element(By.CSS_SELECTOR, f"label[for='{id_of_input}']")
+                            label.click()
+                            self.logger.info(f"Case à cocher pour l'article {code_article} cliquée")
+                            print(cell[9].get_attribute("value"))
+                            cell[9].click()  # modifier la marque
+                            time.sleep(1)
+                            cell[9].clear()
+                            cell[9].send_keys(article.get('marque', ''))
+                            cell[9].send_keys(Keys.TAB)
+                            time.sleep(1)
+
+                            break
+                    except Exception as e:
+                        self.logger.error(f"Erreur lors de la recherche de l'article {code_article}: {e}")
+                        resultat['message'] = f'Erreur lors de la validation de l\'article {code_article} dans la DA {numero_da}: {e}'
+                        return resultat
+                if article_row is None:
+                    self.logger.warning(f"Article {code_article} non trouvé dans la DA {numero_da}")
+                    resultat['message'] = f'Article {code_article} non trouvé dans la DA {numero_da}'
+                    return resultat
+            except Exception as e:
+                self.logger.error(f"Erreur lors de la validation de l'article {code_article} dans la DA {numero_da}: {e}")
+
+                # Capturer screenshot et popup en cas d'erreur
+                self.handle_error_with_screenshot(
+                    error_message=str(e),
+                    context=f"Validation Article {code_article} dans DA {numero_da}"
+                )
+                resultat['message'] = f'Erreur lors de la validation des articles dans la DA {numero_da}'
+                return resultat
+            resultat['statut'] = 'Succes'
+        return resultat
 
     def enregistrer_article(self) -> bool:
         """Enregistrer les modifications de l'article"""
