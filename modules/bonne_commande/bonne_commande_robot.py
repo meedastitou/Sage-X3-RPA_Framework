@@ -979,10 +979,18 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
 
                             article_row = row
                             id_of_input = cell[0].get_attribute("id")
-                            self.logger.info(f"ID de l'input trouvé: {id_of_input}")
-                            label = driver.find_element(By.CSS_SELECTOR, f"label[for='{id_of_input}']")
-                            label.click()
-                            self.logger.info(f"Case à cocher pour l'article {code_article} cliquée")
+                            if not cell[0].is_selected():
+                                self.logger.info(f"Case à cocher pour l'article {code_article} déjà cochée")
+                                self.logger.info(f"ID de l'input trouvé: {id_of_input}")
+                                label = driver.find_element(By.CSS_SELECTOR, f"label[for='{id_of_input}']")
+                                label.click()
+                                self.logger.info(f"Case à cocher pour l'article {code_article} cliquée")
+                            
+
+                            driver.execute_script(
+                                "arguments[0].scrollLeft += 100;", 
+                                (cell[9]) 
+                            )
                             print(cell[9].get_attribute("value"))
                             cell[9].click()  # modifier la marque
                             time.sleep(1)
