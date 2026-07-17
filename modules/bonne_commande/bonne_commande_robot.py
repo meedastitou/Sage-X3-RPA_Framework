@@ -484,6 +484,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                     numero_da=numero_da,
                     articles=info_da['articles']
                 )
+                self.traiter_demande_achat(acheteur=info_da['acheteur'], numero_da=numero_da, articles=info_da['articles'])
                 self.add_result(resultat)
                 
                 if resultat['statut'] == 'Succes':
@@ -762,7 +763,6 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             pass
         return resultat
 
-    #@deprecated(reason="Cette méthode est obsolète et sera supprimée dans les futures versions. Utilisez `valider_article_da_v1` à la place.")   
     def traiter_demande_achat(self, numero_da: str, acheteur: str, articles: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
         Traiter une demande d'achat
@@ -825,10 +825,10 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             time.sleep(1)
 
 
-            if not self.valider_article_dans_da(articles):
-                resultat['message'] = f'Erreur lors de la validation des articles dans la DA {numero_da}'
-                self.logger.error(f" {resultat['message']}")
-                return resultat
+            # if not self.valider_article_dans_da(articles):
+            #     resultat['message'] = f'Erreur lors de la validation des articles dans la DA {numero_da}'
+            #     self.logger.error(f" {resultat['message']}")
+            #     return resultat
 
             # 4. Enregistrer
             if self.enregistrer_demande_achat():
