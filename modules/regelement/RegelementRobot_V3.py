@@ -472,7 +472,10 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             banque_input = self.get_input_by_label("Banque", 96) # id de champ banque est change de 95 a 96 dans le cas de reglement de l'avance sans facture
             banque_input.click()
             time.sleep(0.5)
+            self.wait_stabilite()
+            banque_input.clear()
             banque_input.send_keys("B01")
+            self.wait_stabilite()
             banque_input.send_keys(Keys.TAB)
             time.sleep(0.5)
             self.wait_stabilite()
@@ -1415,7 +1418,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             sold_fournisseur = self._get_sold_fournisseur(code_fournisseur=code_fournisseur) or 0.0
 
 
-            if montant_reg > sold_fournisseur :
+            if montant_reg > ( sold_fournisseur + 5) :
                 # recuperer l id de la demande
                 demande_id = row['demande_id']
                 self.logger.info(f"id de la demande {demande_id} ")
@@ -1426,6 +1429,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                 
                 self.logger.info(f"la demand non trouve {demande_id}")
                 return False
+            return True
         except Exception as e : 
             self.logger.error(e)
             return False
