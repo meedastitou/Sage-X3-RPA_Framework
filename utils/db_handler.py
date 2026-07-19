@@ -216,6 +216,146 @@ class DBHandler:
             self.logger.error(f"update_facture erreur: {e}")
 
     # ------------------------------------------------------------------
+    # rpa_regelements
+    # ------------------------------------------------------------------
+
+    def log_regelement(self, execution_id: int,
+                       code_fournisseur: str,
+                       num_facture: str = None,
+                       reference: str = None,
+                       montant: float = None,
+                       tva: float = None,
+                       type_regelement: str = None,
+                       nom_fournisseur: str = None) -> Optional[int]:
+        """
+        Insère une ligne dans rpa_regelements au début du traitement.
+
+        Returns:
+            regelement_id ou None si erreur
+        """
+        if not self._ensure_connected():
+            return None
+        try:
+            cursor = self._conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO rpa_regelements
+                    (execution_id, code_fournisseur, nom_fournisseur, num_facture,
+                     reference, montant, tva, type_regelement, statut)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'ECHEC')
+                """,
+                (
+                    execution_id,
+                    code_fournisseur,
+                    nom_fournisseur,
+                    num_facture,
+                    reference,
+                    montant,
+                    tva,
+                    type_regelement,
+                )
+            )
+            regelement_id = cursor.lastrowid
+            cursor.close()
+            self.logger.info(f"Regelement enregistre: id={regelement_id}, frs={code_fournisseur}")
+            return regelement_id
+        except MySQLError as e:
+            self.logger.error(f"log_regelement erreur: {e}")
+            return None
+
+    def update_regelement(self, regelement_id: int, statut: str,
+                          message: str = None,
+                          numero_piece: str = None,
+                          screenshot_path: str = None):
+        """
+        Met à jour le résultat d'un règlement après traitement.
+
+        Args:
+            statut: 'SUCCES' | 'ECHEC' | 'PARTIEL'
+        """
+        if not self._ensure_connected():
+            return
+        try:
+            cursor = self._conn.cursor()
+            cursor.execute(
+                """
+                UPDATE rpa_regelements
+                SET statut          = %s,
+                    message         = %s,
+                    numero_piece    = %s,
+                    screenshot_path = %s
+                WHERE id = %s
+                """,
+                (statut, message, numero_piece, screenshot_path, regelement_id)
+            )
+            cursor.close()
+            self.logger.info(f"Regelement {regelement_id} mis a jour: {statut}")
+        except MySQLError as e:
+            self.logger.error(f"update_regelement erreur: {e}")
+
+    def check_regelement_exists(self, num_facture: str, days_threshold: int = 3) -> dict:
+        """
+        Vérifie si un règlement avec ce numéro de facture existe déjà en statut SUCCES.
+
+        Args:
+            num_facture: Numéro de facture à vérifier
+            days_threshold: Nombre de jours avant d'autoriser un nouveau règlement (défaut: 3)
+
+        Returns:
+            dict avec:
+                - exists: bool - True si un règlement SUCCES existe
+                - can_retry: bool - True si plus de X jours se sont écoulés
+                - days_ago: int - Nombre de jours depuis le dernier règlement
+                - last_date: datetime - Date du dernier règlement
+                - numero_piece: str - Numéro de pièce du dernier règlement
+        """
+        result = {
+            'exists': False,
+            'can_retry': True,
+            'days_ago': None,
+            'last_date': None,
+            'numero_piece': None
+        }
+
+        if not num_facture or not self._ensure_connected():
+            return result
+
+        try:
+            cursor = self._conn.cursor(dictionary=True)
+            cursor.execute(
+                """
+                SELECT id, numero_piece, created_at,
+                       DATEDIFF(NOW(), created_at) AS days_ago
+                FROM rpa_regelements
+                WHERE num_facture = %s
+                  AND statut = 'SUCCES'
+                ORDER BY created_at DESC
+                LIMIT 1
+                """,
+                (num_facture,)
+            )
+            row = cursor.fetchone()
+            cursor.close()
+
+            if row:
+                result['exists'] = True
+                result['days_ago'] = row['days_ago']
+                result['last_date'] = row['created_at']
+                result['numero_piece'] = row['numero_piece']
+                result['can_retry'] = row['days_ago'] >= days_threshold
+
+                self.logger.info(
+                    f"Regelement existant pour {num_facture}: "
+                    f"piece={row['numero_piece']}, il y a {row['days_ago']} jour(s)"
+                )
+
+            return result
+
+        except MySQLError as e:
+            self.logger.error(f"check_regelement_exists erreur: {e}")
+            return result
+
+    # ------------------------------------------------------------------
     # rpa_logs
     # ------------------------------------------------------------------
 

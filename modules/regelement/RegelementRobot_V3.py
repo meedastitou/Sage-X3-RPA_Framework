@@ -19,6 +19,7 @@ import time
 
 from core.base_robot import BaseRobot
 from core.web_result_mixin import WebResultMixin
+from utils.db_handler import DBHandler
 from utils.excel_handler import ExcelHandler
 
 import pyautogui
@@ -47,70 +48,137 @@ class RegelementRobot(BaseRobot, WebResultMixin):
         self.fournisseurs_echec = 0
         self.total_factures = 0
         
+
+        try:
+            self.logger.info("Initialisation de la connexion a la base de donnees...")
+            self.db = DBHandler()
+            self.logger.info(f"Connexion a la base de donnees etablie {self.db}")
+
+        except Exception as e:
+            self.logger.warning(f"DB non disponible (mode sans base de donnees): {e}")
+            self.db = None
+            
         self.logger.info(f"🤖 Robot Règlement initialisé (REGROUPEMENT PAR FOURNISSEUR)")
     
     def execute(self, excel_file: str, url: str = None):
         """
         Exécuter le traitement des règlements
         Créer un règlement par ligne Excel
-        
+
         Args:
             excel_file: Chemin du fichier Excel
             url: URL du module (optionnel)
         """
-        
+
         email_f = ""
+        execution_id = None
+
         try:
             # 1. LIRE ET VALIDER L'EXCEL
             df = self._lire_et_valider_excel(excel_file)
-            
+
             email_f = df.iloc[0]['email_expediteur'] if 'email_expediteur' in df.columns else "astitoumd@gmail.com"
 
             self.logger.info(f"{'='*80}")
             self.logger.info(f" {len(df)} ligne(s) à traiter")
             self.logger.info(f"{'='*80}")
-            
+
+            # Démarrer la session en base de données
+            if self.db:
+                self.logger.info("Démarrage de l'exécution en base de données...")
+                execution_id = self.db.start_execution('regelement', excel_file)
+                self.db.log(execution_id, 'INFO',
+                            f"{len(df)} ligne(s) à traiter depuis {excel_file}",
+                            context='execute')
+
             # 2. CONNEXION SAGE
             self.connect_sage()
-            
+
             # Naviguer vers le module
             self.navigate_to_module(self.url_regelement)
             self.wait_for_spinner_to_disappear(self.driver_manager.driver, timeout=900000000)
             self.handle_popup("OK",  "GESPAY : Accès restreint par la licence")
             self.wait_for_spinner_to_disappear(self.driver_manager.driver, timeout=900000000)
-            
+
             type_reg = int(df.iloc[0]['type_regelement'])
-            self._choisir_mode_regelement(TYPE_REGELEMENT[type_reg])
+            type_reg_label = TYPE_REGELEMENT.get(type_reg, 'Inconnu')
+            self._choisir_mode_regelement(type_reg_label)
 
             # 3. TRAITER CHAQUE LIGNE
             for idx, row in df.iterrows():
-                if(row['Code_Frs'] == 'T2948' or row['Code_Frs'] == 'T4407'):
+                # Extraire les infos pour le log DB
+                code_frs = str(row['Code_Frs'])
+                num_facture = str(row['N_Facture']) if 'N_Facture' in row and not pd.isna(row['N_Facture']) else ""
+                reference = str(row['Refference']) if 'Refference' in row and not pd.isna(row['Refference']) else ""
+                montant = float(row['Montant']) if 'Montant' in row and not pd.isna(row['Montant']) else None
+                tva = float(row['TVA']) if 'TVA' in row and not pd.isna(row['TVA']) else None
+
+                # Vérifier si ce règlement existe déjà (fait récemment)
+                if self.db and num_facture:
+                    check_result = self.db.check_regelement_exists(num_facture, days_threshold=3)
+                    if check_result['exists'] and not check_result['can_retry']:
+                        self.logger.info(f"⏭️ Ligne {idx + 1} - Règlement déjà effectué il y a {check_result['days_ago']} jour(s)")
+                        resultat = {
+                            'type': 'Ligne',
+                            'statut': 'Skip',
+                            'code_frs': code_frs,
+                            'num_facture': num_facture,
+                            'message': f"Règlement déjà effectué il y a {check_result['days_ago']} jour(s) (N° pièce: {check_result['numero_piece']}). Réessayer après 3 jours.",
+                            'error_info': None
+                        }
+                        self.add_result(resultat)
+                        # On ne compte pas comme échec, c'est un skip volontaire
+                        continue
+
+                # Enregistrer le règlement en DB avant traitement
+                regelement_id = None
+                if self.db and execution_id:
+                    regelement_id = self.db.log_regelement(
+                        execution_id=execution_id,
+                        code_fournisseur=code_frs,
+                        num_facture=num_facture,
+                        reference=reference,
+                        montant=montant,
+                        tva=tva,
+                        type_regelement=type_reg_label
+                    )
+
+                if code_frs == 'T2948' or code_frs == 'T4407':
                     self.logger.info(f"🚀 Ligne {idx + 1} - FIN rencontrée, arrêt du traitement.")
                     resultat = {
                         'type': 'Ligne',
                         'statut': 'Echec',
-                        'code_frs': str(row['Code_Frs']),
-                        # return N_facture si non vide sinon return empty string
-                        'num_facture': str(row['N_Facture']) if 'N_Facture' in row and not pd.isna(row['N_Facture']) else "",
+                        'code_frs': code_frs,
+                        'num_facture': num_facture,
                         'message': 'AKEG et AMS (T2948 et T4407) sont interdits pour le règlement, arrêt du traitement.',
                         'error_info': None
                     }
                     self.add_result(resultat)
+
+                    # Mettre à jour en DB
+                    if self.db and regelement_id:
+                        self.db.update_regelement(regelement_id, 'ECHEC', message=resultat['message'])
+                    self.fournisseurs_echec += 1
                     continue
-                
-                if not self._verifie_sold_fournisseur(row) : 
+
+                if not self._verifie_sold_fournisseur(row):
                     self.logger.info("le solde fournisseur ne permet pas de saise ce regelement, s'il vous plait contacter M. PDG")
                     resultat = {
                         'type': 'Ligne',
                         'statut': 'Echec',
-                        'code_frs': str(row['Code_Frs']),
-                        # return N_facture si non vide sinon return empty string
-                        'num_facture': str(row['N_Facture']) if 'N_Facture' in row and not pd.isna(row['N_Facture']) else "",
+                        'code_frs': code_frs,
+                        'num_facture': num_facture,
                         'message': 'Le solde fournisseur est insuffisant pour créer ce règlement.',
                         'error_info': None
                     }
                     self.add_result(resultat)
+
+                    # Mettre à jour en DB
+                    if self.db and regelement_id:
+                        self.db.update_regelement(regelement_id, 'ECHEC', message=resultat['message'])
+                    self.fournisseurs_echec += 1
                     continue
+
                 time.sleep(5)
                 self.wait_for_spinner_to_disappear(self.driver_manager.driver, timeout=90000)
                 self.wait_for_element_to_appear(self.driver_manager.driver, By.CSS_SELECTOR, "div.s-page-content-slot", timeout=60000)
@@ -121,14 +189,33 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                 resultat = self._traiter_ligne(row)
                 self.add_result(resultat)
 
+                # Mettre à jour en DB après traitement
+                if self.db and regelement_id:
+                    # Extraire le numéro de pièce du message si succès
+                    numero_piece = None
+                    if resultat['statut'] == 'Succes' and 'N° Règlement:' in resultat.get('message', ''):
+                        try:
+                            numero_piece = resultat['message'].split('N° Règlement:')[1].strip()
+                        except:
+                            pass
+
+                    screenshot_path = resultat.get('error_info', {}).get('screenshot') if resultat.get('error_info') else None
+                    self.db.update_regelement(
+                        regelement_id,
+                        statut='SUCCES' if resultat['statut'] == 'Succes' else 'ECHEC',
+                        message=resultat.get('message'),
+                        numero_piece=numero_piece,
+                        screenshot_path=screenshot_path
+                    )
+
                 if resultat['statut'] == 'Succes':
                     self.fournisseurs_traites += 1
                 else:
                     self.fournisseurs_echec += 1
                     self.logger.warning(f" Échec ligne {idx + 1}, mais on continue...")
-                
+
                 time.sleep(1)
-            
+
             # 4. BILAN FINAL
             self.add_result({
                 'type': 'BILAN_FINAL',
@@ -138,35 +225,50 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                 'total_regelements': self.total_factures,
                 'message': f'{self.fournisseurs_traites} ligne(s) traitée(s), {self.total_factures} règlement(s)'
             })
-            
+
             # 5. SAUVEGARDER RAPPORT
             self.save_report()
-            
+
             # 6. ENVOYER RÉSULTATS WEB
             self.send_results_to_web(email_f)
-            
+
             self.logger.info("="*80)
             self.logger.info("🎉 PROCESSUS TERMINÉ")
             self.logger.info(f" {self.fournisseurs_traites} ligne(s) traitée(s)")
             self.logger.info(f" {self.fournisseurs_echec} ligne(s) en échec")
             self.logger.info(f"💳 {self.total_factures} règlement(s) créé(s)")
             self.logger.info("="*80)
-            
+
         except Exception as e:
             self.logger.error(f" ERREUR CRITIQUE: {e}")
             import traceback
             self.logger.error(traceback.format_exc())
-            
+
             self.add_result({
                 'type': 'ERREUR',
                 'statut': 'ECHEC',
                 'message': str(e)
             })
-            
+
+            # Log l'erreur en DB
+            if self.db and execution_id:
+                self.db.log(execution_id, 'ERROR', str(e), context='execute')
+
             self.save_report()
             self.send_results_to_web(email_f)
 
         finally:
+            # Finaliser la session en DB
+            if self.db and execution_id:
+                statut_final = 'SUCCES' if self.fournisseurs_echec == 0 else ('PARTIEL' if self.fournisseurs_traites > 0 else 'ECHEC')
+                self.db.end_execution(
+                    execution_id,
+                    statut=statut_final,
+                    nb_succes=self.fournisseurs_traites,
+                    nb_echec=self.fournisseurs_echec,
+                    message=f'{self.fournisseurs_traites} ligne(s) traitée(s), {self.fournisseurs_echec} en échec'
+                )
+
             self.logger.info("Deconnexion du robot...")
             # self.navigate_to_module(self.url_home)
             self.disconnect_sage() 
@@ -526,6 +628,8 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                 input_reg = self.get_input_by_label("No règlement", 65)
                 reg_num = input_reg.get_attribute("value")
                 self.logger.info(f"Reg {reg_num}")
+                # on va l'enregister dans notre base de donnée pour le suivi du reglement
+
                 resultat['statut'] = 'Succes'
                 resultat['message'] = f'Règlement créé pour {num_facture}, N° Règlement: {reg_num}'
                 
