@@ -43,13 +43,80 @@ def add_task(file_path, email, task_type="bon_commande", societe=None):
     print(f"Tâche ajoutée: {task['id']} (type: {task_type})")
     return task["id"]
 
-def get_next_task():
-    """Récupérer la prochaine tâche en attente"""
+def get_next_task(skip_types: list = None):
+    """Récupérer la prochaine tâche en attente
+
+    Args:
+        skip_types: Liste de types de tâches à ignorer (ex: ['bon_commande'])
+    """
     tasks = load_queue()
+    skip_types = skip_types or []
+
     for task in tasks:
         if task["status"] == "pending":
-            return task
+            task_type = task.get("task_type", "bon_commande")
+            if task_type not in skip_types:
+                return task
     return None
+
+
+def get_last_completed_time(task_type: str) -> datetime:
+    """Récupérer le timestamp de la dernière tâche complétée pour un type donné
+
+    Args:
+        task_type: Type de tâche (ex: 'bon_commande')
+
+    Returns:
+        datetime ou None si aucune tâche complétée
+    """
+    tasks = load_queue()
+    last_time = None
+
+    for task in tasks:
+        if (task.get("task_type") == task_type and
+            task.get("status") == "completed" and
+            task.get("completed_at")):
+            try:
+                completed_at = datetime.fromisoformat(task["completed_at"])
+                if last_time is None or completed_at > last_time:
+                    last_time = completed_at
+            except (ValueError, TypeError):
+                continue
+
+    return last_time
+
+
+def is_task_type_in_cooldown(task_type: str, cooldown_minutes: int = 30) -> tuple:
+    """Vérifier si un type de tâche est en période de cooldown
+
+    Args:
+        task_type: Type de tâche à vérifier
+        cooldown_minutes: Durée du cooldown en minutes
+
+    Returns:
+        tuple (is_in_cooldown: bool, remaining_minutes: float)
+    """
+    last_completed = get_last_completed_time(task_type)
+
+    if last_completed is None:
+        return False, 0
+
+    elapsed = (datetime.now() - last_completed).total_seconds() / 60  # en minutes
+    remaining = cooldown_minutes - elapsed
+
+    if remaining > 0:
+        return True, remaining
+
+    return False, 0
+
+
+def has_pending_tasks_of_type(task_type: str) -> bool:
+    """Vérifier s'il y a des tâches en attente d'un certain type"""
+    tasks = load_queue()
+    for task in tasks:
+        if task.get("task_type") == task_type and task.get("status") == "pending":
+            return True
+    return False
 
 def update_task(task_id, status, error=None):
     """Mettre à jour le statut d'une tâche"""

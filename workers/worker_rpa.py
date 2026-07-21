@@ -15,7 +15,7 @@ from modules.imputation.ImputationRobot import ImputationRobot
 from modules.regelement.VairementRobot import VairementRobot
 from modules.regelement.VairementInternationalRobot import VairementInternationalRobot
 from modules.regelement.RegelementRobot_V3 import RegelementRobot
-from utils.queue_manager import get_next_task, update_task
+from utils.queue_manager import get_next_task, update_task, is_task_type_in_cooldown, has_pending_tasks_of_type
 from modules.bonne_commande.bonne_commande_robot import BonneCommandeRobot
 from modules.receiption.ReceiptionRobot_v3 import ReceiptionRobot
 # from modules.facturation.FacturationRobot import FacturationRobot
@@ -25,16 +25,35 @@ from core.logger import Logger
 
 logger = Logger.get_logger('WorkerRPA', 'workers')
 
+BON_COMMANDE_COOLDOWN_MINUTES = 30  # Délai entre chaque bon_commande
+
+
 def main():
     logger.info("="*80)
     logger.info("WORKER RPA DÉMARRÉ")
     logger.info("="*80)
+    logger.info(f"Cooldown bon_commande: {BON_COMMANDE_COOLDOWN_MINUTES} minutes")
     logger.info("En attente de tâches...")
-    
+
     while True:
         try:
-            task = get_next_task()
-            
+            # Vérifier si bon_commande est en cooldown
+            in_cooldown, remaining = is_task_type_in_cooldown("bon_commande", BON_COMMANDE_COOLDOWN_MINUTES)
+
+            if in_cooldown and has_pending_tasks_of_type("bon_commande"):
+                # bon_commande en cooldown, traiter les autres tâches d'abord
+                logger.debug(f"⏳ bon_commande en cooldown ({remaining:.1f} min restantes), recherche autres tâches...")
+                task = get_next_task(skip_types=["bon_commande"])
+
+                # Si aucune autre tâche, on attend
+                if task is None:
+                    logger.info(f"⏳ Attente cooldown bon_commande: {remaining:.1f} min restantes...")
+                    time.sleep(min(remaining * 60, 60))  # Attendre max 1 min avant de revérifier
+                    continue
+            else:
+                # Pas de cooldown ou pas de bon_commande en attente
+                task = get_next_task()
+
             if task:
                 task_type = task.get('task_type', 'bon_commande')  # Par défaut: bon_commande
                 logger.info(f"\n{'='*80}")
