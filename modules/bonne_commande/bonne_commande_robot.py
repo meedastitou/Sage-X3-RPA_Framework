@@ -536,7 +536,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             # self.wait_for_spinner_to_disappear(driver, timeout=900000000)
             self.wait_stabilite(timeout=120)
 
-
+            
             # gerer les popups s'il existes 
             try:
                 WebDriverWait(driver, 2).until(
@@ -545,9 +545,38 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                 popup_button = driver.find_element(By.XPATH, f"//a[@aria-label='OK']")
                 popup_button.click()
                 time.sleep(1)
+                resultat = {
+                            'type': 'Ligne',
+                            'statut': 'Skip',
+                            'message': f"Erreur de l\'application détectée lors de la génération de la BC pour le fournisseur {structure['fournisseur']}.",
+                            'error_info': None
+                }
+                self.add_result(resultat)
+                return []
             except:
                 # Pas de popup ou autre type de popup
                 pass
+            
+            # gerer les popups s'il existes 
+            try:
+                WebDriverWait(driver, 10).until(
+                    EC.visibility_of_element_located((By.XPATH, f'//pre[@class="s_alertbox_msg" and contains(text(), "Traitement encours dans un autre poste")]'))
+                )
+                popup_button_ok = driver.find_element(By.XPATH, f"//a[@aria-label='OK']")
+                popup_button_ok .click()
+                time.sleep(1)
+                resultat = {
+                            'type': 'Ligne',
+                            'statut': 'Skip',
+                            'message': f"Traitement encours dans un autre poste lors de la génération de la BC pour le fournisseur {structure['fournisseur']}.",
+                            'error_info': None
+                }
+                self.add_result(resultat)
+                return []
+            except:
+                # Pas de popup ou autre type de popup
+                pass
+            
 
             self.wait_for_element_to_appear(driver, By.CSS_SELECTOR, ".s-inplace-input.s-readonly", timeout=900000000)
 
