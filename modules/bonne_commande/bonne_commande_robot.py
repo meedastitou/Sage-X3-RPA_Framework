@@ -484,6 +484,8 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                     numero_da=numero_da,
                     articles=info_da['articles']
                 )
+                self.navigate_to_module("http://192.168.1.241:8124/syracuse-main/html/main.html?url=%2Ftrans%2Fx3%2Ferp%2FBASE1%2F%24sessions%3Ff%3DGESPSH%252F2%252F%252FM%252F%26profile%3D~(loc~%27fr-FR~role~%279844eacb-4f96-4301-8b0c-dbe4f4d48e4d~ep~%27cb006c17-58a5-4b98-9f2b-474ec03472a3~appConn~())")
+
                 self.traiter_demande_achat(acheteur=info_da['acheteur'], numero_da=numero_da, articles=info_da['articles'])
                 self.add_result(resultat)
                 
