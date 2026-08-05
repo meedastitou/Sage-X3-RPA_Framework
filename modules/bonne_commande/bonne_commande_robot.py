@@ -152,6 +152,13 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                     self.logger.error(" ARRÊT DU PROCESSUS - BC NON GÉNÉRÉ pour ce fournisseur")
                     self.logger.error("="*80)
 
+
+                    self.logger.info(""+""*80)
+                    self.logger.info("Decoucher tous validations acheteurs")
+                    self.logger.error("="*80)
+                    
+                    self._decoucher_validation_acheteur(data_fournisseur)
+
                     # Ajouter un résultat final d'échec pour ce fournisseur
                     self.add_result({
                         'type': 'BILAN_FINAL',
@@ -183,10 +190,13 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                 self.logger.info("="*80)
                 self.logger.info(f"Articles traités avec succès: {self.articles_traites}/{self.articles_traites + self.articles_echec}")
                 self.logger.info(f"DAs traitées avec succès: {self.das_traitees}/{self.das_traitees + self.das_echec}")
-
+                # input("test")
                 bc_numbers = self._generer_bon_de_commande(data_fournisseur)
                 bc_genere = len(bc_numbers) > 0
 
+                # si rien genere alors on va decocher la validation acheteur de tous DA
+                if not bc_genere :
+                    self._decoucher_validation_acheteur(data_fournisseur)
                 # Déterminer le statut final basé sur la génération de BC
                 statut_final = 'SUCCES' if bc_genere else 'ECHEC'
                 message_final = f'Tous les traitements réussis pour fournisseur {code_fournisseur}. BC généré avec succès: {bc_numbers}' if bc_genere else f'Articles et DAs traités avec succès pour fournisseur {code_fournisseur} mais échec de génération BC.'
@@ -265,6 +275,8 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             # ✨ ENVOYER LES RÉSULTATS (même en cas d'erreur)
             self.logger.info("✨ Envoi des résultats vers l'endpoint web malgré l'erreur critique...")
             self.send_results_to_web(email_achteur)
+
+            self._decoucher_validation_acheteur(data_fournisseur)
         
         finally:
             self.logger.info("Deconnexion du robot...")
@@ -414,9 +426,9 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                 self.logger.info(f"{'─'*80}")
                 self.wait_stabilite(timeout=90000)
 
-                if  float(info_article['montant']) < 1 or str(info_article['montant']).strip() == '0.0' or str(info_article['montant']).strip().lower() == 'nan':
+                if  float(info_article['montant']) < 0 or str(info_article['montant']).strip() == '0.0' or str(info_article['montant']).strip().lower() == 'nan':
                     self.logger.warning(f" Montant non défini pour l'article {code_article}")
-                    continue
+                    return False
 
                 resultat = self.traiter_article(
                     code_article=code_article,
@@ -464,12 +476,9 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
     def _traiter_toutes_das(self, structure: Dict[str, Any]) -> bool:
         """Traiter toutes les DAs UNIQUES avec validation stricte"""
 
-        # TODO : changement url 
-        self.navigate_to_module(self.url_demande_achat)
-        time.sleep(5)
-
+        
         driver = self.driver_manager.driver
-        self.wait_for_spinner_to_disappear(driver, timeout=90000)
+        
 
         total_das = len(structure['das'])
         try:
@@ -479,14 +488,22 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                 self.logger.info(f"   Acheteur: {info_da['acheteur']}")
                 self.logger.info(f"   Articles: {len(info_da['articles'])}")
                 self.logger.info(f"{'─'*80}")
+                self.navigate_to_module(self.url_demande_achat)
+                time.sleep(5)
                 
+                self.wait_stabilite(120)
                 resultat = self.valider_article_da_v1(
                     numero_da=numero_da,
                     articles=info_da['articles']
                 )
+                print(resultat)
+                if resultat['statut'] == 'Echec':
+                    self.logger.warning(f" DA {numero_da} ignorée: {resultat['message']}")
+                    self.add_result(resultat)
+                    return False
                 self.navigate_to_module("http://192.168.1.241:8124/syracuse-main/html/main.html?url=%2Ftrans%2Fx3%2Ferp%2FBASE1%2F%24sessions%3Ff%3DGESPSH%252F2%252F%252FM%252F%26profile%3D~(loc~%27fr-FR~role~%279844eacb-4f96-4301-8b0c-dbe4f4d48e4d~ep~%27cb006c17-58a5-4b98-9f2b-474ec03472a3~appConn~())")
-
-                self.traiter_demande_achat(acheteur=info_da['acheteur'], numero_da=numero_da, articles=info_da['articles'])
+                self.wait_stabilite()
+                resultat = self.traiter_demande_achat(acheteur=info_da['acheteur'], numero_da=numero_da, articles=info_da['articles'])
                 self.add_result(resultat)
                 
                 if resultat['statut'] == 'Succes':
@@ -499,27 +516,18 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                     
                     self.save_report(incremental=True)
                     return False
-                
+                print("x")
                 time.sleep(2)
+
+            return True
         except Exception as e:
             self.logger.error(f" ERREUR lors du traitement des DAs: {e}")
             self.save_report(incremental=True)
             return False
-        finally:
-            self.logger.info(f"DAs traitées: {self.das_traitees}, Échecs: {self.das_echec}")
-            driver = self.driver_manager.driver
-
-            driver.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
-            time.sleep(0.5)
-            driver.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
-
-            s_page_close = driver.find_element(By.CSS_SELECTOR, "a.s_page_close")
-            s_page_close.click()
-            time.sleep(2)
-        
-        self.logger.info(f"PHASE 2 RÉUSSIE: {self.das_traitees}/{total_das} DAs traitées")
-        self.save_report(incremental=True)
-        return True
+       
+        # self.logger.info(f"PHASE 2 RÉUSSIE: {self.das_traitees}/{total_das} DAs traitées")
+        # self.save_report(incremental=True)
+        # return True
     
     def _generer_bon_de_commande(self, structure: Dict[str, Any]) -> List[str]:
         """Générer la bonne de commande et retourner la liste des numéros de BC"""
@@ -625,12 +633,12 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             self.logger.info("🔒 Fermeture du module Bonne de Commande")
             driver = self.driver_manager.driver
 
-            self.navigate_to_module(self.home_url)
             driver.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
-            time.sleep(5)
-            s_page_close = driver.find_element(By.CSS_SELECTOR, "a.s_page_close")
-            s_page_close.click()
-            time.sleep(2)
+            self.navigate_to_module(self.home_url)
+            # time.sleep(5)
+            # s_page_close = driver.find_element(By.CSS_SELECTOR, "a.s_page_close")
+            # s_page_close.click()
+            # time.sleep(2)
         
     def traiter_article(self, code_article: str, code_fournisseur: str, montant: str, marque: str, affaire: str) -> Dict[str, Any]:
         """
@@ -653,12 +661,18 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
         driver = self.driver_manager.driver
         
         try:
-            
+
+            webdriver_wait = WebDriverWait(driver, 90).until(
+                EC.presence_of_element_located((By.XPATH, "//header[.//a[contains(text(), 'Articles')]]/following-sibling::div[1]"))
+            )
             
             # 1. Trouver la section "Articles" 
             articles_section = driver.find_element(By.XPATH, 
                 "//header[.//a[contains(text(), 'Articles')]]/following-sibling::div[1]"
             )
+            webdriver_wait = WebDriverWait(driver, 90).until(
+                            EC.presence_of_element_located((By.CLASS_NAME, "s-grid-table-head"))
+                        )
             table_head = articles_section.find_element(By.CLASS_NAME, "s-grid-table-head")
 
             # 2. Directement: trouver le premier input dans le deuxième tr
@@ -677,8 +691,12 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             table_body = articles_section.find_element(By.CLASS_NAME, "s-grid-table-body")
 
             # 4. Cliquer sur l'article
-            premier_ligne_recherche = table_body.find_element(By.XPATH, ".//tr[1]")
-            click_on_article = premier_ligne_recherche.find_element(By.XPATH, ".//td[1]//div")
+            try:
+                premier_ligne_recherche = table_body.find_element(By.XPATH, ".//tr[1]")
+                click_on_article = premier_ligne_recherche.find_element(By.XPATH, ".//td[1]//div")
+            except:
+                resultat['message'] = f"l\'article {code_article} n\'est pas existe"
+                return resultat
 
             click_on_article.click()
             time.sleep(1)
@@ -733,19 +751,26 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             time.sleep(0.5)
             change_tarif.clear()
             change_tarif.send_keys(str(round(float(montant), 4)))
-            # if(change_tarif.get_attribute('value').replace(',','.').strip() != montant):
-            #     resultat['message'] = f'Erreur de format du tarif pour l\'article {code_article} (valeur: {montant})'
-            #     self.logger.error(f" {resultat['message']}")
-            #     return resultat
             change_tarif.send_keys(Keys.TAB)
-            time.sleep(1)
-
+            time.sleep(2)
+            # <li class="s_alertpanel_diagnose"><div class="s_alertpanel_diagnose_banner s_alert_banner_error" bis_skin_checked="1"><i class="s_alertpanel_diagnose_banner_i s_sagearmonyeicon">quick_error</i></div><div class="s_alertpanel_diagnose_msg" bis_skin_checked="1"><a class="s_alertpanel_field_link">Prix (HT): </a><pre class="s_alertpanel_diagnose_msg_pre">La valeur saisie ne respecte pas le format ou le type du champ</pre></div></li>
+            
+            try:
+                webdriver_wait = WebDriverWait(driver, 2).until(
+                                EC.presence_of_element_located((By.CSS_SELECTOR, "div.s_alertpanel_diagnose_banner.s_alert_banner_error"))
+                            )
+                resultat['message'] = f"article : {code_article} ; {driver.find_element(By.CSS_SELECTOR, 'pre.s_alertpanel_diagnose_msg_pre').text}"
+                change_tarif.send_keys(Keys.ESCAPE)
+                return resultat
+            except:
+                pass
             elements_existe = len(driver.find_elements(By.CSS_SELECTOR, "article.s_alertbox_content")) > 0
 
             if elements_existe:
                 pre_elements = driver.find_elements(By.CSS_SELECTOR, "pre.s_alertbox_msg")
                 error_message = pre_elements[0].text
                 resultat['message'] = f'Tarif non valide de l\'article {code_article} (valeur: {montant}) \n {error_message}'
+                self.add_result(resultat)
                 self.logger.error(f" {resultat['message']}")
 
                 # Capturer screenshot et popup
@@ -777,9 +802,12 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                 resultat['statut'] = 'Succes'
                 resultat['message'] = 'Article traité avec succès'
                 self.logger.info(f"Article {code_article} traité")
+                return resultat
             else:
                 resultat['message'] = 'Erreur lors de l\'enregistrement'
-            time.sleep(20)
+                return resultat
+            self.wait_stabilite()
+            return resultat
         except Exception as e:
             resultat['message'] = f'Erreur: {str(e)}'
             self.logger.error(f" Erreur traitement article: {e}")
@@ -790,6 +818,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                 context=f"Article {code_article} - Exception"
             )
             resultat['error_info'] = error_info
+            return resultat
         finally:
             pass
         return resultat
@@ -808,15 +837,28 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             'statut': 'Echec',
             'message': ''
         }
-        
+        self.logger.info("Validation acheteur")
         driver = self.driver_manager.driver
         
         try:
-
+            self.wait_stabilite()
+            try:
+                WebDriverWait(driver, 30).until(
+                    EC.presence_of_element_located((By.XPATH,
+                        "/html/body/div/article/div[1]/div/article/div[1]/div[2]/header[1]/a"
+                    ))
+                )
+            except:
+                resultat['message'] = f"Le Systeme est lent."
+                return resultat
+                                
              # 1. Trouver la section "Demandes d'Achat" 
             demmande_achat_section = driver.find_element(By.XPATH, 
                 "//header[.//a[contains(text(), 'Demandes')]]/following-sibling::div[1]"
             )
+            webdriver_wait = WebDriverWait(driver, 90).until(
+                                        EC.presence_of_element_located((By.CLASS_NAME, "s-grid-table-head"))
+                                    )
             table_head = demmande_achat_section.find_element(By.CLASS_NAME, "s-grid-table-head")
 
             # 2. Directement: trouver le premier input dans le deuxième tr
@@ -840,7 +882,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             click_on_da.click()
             time.sleep(1)
             
-
+            # input("s")
             # 3. Validation acheteur
             self.logger.info(f"Validation acheteur: {acheteur}")
             validation_acheteur = self.get_input_by_label("Validation Acheteur")
@@ -879,10 +921,19 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                 context=f"DA {numero_da} - Exception"
             )
             resultat['error_info'] = error_info
+        finally:
 
+            WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.XPATH, '//*[@id="s_app_body"]/div/article/div[2]/header/div[1]/div/div[2]/div[3]/a/div'))
+            )
+            s_page_close = driver.find_element(By.XPATH, '//*[@id="s_app_body"]/div/article/div[2]/header/div[1]/div/div[2]/div[3]/a/div')
+            s_page_close.click()
+            time.sleep(2)
         return resultat
     
-    #@deprecated(reason="Cette méthode est obsolète et sera supprimée dans les futures versions.")
+    
+     #@deprecated(reason="Cette méthode est obsolète et sera supprimée dans les futures versions.")
+    
     def valider_article_dans_da(self, articles: List[Dict[str, Any]]):
         """Valider les articles dans la DA"""
         driver = self.driver_manager.driver
@@ -968,6 +1019,17 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             code_article = article['code']
             self.logger.info(f"Validation de l'article {code_article} dans la DA")
             try:
+                self.wait_stabilite()
+                try:
+                    WebDriverWait(driver, 10).until(
+                        EC.element_to_be_clickable((By.XPATH,
+                        '//*[@id="s_app_body"]/div/article/div[1]/header/div[1]/div/div[2]/div[2]/a[@title="Recherche"]'
+                    ))
+                    )
+                except:
+                    resultat['message'] = f"Le Systeme est lent."
+                    return resultat
+                    
                 # recherecher sur la DA
                 input_da_recherche = self.get_input_by_label("N° demande début")
                 input_da_recherche.click()
@@ -983,6 +1045,14 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                 input_da_recherche_fin.clear()
                 input_da_recherche_fin.send_keys(numero_da)
                 input_da_recherche_fin.send_keys(Keys.TAB)
+                time.sleep(1)
+
+                input_dd_recherche_fin = self.get_input_by_label("Date début")
+                input_dd_recherche_fin.click()
+                time.sleep(0.5)
+                input_dd_recherche_fin.clear()
+                input_dd_recherche_fin.send_keys("01/01/2025")
+                input_dd_recherche_fin.send_keys(Keys.TAB)
                 time.sleep(1)
 
                 # clique sur la button de recherche
@@ -1009,6 +1079,37 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                             self.logger.info(f"Article {code_article} trouvé dans la DA {numero_da}")
 
                             article_row = row
+
+                            driver.execute_script(
+                            "arguments[0].scrollLeft += 100;", (cell[9]) 
+                                )
+                            print(cell[9].get_attribute("value"))
+                            cell[9].click()  # modifier la marque
+                            time.sleep(1)
+                            cell[9].clear()
+                            cell[9].clear()
+                            cell[9].send_keys(article.get('marque', ''))
+                            cell[9].send_keys(Keys.TAB)
+                            time.sleep(1)
+                            try:
+                                WebDriverWait(driver, 3).until(
+                                    EC.visibility_of_element_located((By.XPATH, f'//pre[@class="s_alertbox_msg" and contains(text(), "Marque inexistante")]'))
+                                )
+                                popup_button = driver.find_element(By.XPATH, f"//a[@aria-label='OK']")
+                                popup_button.click()
+                                time.sleep(1)
+                                self.logger.info(f"Erreur : Marque {article.get('marque', '')} inexistante pour cet article {code_article} dans la DA {numero_da}.")
+                                resultat['message'] = f"Erreur : Marque {article.get('marque', '')} inexistante pour cet article {code_article} dans la DA {numero_da}."
+                                # self.add_result(resultat)
+                                return resultat
+                            except:
+                                # Pas de popup ou autre type de popup
+                                pass
+
+                            driver.execute_script(
+                            "arguments[0].scrollLeft -= 100;", (cell[0]) 
+                             )
+                            # input("s")
                             id_of_input = cell[0].get_attribute("id")
                             if not cell[0].is_selected():
                                 self.logger.info(f"Case à cocher pour l'article {code_article} déjà cochée")
@@ -1018,17 +1119,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                                 self.logger.info(f"Case à cocher pour l'article {code_article} cliquée")
                             
 
-                            driver.execute_script(
-                                "arguments[0].scrollLeft += 100;", 
-                                (cell[9]) 
-                            )
-                            print(cell[9].get_attribute("value"))
-                            cell[9].click()  # modifier la marque
-                            time.sleep(1)
-                            cell[9].clear()
-                            cell[9].send_keys(article.get('marque', ''))
-                            cell[9].send_keys(Keys.TAB)
-                            time.sleep(1)
+                            
 
                             break
                     except Exception as e:
@@ -1049,7 +1140,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                 )
                 resultat['message'] = f'Erreur lors de la validation des articles dans la DA {numero_da}'
                 return resultat
-            resultat['statut'] = 'Succes'
+        resultat['statut'] = 'Succes'
         return resultat
 
     def enregistrer_article(self) -> bool:
@@ -1065,6 +1156,32 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
             time.sleep(5)
 
             self.wait_for_spinner_to_disappear(driver, timeout=6000)
+            try:
+                div_element = WebDriverWait(driver, 5).until(
+                    EC.visibility_of_element_located((By.XPATH, f'//div[@class="s_alertbox_title" and contains(text(), "Erreur")]'))
+                )
+                div_element_text = div_element.text
+                print(f"Erreur détectée lors de l'enregistrement de l'article: {div_element_text}")
+                self.add_result({
+                    'type': 'Article',
+                    'statut': 'Echec',
+                    'message': f"Erreur lors de l'enregistrement de l'article: {div_element_text}",
+                    'error_info': None
+                })
+                popup_button = driver.find_element(By.XPATH, f"//a[@aria-label='OK']")
+                popup_button.click()
+                time.sleep(1)
+
+                try:
+                    driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_close").click()
+                    time.sleep(1)
+                except:
+                    pass
+                self.logger.warning("⚠️ Popup détectée après l'enregistrement de l'article. Vérifiez les messages d'erreur.")
+                return False
+            except:
+                # Pas de popup ou autre type de popup
+                pass
             
             self.logger.info("💾 Enregistrement article...")
             return True
@@ -1191,3 +1308,103 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
         """Imprimer la bonne de commande (fonctionnalité à implémenter si nécessaire)"""
         self.logger.info(f"🖨️ Impression de la BC {bc_number} (fonctionnalité à implémenter)")
         self.navigate_to_module(self.url_bonne_commande)
+
+    def _decoucher_validation_acheteur(self,  structure: Dict[str, Any]) :
+        """ dechoucher validation acheteur"""
+        resultat = {
+            'type': 'Demande_Achat',
+            'numero_da': "",
+            'statut': 'Echec',
+            'message': ''
+        }
+        driver = self.driver_manager.driver
+        
+
+        # navigate to url demande achat
+        self.navigate_to_module("http://192.168.1.241:8124/syracuse-main/html/main.html?url=%2Ftrans%2Fx3%2Ferp%2FBASE1%2F%24sessions%3Ff%3DGESPSH%252F2%252F%252FM%252F%26profile%3D~(loc~%27fr-FR~role~%279844eacb-4f96-4301-8b0c-dbe4f4d48e4d~ep~%27cb006c17-58a5-4b98-9f2b-474ec03472a3~appConn~())")
+        self.wait_for_spinner_to_disappear(driver, timeout=90000)
+        self.wait_stabilite()
+        try:
+            WebDriverWait(driver, 30).until(
+                EC.presence_of_element_located((By.XPATH,
+                    "/html/body/div/article/div[1]/div/article/div[1]/div[2]/header[1]/a"
+                ))
+            )
+        except:
+            resultat['message'] = f"Le Systeme est lent."
+            return resultat
+                
+        total_das = len(structure['das'])
+        
+        for idx, (numero_da, info_da) in enumerate(structure['das'].items(), 1):
+            self.wait_stabilite()
+            try:
+                
+                # 1. Trouver la section "Demandes d'Achat" 
+                demmande_achat_section = driver.find_element(By.XPATH, 
+                    "//header[.//a[contains(text(), 'Demandes')]]/following-sibling::div[1]"
+                )
+                table_head = demmande_achat_section.find_element(By.CLASS_NAME, "s-grid-table-head")
+    
+                # 2. Directement: trouver le premier input dans le deuxième tr
+                filter_row = table_head.find_element(By.XPATH, ".//tr[2]")
+                chercher_da = filter_row.find_element(By.XPATH, ".//td[2]//input")
+    
+                # 3. Rechercher l'article
+                chercher_da.click()
+                time.sleep(0.5)
+                chercher_da.clear()
+                chercher_da.send_keys(numero_da)
+                chercher_da.send_keys(Keys.TAB)
+                time.sleep(1)
+    
+                table_body = demmande_achat_section.find_element(By.CLASS_NAME, "s-grid-table-body")
+    
+                # 4. Cliquer sur l'article
+                premier_ligne_recherche = table_body.find_element(By.XPATH, ".//tr[1]")
+                click_on_da = premier_ligne_recherche.find_element(By.XPATH, ".//td[2]//div")
+    
+                click_on_da.click()
+                time.sleep(1)
+                
+                # input("s")
+                # 3. Validation acheteur
+                self.logger.info(f"decoucher Validation acheteur")
+                validation_acheteur = self.get_input_by_label("Validation Acheteur")
+                label_validation_acheteur = driver.find_element(By.CSS_SELECTOR, f"label[for='{validation_acheteur.get_attribute('id')}']")
+                if validation_acheteur.is_selected():
+                    label_validation_acheteur.click()
+                    self.logger.info("2 - Case decochée")
+    
+                else:
+                    self.logger.info("1 - Case deja decochée")
+    
+                time.sleep(1)
+    
+    
+                # 4. Enregistrer
+                if self.enregistrer_demande_achat():
+                    resultat['statut'] = 'Succes'
+                    resultat['message'] = 'DA decouche avec succès'
+                    self.logger.info(f"DA {numero_da} traitée")
+                else:
+                    resultat['message'] = 'Erreur lors de l\'enregistrement'
+            except Exception as e:
+                resultat['message'] = f'Erreur: {str(e)}'
+                self.logger.error(f" Erreur traitement DA: {e}")
+    
+                # Capturer screenshot et popup en cas d'exception
+                error_info = self.handle_error_with_screenshot(
+                    error_message=str(e),
+                    context=f"DA {numero_da} - Exception"
+                )
+                resultat['error_info'] = error_info
+            finally:
+                WebDriverWait(driver, 10).until(
+                    EC.element_to_be_clickable((By.XPATH, '//*[@id="s_app_body"]/div/article/div[2]/header/div[1]/div/div[2]/div[3]/a/div'))
+                )
+                s_page_close = driver.find_element(By.XPATH, '//*[@id="s_app_body"]/div/article/div[2]/header/div[1]/div/div[2]/div[3]/a/div')
+                s_page_close.click()
+                time.sleep(2)
+    
+        
