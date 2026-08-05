@@ -204,6 +204,7 @@ class ResultSender:
             'bc_genere': robot.validation_passed,
             'rapport_path': str(robot.rapport_path) if robot.rapport_path else None,
             'details': summary,
+            'message': robot.resultats if robot.resultats else None,
             'email_fournisseur': getattr(robot, 'email_fournisseur', None)
         }
 
@@ -338,7 +339,8 @@ class ResultSender:
                 'total_reglements': robot.total_factures
             },
             'rapport_path': str(robot.rapport_path) if robot.rapport_path else None,
-            'details': summary
+            'details': summary,
+            'message': robot.resultats if robot.resultats else None
         }
 
         # Ajouter les détails des règlements
