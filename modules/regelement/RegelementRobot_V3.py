@@ -366,7 +366,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             # 
             # =================================================================
             avance = False if num_facture.startswith("FF") else True
-            self.logger.info(f"🔍 Type de règlement: {'Avance sans facture' if avance else 'Règlement avec facture'}")
+            self.logger.info(f" Type de règlement: {'Avance sans facture' if avance else 'Règlement avec facture'}")
 
             # =====================================================================================
             # Comparer le montant de la facture FF avec le montant de la facture fournisseur DFF
@@ -419,7 +419,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             # =================================================================
             # =================================================================
             # 3. REMPLIR LA FACTURE DANS LE CHAMPS DE COMMANTAIRE
-            self.logger.info(f"🔍 REMPLIR la Commantaire: {num_facture}")
+            self.logger.info(f" REMPLIR la Commantaire: {num_facture}")
             commentaire_input = self.get_input_by_label("Commentaire")
             commentaire_input.click()
             time.sleep(0.5)
@@ -431,7 +431,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             # =================================================================
             # =================================================================
             # 4. REMPLIR LA REFÉRENCE DE PIECE
-            self.logger.info(f"🔍 REMPLIR la Refference de piece: {refference}")
+            self.logger.info(f" REMPLIR la Refference de piece: {refference}")
             reference_input = self.get_input_by_label("Référence pièce")
             reference_input.click()
             time.sleep(0.5)
@@ -460,7 +460,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             # =================================================================
             # 5. SAIISIR Libelle
             self.wait_stabilite()
-            self.logger.info(f"🔍 REMPLIR le Libelle: {num_cheque}")
+            self.logger.info(f" REMPLIR le Libelle: {num_cheque}")
             libelle_input = self.get_input_by_label("Libellé")
             libelle_input.click()
             time.sleep(0.5)
@@ -482,7 +482,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             # =================================================================
             # =================================================================
             # 6. REMPLIR MONTANT
-            self.logger.info(f"🔍 REMPLIR le Montant: {montant}")
+            self.logger.info(f" REMPLIR le Montant: {montant}")
             montant_input = self.get_input_by_label("Montant Tiers")
             montant_input.click()
             time.sleep(0.5)
@@ -494,7 +494,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             # =================================================================
             # =================================================================
             # 7. SÉLECTIONNER Numero cheque
-            self.logger.info(f"🔍 REMPLIR le Numero cheque: {num_cheque}")
+            self.logger.info(f" REMPLIR le Numero cheque: {num_cheque}")
             num_cheque_input = self.get_input_by_label("Numéro chèque")
             num_cheque_input.click()
             time.sleep(0.5)
@@ -523,7 +523,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             # =================================================================
             # =================================================================
             # 8. REMPLIR TVA
-            self.logger.info(f"🔍 REMPLIR la TVA: {tva}")
+            self.logger.info(f" REMPLIR la TVA: {tva}")
             tva_input = self.get_input_by_label("Montant TVA")
             tva_input.click()
             time.sleep(0.5)
@@ -535,7 +535,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             # =================================================================
             # =================================================================
             # 9. REMPLIR DATE REEL
-            self.logger.info(f"🔍 REMPLIR la Date reel: {date_reel}")
+            self.logger.info(f" REMPLIR la Date reel: {date_reel}")
             date_reel_input = self.get_input_by_label("Date réelle")
             date_reel_input.click()
             time.sleep(0.5)
@@ -577,10 +577,10 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             # =================================================================
             # =================================================================
             # 11. REMPLIR LES DÉTAILS DE PAIEMENT    
-            self.logger.info(f"🔍 {avance} , {num_facture} ")
+            self.logger.info(f" {avance} , {num_facture} ")
             if not avance:
                 # REMPLIR LES DÉTAILS DE PAIEMENT
-                self.logger.info(f"🔍 REMPLIR les détails de paiement pour la facture ")       
+                self.logger.info(f" REMPLIR les détails de paiement pour la facture ")       
                 if self._remplir_detail_simple(num_facture):
                     self.total_factures += 1
                     self.logger.info(f" Détail OK")
@@ -597,14 +597,27 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                     self.logger.warning(f" Erreur lors du remplissage du détail de paiement pour {num_facture}")
                     return resultat
             else:
-                # juste clique sur le champ montant banque 
-                # pour re-formule la date d'échéance et la date réel dans le cas de règlement de l'avance sans facture
-                self.logger.info(f"🔍 Cliquer sur le champ Montant banque pour reformuler la date d'échéance et la date réel dans le cas de règlement de l'avance sans facture")
-                #pyautogui.press('esc') 
+                """ remplir le detail de paiement pour l'avance sans facture ( avec BC ) """
+                self.logger.info(f" REMPLIR les détails de paiement pour l'avance avec BC ")
+                if self._remplir_detail_simple_BC(num_facture, float(montant)):
+                    self.total_factures += 1
+                    self.logger.info(f" Détail OK")
+                    if not self._saisir_date_echeance_v2(date_echeance, num_facture, resultat, float(montant)):
+                        return resultat
+
+                else:
+                    self.logger.warning(f" Détail échec")
+                    error_info = self.handle_error_with_screenshot(
+                        error_message=f'Échec remplissage détail paiement',
+                        context=f"Chèque {num_cheque} - Détail paiement"
+                    )
+                    resultat['error_info'] = error_info
+                    self.logger.warning(f" Erreur lors du remplissage du détail de paiement pour {num_facture}")
+                    return resultat
 
             # 12. TIERS ENDOSSATAIRE (optionnel)
             if tier_endo:
-                self.logger.info(f"🔍 REMPLIR Tiers Endo.: {tier_endo}")
+                self.logger.info(f" REMPLIR Tiers Endo.: {tier_endo}")
                 endo_input = self.get_input_by_label("Endossable")
                 time.sleep(0.5)
                 label_endo = driver.find_element(By.CSS_SELECTOR, f"label[for='{endo_input.get_attribute('id')}']")
@@ -1066,6 +1079,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
     def _enregistrer_regelement(self) -> bool:
         """Enregistrer le règlement"""
         driver = self.driver_manager.driver
+        input("Appuyez sur Entrée pour continuer...")
         try:
             time.sleep(2)
             save_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_check")
@@ -1259,6 +1273,135 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             )
             return False
     
+
+    def _remplir_detail_simple_BC(self, num_facture: str, montant: float) -> bool:
+        """
+        Remplir un détail de paiement simplement (une seule ligne)
+        Format: DEC [TAB] FAFOU [TAB] reference [TAB] [TAB]
+        """
+        driver = self.driver_manager.driver
+        
+        try:
+            self.wait_for_spinner_to_disappear(driver=driver)
+
+            WebDriverWait(driver, 15).until(
+                        EC.invisibility_of_element_located((By.CSS_SELECTOR, "div.s_overlay"))
+                    )
+            # Attendre le tableau
+            WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, ".s-grid-slot-table-fixed"))
+            )
+
+            # Récupérer la première ligne du tableau des paiements
+            rows_fixed = driver.find_elements(By.CSS_SELECTOR, ".s-page-content-slot .s-grid-slot-table-fixed .s-grid-fixed-table-body tr.s-grid-row")
+            
+            if not rows_fixed:
+                self.logger.warning("Aucune ligne trouvée dans le tableau")
+                return False
+            
+            # Prendre la première ligne
+            target_row = rows_fixed[0]
+            cells_fixed = target_row.find_elements(By.CSS_SELECTOR, ".s-inplace-input")
+            
+            self.logger.info(f" {len(cells_fixed)} cellules trouvées")
+            time.sleep(5)
+            WebDriverWait(driver, 15).until(
+                        EC.invisibility_of_element_located((By.CSS_SELECTOR, "div.s_overlay"))
+                    )
+            # Cellule 1: DEC
+            self.logger.info("Remplissage DEC...")
+            if len(cells_fixed) > 0:
+                cell_dec = cells_fixed[0]
+                cell_dec.click()
+                time.sleep(0.3)
+                cell_dec.clear()
+                cell_dec.send_keys("DEC")
+                cell_dec.send_keys(Keys.TAB)
+                time.sleep(0.3)
+            WebDriverWait(driver, 15).until(
+                        EC.invisibility_of_element_located((By.CSS_SELECTOR, "div.s_overlay"))
+                    )
+            time.sleep(5)
+            rows_scrool = driver.find_elements(By.CSS_SELECTOR, ".s-page-content-slot .s-grid-slot-table-scroll .s-grid-table-body tr.s-grid-row")
+            self.logger.info(f" {len(rows_scrool)} ligne(s) trouvée(s) dans la partie scroll du tableau")
+            if not rows_scrool:
+                self.logger.warning("Aucune ligne trouvée dans le tableau")
+                return False
+            
+            # Prendre la première ligne
+            target_row = rows_scrool[0]
+            cells_scrool = target_row.find_elements(By.CSS_SELECTOR, ".s-inplace-input")
+            
+            self.logger.info(f" {len(cells_scrool)} cellules trouvées")
+            # Cellule 2: CCFOU
+            self.logger.info("Remplissage CCFOU...")
+            if len(cells_scrool) > 0:
+                cell_ccfou = cells_scrool[0]
+                cell_ccfou.click()
+                time.sleep(0.3)
+                cell_ccfou.clear()
+                cell_ccfou.send_keys("CCFOU")
+                cell_ccfou.send_keys(Keys.TAB)
+                time.sleep(0.3)
+            
+            # Cellule 3: Numéro Facture ( BC )
+            self.logger.info(f"Remplissage facture: {num_facture}...")
+            if len(cells_scrool) > 1:
+                cell_facture = cells_scrool[1]
+                cell_facture.click()
+                time.sleep(0.3)
+                cell_facture.clear()
+                cell_facture.send_keys(num_facture)
+                cell_facture.send_keys(Keys.TAB)
+                time.sleep(3)
+                try:
+                    self.handle_popup("OK", "acompte demandé")
+                    self.wait_stabilite()
+
+                    if not self.handle_popup("OK", "ATTENTION ECHEANCE MISE A JOUR"):
+                        self.logger.warning(f" Popup de mise à jour d'échéance détectée pour la facture {num_facture}, mais le bouton OK n'a pas été trouvé ou cliqué")   
+
+                        if self.handle_popup("OK", "Commande totalement facturée"):
+                            close_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_close")
+                            driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", close_btn)
+                            time.sleep(0.5)
+                            close_btn.click()
+                            return False
+                except Exception as e:
+                    self.logger.error(f"Erreur lors de la gestion de la popup: {e}")
+                    if self.handle_popup("OK", "Référence erronée"):
+                        close_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_close")
+                        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", close_btn)
+                        time.sleep(0.5)
+                        close_btn.click()
+                    return False
+
+
+
+                
+                time.sleep(1)
+            input("Appuyez sur Entrée pour continuer...")
+            self.logger.info(f"Remplissage auto montant:...")
+            if len(cells_scrool) > 5:
+                cell_facture = cells_scrool[5]
+                cell_facture.click()
+                time.sleep(0.3)
+                cell_facture.send_keys(str(montant))
+                time.sleep(1)
+
+                self.handle_popup("OK", "ATTENTION ECHEANCE MISE A JOUR")
+            
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Erreur remplissage détail: {e}")
+            self.handle_error_with_screenshot(
+                error_message=str(e),
+                context="Remplissage détail - Exception"
+            )
+            return False
+    
+        
     def _choisir_mode_regelement(self, mode: str) -> bool:
         """Choisir le mode de règlement"""
         driver = self.driver_manager.driver
