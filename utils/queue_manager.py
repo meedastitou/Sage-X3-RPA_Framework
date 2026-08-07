@@ -11,13 +11,15 @@ QUEUE_FILE = BASE_DIR / 'data' / 'queue' / 'tasks.json'
 # S'assurer que le dossier existe
 QUEUE_FILE.parent.mkdir(parents=True, exist_ok=True)
 
-def add_task(file_path, email, task_type="bon_commande", societe=None):
+def add_task(file_path, email, task_type="bon_commande", societe=None, details=None):
     """Ajouter une tâche à la file
 
     Args:
         file_path: Chemin du fichier Excel
         email: Email du destinataire
         task_type: Type de tâche - "bon_commande" ou "receiption"
+        societe: Société (optionnel)
+        details: Liste de valeurs (ex: ["da123", "da213"] ou ["ff123", "ff586"])
     """
     tasks = load_queue()
 
@@ -36,8 +38,10 @@ def add_task(file_path, email, task_type="bon_commande", societe=None):
         "started_at": None,
         "completed_at": None
     }
-    if (societe):
+    if societe:
         task["societe"] = societe
+    if details:
+        task["details"] = details
     tasks.append(task)
     save_queue(tasks)
     print(f"Tâche ajoutée: {task['id']} (type: {task_type})")

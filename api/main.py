@@ -31,6 +31,8 @@ from config.settings import _TYPE_REGLEMENT_
 # Importer le queue manager
 from utils.queue_manager import add_task, load_queue
 from query.query_ff import query_ff
+from query.solde_fournisseur import query_sold_fournisseur
+
 app = FastAPI(
     title="Sage X3 RPA API",
     description="API REST pour déclencher les robots d'automatisation Sage X3",
@@ -543,12 +545,14 @@ async def trigger_bonne_commande_from_data(request: BonneCommandeDataRequest):
 
     # Convertir JSON → Excel
     excel_file = save_dataframe_to_excel(request.donnees, request.email_expediteur)
+    details = [row['Numero_DA'] for row in request.donnees]
 
     # Enqueue la tâche
     task_id = add_task(
         file_path=excel_file,
         email=request.email_expediteur,
-        task_type="bon_commande"
+        task_type="bon_commande",
+        details=details
     )
 
     # Retourner le statut de la tâche enqueued
@@ -1010,6 +1014,34 @@ async def list_ff_non_regles():
     except Exception as e:
         logger.error(f" Erreur lecture factures non réglées: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/sold_fournisseur/{code_fournisseur}")
+async def get_sold_fournisseur(code_fournisseur: str):
+    """
+    Récupérer le solde d'un fournisseur
+    """
+    import pyodbc
+    try:
+        conn = pyodbc.connect(
+            "DRIVER={ODBC Driver 17 for SQL Server};"
+            "SERVER=192.168.1.241\\ERPX3;"
+            "DATABASE=x3;"
+            "UID=X3U;"
+            "PWD=SQL@2019;"
+        )
+        cursor = conn.cursor()
+        cursor.execute(query_sold_fournisseur.format(code_fournisseur=code_fournisseur))
+        row = cursor.fetchone()
+
+        if not row:
+            raise HTTPException(status_code=404, detail="Fournisseur non trouvé")
+
+        return {"solde": row.Solde}
+
+    except Exception as e:
+        logger.error(f" Erreur lecture solde fournisseur: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/api/upload")
 async def upload_file(file: UploadFile = File(...)):
