@@ -616,12 +616,13 @@ async def trigger_facturation_from_data(request: FacturationDataRequest):
 
     # Convertir JSON → Excel
     excel_file = save_facturation_to_excel(request.donnees, request.email_expediteur)
-
+    details = [row['BR'] for row in request.donnees]
     # Enqueue la tâche
     task_id = add_task(
         file_path=excel_file,
         email=request.email_expediteur,
-        task_type="facturation"
+        task_type="facturation",
+        details=details
     )
 
     logger.info(f"📋 Tâche facturation (JSON) enqueued: {task_id}")
@@ -689,12 +690,13 @@ async def trigger_regelement_from_data(request: RegelementDataRequest):
 
     # Convertir JSON → Excel
     excel_file = save_regelement_to_excel(request.donnees, request.email_expediteur)
-
+    details = [row['N_Facture'] for row in request.donnees]
     # Enqueue la tâche
     task_id = add_task(
         file_path=excel_file,
         email=request.email_expediteur,
-        task_type="regelement"
+        task_type="regelement",
+        details=details
     )
 
     logger.info(f"📋 Tâche règlement (JSON) enqueued: {task_id}")
@@ -761,12 +763,13 @@ async def trigger_receiption_from_data(request: ReceiptionDataRequest):
 
     # Convertir JSON → Excel
     excel_file = save_receiption_to_excel(request.donnees, request.email_expediteur)
-
+    details = [row['BLFrs'] for row in request.donnees]
     #Enqueue la tâche
     task_id = add_task(
         file_path=excel_file,
         email=request.email_expediteur,
-        task_type="receiption"
+        task_type="receiption",
+        details=details
     )
 
     logger.info(f"📋 Tâche réception (JSON) enqueued: {task_id}")
@@ -900,7 +903,7 @@ async def trigger_demmande_achat_from_data(request: DemmandAchatDataRequest):
                 )
             
     excel_file = save_da_to_excel(request.donnees, request.email_expediteur)
-
+    
     task_id = add_task(
         file_path=excel_file,
         email=request.email_expediteur,
