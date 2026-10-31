@@ -31,7 +31,7 @@ class VairementInternationalRobot(BaseRobot, WebResultMixin):
         self.excel_handler = ExcelHandler()
         self.driver_manager.headless = headless
 
-        self.url_regelement = "http://192.168.100.50:8124/syracuse-main/html/main.html?url=%2Ftrans%2Fx3%2Ferp%2FBASE1%2F%24sessions%3Ff%3DGESPAY%252F2%252F%252FM%252F%26representation%3DWOPYFEFFFRA.%2524fusion%26profile%3D~(loc~%27fr-FR~role~%278ecdb3d1-8ca7-40ca-af08-76cb58c70740~ep~%27cb006c17-58a5-4b98-9f2b-474ec03472a3~appConn~())"
+        self.url_regelement = "http://192.168.1.241:8124/syracuse-main/html/main.html?url=%2Ftrans%2Fx3%2Ferp%2FBASE1%2F%24sessions%3Ff%3DGESPAY%252F2%252F%252FM%252F%26profile%3D~(loc~%27fr-FR~role~%279844eacb-4f96-4301-8b0c-dbe4f4d48e4d~ep~%27cb006c17-58a5-4b98-9f2b-474ec03472a3~appConn~())"
 
         # Initialisé après connect_sage() pour partager le même driver
         self.order_virement_robot = None

@@ -328,7 +328,6 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
                 compte.send_keys(Keys.ENTER)
                 self.wait_stabilite()   
 
-        input("sf")
     # ------------------------------------------------------------------
     # Selection de PLUSIEURS receptions
     # ------------------------------------------------------------------

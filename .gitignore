@@ -40,3 +40,6 @@ chrome_profile/
 Thumbs.db
 
 
+data/*
+
+api/data/*

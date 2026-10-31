@@ -18,7 +18,11 @@ from core.base_robot import BaseRobot
 from core.web_result_mixin import WebResultMixin
 from utils.excel_handler import ExcelHandler
 
-
+class QuantiteMismatchError(Exception):
+    """Levée quand la quantité relue dans le champ Sage X3 après saisie
+    ne correspond pas à la quantité voulue. Erreur critique : doit stopper
+    le robot et déclencher la déconnexion."""
+    pass
 class ReceiptionRobot(BaseRobot, WebResultMixin):
     """Robot pour la gestion automatique des réceptions d'achat avec regroupement"""
     
@@ -154,6 +158,17 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
         
         df = self.excel_handler.read_excel(excel_file, required_columns=colonnes_requises)
         
+        # N_Facture optionnelle : créer la colonne si absente, nettoyer les valeurs
+        if 'N_Facture' not in df.columns:
+            df['N_Facture'] = ''
+        df['N_Facture'] = (
+            df['N_Facture']
+            .fillna('')
+            .astype(str)
+            .str.strip()
+            .str.replace(r'\.0$', '', regex=True)   # 123.0 -> 123
+        )
+
         self.logger.info(f"{len(df)} ligne(s) lues")
         
         # Validation des colonnes importantes (observation est optionnelle)
@@ -241,8 +256,15 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
                 structure[code_frs]['receptions'][bl_frs] = {
                     'bl_frs': bl_frs,
                     'date_bc': date_bc,
+                    'n_facture': '',
                     'bons_commande': {}
                 }
+
+            # ← NOUVEAU : récupérer N_Facture (1re valeur non vide du BL)
+            reception = structure[code_frs]['receptions'][bl_frs]
+            if not reception['n_facture']:
+                v = row.get('N_Facture', '')
+                reception['n_facture'] = '' if pd.isna(v) else str(v).strip()
 
             # Initialiser BC si nouveau
             if n_bc not in structure[code_frs]['receptions'][bl_frs]['bons_commande']:
@@ -286,6 +308,28 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
                     pass
             return date_str
     
+        """
+        Cliquer sur le bouton 'Maximiser' pour agrandir l'interface
+        du tableau 'Sélection commandes'
+
+        Returns:
+            True si le clic a réussi, False sinon
+        """
+        driver = self.driver_manager.driver
+
+        xpath_fallback1 = '//*[@id="s_app_body"]/div/article/div[1]/div[2]/div[3]/div/article/div[1]/div[2]/a'
+        try:
+            self.logger.info("bouton avant d'etre located")
+            maximiser_btn = driver.find_element(By.XPATH, xpath_fallback1)
+            self.logger.info("bouton located")
+            maximiser_btn.click()
+            self.logger.info("✅ Interface agrandie via fallback (scope texte)")
+            time.sleep(1)
+            return True
+        except Exception as e:
+            #self.logger.debug(f"Fallback 1 échoué: {e}")
+            print("Fallback 1 échoué: ")
+
     def _afficher_resume(self, structure: Dict):
         """Afficher un résumé de la structure (Fournisseur → BLFrs → BCs)"""
         self.logger.info("="*80)
@@ -373,13 +417,24 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
             bl_input.send_keys(Keys.TAB)
             time.sleep(0.5)
 
+            # N° Facture (optionnel : saisi uniquement si fourni)
+            n_facture = (reception_data.get('n_facture') or '').strip()
+            if n_facture:
+                facture_input = self.get_input_by_label("N° Facture")
+                facture_input.click()
+                time.sleep(0.5)
+                facture_input.clear()
+                facture_input.send_keys(n_facture[:20])  # maxlength=20 dans Sage
+                facture_input.send_keys(Keys.TAB)
+                time.sleep(0.5)
+                self.logger.info(f"N° Facture saisi: {n_facture}")
+
             self.logger.info(f"Header rempli (Fournisseur: {code_frs}, BL: {bl_frs})")
 
             # 3. SÉLECTIONNER LES ARTICLES DE TOUS LES BCs (qui ont le même BLFrs)
             self.logger.info(f"🔍 Sélection des articles pour {len(bons_commande)} BC(s) avec BL {bl_frs}...")
 
             articles_selectionnes = self._selectionner_articles_multi_bc(bons_commande)
-
             if articles_selectionnes == 0:
                 self.logger.warning(f" Aucun article sélectionné pour {code_frs} / BL {bl_frs}")
                 resultat['message'] = 'Aucun article sélectionné'
@@ -395,7 +450,7 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
 
                 for article in bc_data['articles']:
                     self.logger.info(f"   📦 Article: {article['code']}")
-
+                    self.wait_stabilite()
                     if self._remplir_article_dans_ligne(article, ligne_num):
                         resultat['total_articles'] += 1
                         self.total_articles += 1
@@ -407,8 +462,8 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
                     time.sleep(0.3)
 
                 resultat['bcs_traites'] += 1
- 
             # 5. ENREGISTRER LA RÉCEPTION (une seule fois pour tous les BCs du même BLFrs)
+
             if self._enregistrer_reception():
                 resultat['statut'] = 'Succes'
                 resultat['message'] = f'BL {bl_frs}: {resultat["bcs_traites"]} BC(s), {resultat["total_articles"]} article(s)'
@@ -418,13 +473,23 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
 
             self.logger.info(f"Réception {code_frs} / BL {bl_frs}: {resultat['message']}")
 
+        except QuantiteMismatchError:
+            # Erreur critique : on NE remplit PAS resultat['statut']='Succes'.
+            # Le finally ci-dessous fermera quand même le module.
+            # Puis on relève pour stopper tout le traitement dans execute().
+            self.logger.error(
+                f" Arrêt critique sur {code_frs} / BL {bl_frs} : incohérence de quantité détectée."
+            )
+            raise
+
         except Exception as e:
             resultat['message'] = f'Erreur: {str(e)}'
             self.logger.error(f" Erreur réception {code_frs} / BL {bl_frs}: {e}")
             import traceback
             self.logger.error(traceback.format_exc())
+
         finally:
-            # Fermer le module avec confirmation d'abandon
+            # S'exécute TOUJOURS : succès, échec normal, OU raise de QuantiteMismatchError
             self.close_module(confirm_abandon=True)
             time.sleep(2)
 
@@ -434,7 +499,11 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
         """Cliquer sur le bouton 'Créer Réception'"""
         driver = self.driver_manager.driver
         try:
+            
             time.sleep(2)
+            WebDriverWait(driver, 90).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "a.s_page_action_add"))
+            )
             add_button = driver.find_element(By.CSS_SELECTOR, "a.s_page_action_add")
 
             if "s-disabled" in add_button.get_attribute("class"):
@@ -465,6 +534,73 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
         #     self.logger.error(f" Erreur création réception: {e}")
         #     return False
 
+        
+    def _bc_visible_sur_page(self, n_bc: str) -> bool:
+        """
+        Vérifie si le BC est visible dans le tableau sur la page actuelle
+        """
+        driver = self.driver_manager.driver
+        try:
+            xpath = f"//*[contains(@class,'s-grid-table-body')]//*[contains(text(), '{n_bc}')]"
+            elements = driver.find_elements(By.XPATH, xpath)
+            return len(elements) > 0
+        except Exception as e:
+            self.logger.debug(f"Erreur vérification visibilité BC {n_bc}: {e}")
+            return False
+
+
+    def _rechercher_bc_avec_pagination(self, n_bc: str, max_pages: int = 5) -> bool:
+        """
+        Recherche un BC dans le tableau 'Sélection commandes' en avançant
+        page par page (jamais en arrière) si nécessaire.
+
+        Args:
+            n_bc: Numéro du BC recherché
+            max_pages: Nombre maximum de pages à parcourir vers l'avant (sécurité)
+
+        Returns:
+            True si le BC a été trouvé (et est visible sur la page actuelle), False sinon
+        """
+        driver = self.driver_manager.driver
+
+        for page_num in range(1, max_pages + 1):
+            # 1. Vérifier si le BC est visible sur la page actuelle
+            if self._bc_visible_sur_page(n_bc):
+                self.logger.info(f"BC {n_bc} trouvé sur la page {page_num}")
+                return True
+
+            self.logger.debug(f"BC {n_bc} non trouvé page {page_num}, tentative page suivante...")
+
+            # 2. Chercher le bouton 'Suivant'
+            try:
+                next_btn = WebDriverWait(driver, 3).until(
+                    EC.presence_of_element_located((By.XPATH, "//*[@id='s_app_body']/div/article/div[1]/div[2]/div[3]/div/article/div[1]/div[2]/div/a[3]"))
+                )
+            except Exception:
+                self.logger.warning(f"Bouton 'Suivant' introuvable, fin de pagination (BC {n_bc} non trouvé)")
+                return False
+
+            # 3. Vérifier si le bouton est désactivé (dernière page déjà atteinte)
+            btn_classes = next_btn.get_attribute("class") or ""
+            if "disabled" in btn_classes or not next_btn.is_enabled():
+                self.logger.warning(f"Dernière page atteinte, BC {n_bc} introuvable")
+                return False
+
+            # 4. Cliquer sur 'Suivant' pour tester la page suivante
+            try:
+                next_btn.click()
+                time.sleep(1)
+                WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, ".s-grid-table-body"))
+                )
+            except Exception as e:
+                self.logger.error(f"Erreur lors du clic sur 'Suivant': {e}")
+                return False
+
+        self.logger.warning(f"Nombre maximum de pages ({max_pages}) atteint sans trouver BC {n_bc}")
+        return False
+
+
     def _selectionner_articles_multi_bc(self, bons_commande: Dict) -> int:
         """
         Sélectionner les articles de PLUSIEURS bons de commande dans le tableau 'Sélection commandes'
@@ -490,6 +626,8 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
             except:
                 self.logger.warning(" Bouton 'Sélection commandes' non trouvé, tableau déjà ouvert")
 
+
+
             # 2. Attendre le tableau
             WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, ".s-grid-table-body"))
@@ -500,6 +638,13 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
             for n_bc, bc_data in bons_commande.items():
                 self.logger.info(f"{'─'*60}")
                 self.logger.info(f"🔍 Sélection articles pour BC: {n_bc}")
+                time.sleep(1)
+                # Rechercher le BC en avançant dans la pagination (pas de retour en arrière)
+                bc_trouve = self._rechercher_bc_avec_pagination(n_bc)
+
+                if not bc_trouve:
+                    self.logger.error(f"BC {n_bc} introuvable (page courante → fin), ignoré")
+                    continue
 
                 articles = bc_data['articles']
                 articles_trouves = self._selectionner_articles_pour_un_bc(n_bc, articles)
@@ -788,6 +933,50 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
                 pass
             return False
 
+    def _scroller_tableau_en_haut(self, section_lignes):
+        """
+        Scroll le(s) conteneur(s) '.s-grid-slot-body' en haut (vertical) pour forcer 
+        le re-rendu des premières lignes du tableau des BC, qui disparaissent du DOM 
+        à cause du virtual scrolling après insertion de nombreuses lignes.
+
+        Structure Sage X3 :
+        div.s-grid-slot-table
+            ├── div.s-grid-slot-table-fixed   (colonne "Commande"/BC)
+            │     └── div.s-grid-slot-body    (scroll vertical seul)
+            └── div.s-grid-slot-table-scroll  (autres colonnes)
+                └── div.s-grid-slot-body    (scroll vertical + horizontal)
+        """
+        driver = self.driver_manager.driver
+        try:
+            # Récupère TOUS les conteneurs .s-grid-slot-body dans la section (fixe + scrollable)
+            scroll_bodies = section_lignes.find_elements(By.CSS_SELECTOR, ".s-grid-slot-body")
+
+            if not scroll_bodies:
+                self.logger.warning("   ⚠️ Aucun conteneur .s-grid-slot-body trouvé pour le scroll")
+                return
+
+            for body in scroll_bodies:
+                driver.execute_script("""
+                    arguments[0].scrollTop = 0;
+                    arguments[0].dispatchEvent(new Event('scroll', { bubbles: true }));
+                """, body)
+
+            time.sleep(0.5)  # laisser le temps au framework de re-render les lignes du haut
+            self.logger.debug(f"   ⬆️ {len(scroll_bodies)} conteneur(s) .s-grid-slot-body scrollé(s) en haut")
+
+        except Exception as e:
+            self.logger.warning(f"   ⚠️ Impossible de scroller en haut du tableau: {e}")
+
+    def _normaliser_quantite(self, valeur) -> float:
+        """Normalise une quantité (texte Sage ou Excel) en float comparable."""
+        if valeur is None:
+            return None
+        v = str(valeur).strip().replace(' ', '').replace('\xa0', '').replace(',', '.')
+        try:
+            return float(v)
+        except (ValueError, TypeError):
+            return None
+
     def _remplir_article_dans_ligne(self, article: Dict, ligne_num: int) -> bool:
         """Remplir les données d'un article dans le tableau des lignes.
         Si plusieurs lignes existent pour le même article (multi-BC), distribue
@@ -813,6 +1002,7 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
 
             # Table fixe (contient le numéro de BC)
             fixed_table = section_lignes.find_element(By.CSS_SELECTOR, "table.s-grid-fixed-table-body")
+            self._scroller_tableau_en_haut(section_lignes)
             fixed_rows = fixed_table.find_elements(By.CSS_SELECTOR, "tr.s-grid-row")
 
             # Construire un dictionnaire: numéro de ligne -> valeur BC
@@ -886,7 +1076,7 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
                 qty_voulue = None
 
             qty_restante = qty_voulue
-
+            print(f"   Quantité à répartir: {qty_restante}")
             for i, (_, row_number, cells) in enumerate(article_rows):
                 # Observation uniquement sur la première ligne
                 if i == 0:
@@ -896,30 +1086,58 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
                 if qty_voulue is not None and len(article_rows) > 1:
                     # Lire la qty max de cette ligne (pré-remplie par Sage depuis le BC)
                     try:
-                        pre_qty_str = cells[5].get_attribute('value') or '0'
+                        pre_qty_str = cells[4].get_attribute('value') or '0'
+
                         pre_qty = float(pre_qty_str.replace(',', '.').replace(' ', ''))
+
                     except (ValueError, IndexError):
                         pre_qty = qty_restante
                     qty_ligne = min(pre_qty, qty_restante)
+                    print(f"la quantite souhaite a saisir est {qty_ligne}")
+
                     qty_restante -= qty_ligne
                     qty_str = str(int(qty_ligne) if qty_ligne == int(qty_ligne) else qty_ligne)
                     self.logger.info(f"   → Ligne {row_number}: qty={qty_str} (max={pre_qty}, restante={qty_restante})")
                 else:
+                    self.logger.info(f"   → Ligne {row_number}: qty={article['quantite']} (pas de répartition nécessaire)")
                     qty_str = str(article['quantite'])
+                    qty_restante -= float(qty_str)
+
+                print(f"   → Ligne {row_number}: qty={qty_str} (restante={qty_restante})")
 
                 # Remplir la quantité
-                if article['quantite'] and len(cells) > 5:
-                    qte_cell = cells[5]
+                if article['quantite'] and len(cells) > 4:
+                    qte_cell = cells[4]
                     qte_cell.click()
-                    time.sleep(0.3)
+                    time.sleep(1.2)
                     qte_cell.clear()
-                    qte_cell.send_keys(qty_str)
+                    qte_cell.send_keys(qty_str)          # ← valeur SAISIE
                     qte_cell.send_keys(Keys.TAB)
-                    time.sleep(0.3)
+                    time.sleep(1.2)
+
+                    # ── VÉRIFICATION : valeur saisie == valeur réellement dans l'input ──
+                    valeur_saisie = qty_str
+                    valeur_input = qte_cell.get_attribute('value')  # ← valeur DANS LE CHAMP après TAB
+
+                    valeur_saisie_norm = self._normaliser_quantite(valeur_saisie)
+                    valeur_input_norm = self._normaliser_quantite(valeur_input)
+
+                    if (valeur_saisie_norm is None or valeur_input_norm is None
+                            or abs(valeur_saisie_norm - valeur_input_norm) > 1e-6):
+                        message = (
+                            f"Écart détecté pour l'article {article['code']} "
+                            f"(BC={n_bc}, ligne={row_number}) : "
+                            f"valeur saisie='{valeur_saisie}' ≠ valeur dans l'input='{valeur_input}'. "
+                            f"Sage a probablement écrasé/rejeté la saisie. Arrêt du robot."
+                        )
+                        self.logger.error(f" {message}")
+                        raise QuantiteMismatchError(message)
+
+                    self.logger.info(f"   ✅ Contrôle OK : saisie='{valeur_saisie}' == input='{valeur_input}'")
 
                 # Remplir les autres champs sur chaque ligne
-                if article['n_b_transport'] and len(cells) > 9:
-                    transport_cell = cells[9]
+                if article['n_b_transport'] and len(cells) > 8:
+                    transport_cell = cells[8]
                     transport_cell.click()
                     time.sleep(0.3)
                     transport_cell.clear()
@@ -927,8 +1145,8 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
                     transport_cell.send_keys(Keys.TAB)
                     time.sleep(0.3)
 
-                if article['matricule'] and len(cells) > 10:
-                    matricule_cell = cells[10]
+                if article['matricule'] and len(cells) > 9:
+                    matricule_cell = cells[9]
                     matricule_cell.click()
                     time.sleep(0.3)
                     matricule_cell.clear()
@@ -936,8 +1154,8 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
                     matricule_cell.send_keys(Keys.TAB)
                     time.sleep(0.3)
 
-                if article['poids'] and len(cells) > 11:
-                    poids_cell = cells[11]
+                if article['poids'] and len(cells) > 10:
+                    poids_cell = cells[10]
                     poids_cell.click()
                     time.sleep(0.3)
                     poids_cell.clear()
@@ -945,8 +1163,8 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
                     poids_cell.send_keys(Keys.TAB)
                     time.sleep(0.3)
 
-                if article['marque'] and len(cells) > 12:
-                    marque_cell = cells[12]
+                if article['marque'] and len(cells) > 11:
+                    marque_cell = cells[11]
                     marque_cell.click()
                     time.sleep(0.3)
                     marque_cell.clear()
@@ -961,10 +1179,19 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
                 self.logger.warning(
                     f" {article['code']}: quantité partielle, {qty_restante} unité(s) non réparties"
                 )
+                raise Warning(f"Quantité partielle pour {article['code']}: {qty_restante} non réparties")
 
             return True
 
+        except QuantiteMismatchError:
+            # Erreur critique de contrôle qualité : NE PAS l'avaler.
+            # On la relève telle quelle pour qu'elle remonte à _traiter_reception.
+            raise
+
         except Exception as e:
+            # Toutes les autres erreurs (élément non trouvé, timeout, etc.)
+            # restent gérées comme avant : on logue et on retourne False,
+            # ce qui compte comme un échec "normal" de cet article.
             self.logger.error(f"Erreur remplissage article: {e}")
             return False
     
@@ -972,6 +1199,9 @@ class ReceiptionRobot(BaseRobot, WebResultMixin):
         """Enregistrer la réception"""
         driver = self.driver_manager.driver
         try:
+            WebDriverWait(driver, 90).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_check"))
+            )
             save_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_check")
             driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", save_btn)
             time.sleep(0.5)

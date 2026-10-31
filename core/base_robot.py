@@ -10,6 +10,8 @@ from pathlib import Path
 import base64
 import time
 
+from selenium.common import ElementNotInteractableException, StaleElementReferenceException, TimeoutException
+
 from core.sage_connector import SageConnector
 from core.driver_manager import DriverManager
 from core.logger import Logger
@@ -21,20 +23,25 @@ from selenium.webdriver.support import expected_conditions as EC
 class BaseRobot(ABC):
     """Classe de base abstraite pour tous les robots"""
     
+    FIREFOX_MODULES = {'signature_da'}
+
     def __init__(self, module_name: str):
         """
         Initialiser le robot
-        
+
         Args:
-            module_name: Nom du module (lettrage, facturation, etc.)
+            module_name: Nom du module (lettrage, facturation, signature_da, etc.)
         """
         self.module_name = module_name
         self.logger = Logger.get_logger(self.__class__.__name__, module_name)
-        
+
+        # Choix du navigateur en fonction du module
+        browser = 'firefox' if module_name in self.FIREFOX_MODULES else 'chrome'
+
         # Composants réutilisables
-        self.driver_manager = DriverManager()
+        self.driver_manager = DriverManager(browser=browser)
         self.sage_connector = SageConnector(self.driver_manager)
-        
+
         # Données
         self.resultats = []
         self.rapport_path = None
@@ -44,7 +51,7 @@ class BaseRobot(ABC):
         self.error_screenshot = None
         self.popup_messages = []
 
-        self.logger.info(f"🤖 Initialisation robot: {self.__class__.__name__}")
+        self.logger.info(f"🤖 Initialisation robot: {self.__class__.__name__} (navigateur: {browser})")
     
     @abstractmethod
     def execute(self, *args, **kwargs):
@@ -144,7 +151,7 @@ class BaseRobot(ABC):
             result: Dictionnaire contenant les résultats
         """
         self.resultats.append(result)
-        self.logger.debug(f"Résultat ajouté: {result}")
+        self.logger.warning(f"Résultat ajouté: {result}")
     
     def save_report(self, filename: str = None, incremental: bool = False) -> Path:
         """
@@ -271,6 +278,102 @@ class BaseRobot(ABC):
             self.logger.error(f" Erreur: impossible de trouver l'input pour le label '{label_name}': {e}")
             raise
 
+    def saisir_textarea(self, driver, label: str, valeur: str, timeout: int = 20) -> None:
+        """
+        Saisie robuste dans un champ Sage X3 (input ou textarea) :
+        - attend la présence du champ via son label (for=...-input)
+        - scroll + clic
+        - send_keys, sinon fallback JS avec events input/change/blur
+        """
+        xpath = (
+            f"//label[normalize-space(text())='{label}']"
+            f"/ancestor::div[contains(@class,'s-field')][1]"
+            f"//*[self::textarea or self::input][contains(@class,'s-field-input')]"
+        )
+
+        derniere_erreur = None
+        for tentative in range(3):
+            try:
+                champ = WebDriverWait(driver, timeout).until(
+                    EC.element_to_be_clickable((By.XPATH, xpath))
+                )
+                driver.execute_script(
+                    "arguments[0].scrollIntoView({block:'center'});", champ
+                )
+                time.sleep(0.3)
+
+                try:
+                    champ.click()
+                    champ.clear()
+                    champ.send_keys(valeur)
+                except (ElementNotInteractableException, StaleElementReferenceException):
+                    # Fallback JS : on pose la valeur et on déclenche les events
+                    # que Sage X3 (framework JS) écoute pour valider la saisie
+                    champ = driver.find_element(By.XPATH, xpath)
+                    driver.execute_script(
+                        """
+                        const el = arguments[0], val = arguments[1];
+                        el.focus();
+                        el.value = val;
+                        el.dispatchEvent(new Event('input',  {bubbles:true}));
+                        el.dispatchEvent(new Event('change', {bubbles:true}));
+                        el.dispatchEvent(new Event('blur',   {bubbles:true}));
+                        """,
+                        champ, valeur,
+                    )
+
+                # Vérification que la valeur est bien prise en compte
+                if (champ.get_attribute("value") or "").strip() == valeur.strip():
+                    return
+            except (TimeoutException, StaleElementReferenceException) as e:
+                derniere_erreur = e
+                time.sleep(1)
+
+        raise Exception(f"Impossible de saisir '{label}' : {derniere_erreur}")
+
+    def saisir_observation(self, driver, valeur: str, timeout: int = 30) -> None:
+        xpath = (
+            "//label[normalize-space(text())='Observation' or starts-with(normalize-space(.),'Observation')]"
+            "/ancestor::div[contains(@class,'s-field')][1]//textarea"
+        )
+
+        def _textarea_visible(d):
+            for el in d.find_elements(By.XPATH, xpath):
+                try:
+                    if el.is_displayed() and el.size["width"] > 0 and el.size["height"] > 0:
+                        return el
+                except StaleElementReferenceException:
+                    continue
+            return False
+
+        champ = WebDriverWait(driver, timeout).until(_textarea_visible)
+
+        driver.execute_script("arguments[0].scrollIntoView({block:'center'});", champ)
+        time.sleep(0.5)
+
+        try:
+            driver.execute_script("arguments[0].click(); arguments[0].focus();", champ)
+            champ.clear()
+            champ.send_keys(valeur)
+        except Exception:
+            # Fallback JS : setter natif + events pour que X3 enregistre la valeur
+            driver.execute_script(
+                """
+                const el = arguments[0], val = arguments[1];
+                el.focus();
+                const setter = Object.getOwnPropertyDescriptor(
+                    window.HTMLTextAreaElement.prototype, 'value').set;
+                setter.call(el, val);
+                el.dispatchEvent(new Event('input',  {bubbles:true}));
+                el.dispatchEvent(new Event('change', {bubbles:true}));
+                el.dispatchEvent(new Event('blur',   {bubbles:true}));
+                """,
+                champ, valeur,
+            )
+
+        if (champ.get_attribute("value") or "").strip() != valeur.strip():
+            raise Exception("Observation non enregistrée dans le champ")
+    
     def handle_popup(self, button_text: str, message: str) -> bool:
         """
         Gérer une popup en cliquant sur un bouton spécifique

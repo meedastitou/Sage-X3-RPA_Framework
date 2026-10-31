@@ -327,7 +327,7 @@ class DBHandler:
                 SELECT id, numero_piece, created_at,
                        DATEDIFF(NOW(), created_at) AS days_ago
                 FROM rpa_regelements
-                WHERE num_facture = %s
+                WHERE num_facture = %s 
                   AND statut = 'SUCCES'
                 ORDER BY created_at DESC
                 LIMIT 1

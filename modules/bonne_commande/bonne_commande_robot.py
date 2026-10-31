@@ -5,8 +5,10 @@ Si UN SEUL échec → ARRÊT COMPLET, pas de génération de BC
 Envoi automatique des résultats vers endpoint web
 """
 from email.mime import message
+import json
 from typing import Dict, Any, List
 import pandas as pd
+import requests
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
@@ -21,8 +23,9 @@ from config.settings import SELENIUM_CONFIG
 import re
 import os
 import glob
+from config.settings import GENERATION_BR
 
-
+STATUS_CHARGE_FIXE = {"charge_fix", "charge_fixe"}
 class BonneCommandeRobot(BaseRobot, WebResultMixin):
     """Robot pour la gestion automatique des bons de commande avec validation stricte et envoi web"""
     
@@ -47,7 +50,10 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
         self.url_demande_achat = "http://192.168.1.241:8124/syracuse-main/html/main.html?url=%2Ftrans%2Fx3%2Ferp%2FBASE1%2F%24sessions%3Ff%3DCONSCPD%252F2%252F%252FM%252F%26profile%3D~(loc~%27fr-FR~role~%279844eacb-4f96-4301-8b0c-dbe4f4d48e4d~ep~%27cb006c17-58a5-4b98-9f2b-474ec03472a3~appConn~())"
         self.url_bonne_commande = "http://192.168.1.241:8124/syracuse-main/html/main.html?url=%2Ftrans%2Fx3%2Ferp%2FBASE1%2F%24sessions%3Ff%3DXBCAUTO%252F2%252F%252FM%252F"
         self.home_url = "http://192.168.1.241:8124/syracuse-main/html/main.html?url=%3Frepresentation%3Dhome.%2524landing%26profile%3D~(loc~%27fr-FR~role~%279844eacb-4f96-4301-8b0c-dbe4f4d48e4d~ep~%27cb006c17-58a5-4b98-9f2b-474ec03472a3~appConn~())"
-        
+
+
+        self.webhook_bc_url  = os.path.join(GENERATION_BR['URL_WEBHOOK_GENERATION_BR'])
+
         # Compteurs pour validation stricte
         self.articles_traites = 0
         self.articles_echec = 0
@@ -201,6 +207,23 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                 statut_final = 'SUCCES' if bc_genere else 'ECHEC'
                 message_final = f'Tous les traitements réussis pour fournisseur {code_fournisseur}. BC généré avec succès: {bc_numbers}' if bc_genere else f'Articles et DAs traités avec succès pour fournisseur {code_fournisseur} mais échec de génération BC.'
 
+                # ✅ NOUVEAU : envoi du numéro de BC si le BC est généré ET status charge_fix
+                webhook_bc_envoye = None
+                if bc_genere:
+                    status_bc = self._extraire_status(df, code_fournisseur)
+                    if status_bc in STATUS_CHARGE_FIXE:
+                        res_hook = self._envoyer_numero_bc(
+                            bc_numbers=bc_numbers,
+                            code_fournisseur=code_fournisseur,
+                            status=status_bc,
+                            df=df,
+                            email_expediteur=email_achteur,
+                        )
+                        webhook_bc_envoye = res_hook['status']
+                    else:
+                        self.logger.info(f"ℹ️ Status '{status_bc}' : pas d'envoi de webhook BC (charge_fix uniquement)")
+
+
                 # Mettre à jour validation_passed pour ce fournisseur
                 self.validation_passed = bc_genere
 
@@ -218,6 +241,7 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                     'articles_echec': self.articles_echec,
                     'das_traitees': self.das_traitees,
                     'das_echec': self.das_echec,
+                    'webhook_bc_envoye': webhook_bc_envoye,
                     'bc_genere': bc_genere,
                     'bc_numbers': bc_numbers,
                     'message': message_final
@@ -1406,5 +1430,102 @@ class BonneCommandeRobot(BaseRobot, WebResultMixin):
                 s_page_close = driver.find_element(By.XPATH, '//*[@id="s_app_body"]/div/article/div[2]/header/div[1]/div/div[2]/div[3]/a/div')
                 s_page_close.click()
                 time.sleep(2)
-    
         
+    # ------------------------------------------------------------------
+    # STATUS (colonne optionnelle envoyée avec les données)
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _normaliser_status(valeur) -> str:
+        """'Charge Fix', 'CHARGE-FIXE' -> 'charge_fix' / 'charge_fixe'"""
+        if valeur is None or (isinstance(valeur, float) and pd.isna(valeur)):
+            return ''
+        return re.sub(r'[\s\-]+', '_', str(valeur).strip().lower())
+
+    @staticmethod
+    def _col(df: pd.DataFrame, *noms):
+        """Retrouve une colonne sans tenir compte de la casse."""
+        cibles = {n.lower() for n in noms}
+        return next((c for c in df.columns if str(c).strip().lower() in cibles), None)
+
+    def _sous_df_fournisseur(self, df: pd.DataFrame, code_fournisseur) -> pd.DataFrame:
+        """Lignes du DataFrame appartenant à ce fournisseur (df entier si colonne introuvable)."""
+        col_fourn = self._col(df, 'code_fournisseur', 'fournisseur')
+        if col_fourn is None or code_fournisseur is None:
+            return df
+        masque = df[col_fourn].astype(str).str.strip() == str(code_fournisseur).strip()
+        return df[masque] if masque.any() else df
+
+    def _extraire_status(self, df: pd.DataFrame, code_fournisseur=None) -> str:
+        """Status normalisé pour un fournisseur ('' si colonne absente ou vide)."""
+        col_status = self._col(df, 'status')
+        if col_status is None:
+            return ''
+        sous_df = self._sous_df_fournisseur(df, code_fournisseur)
+        valeurs = [self._normaliser_status(v) for v in sous_df[col_status]]
+        valeurs = [v for v in valeurs if v]
+        if len(set(valeurs)) > 1:
+            self.logger.warning(
+                f"⚠️ Plusieurs status pour le fournisseur {code_fournisseur}: {set(valeurs)} "
+                f"-> utilisation de '{valeurs[0]}'"
+            )
+        return valeurs[0] if valeurs else ''
+
+    # ------------------------------------------------------------------
+    # WEBHOOK : envoi des numéros de BC (cas charge_fix)
+    # ------------------------------------------------------------------
+    def _envoyer_numero_bc(self, bc_numbers: list, code_fournisseur: str, status: str,
+                        df: pd.DataFrame, email_expediteur: str = '') -> dict:
+        """
+        Envoie le(s) numéro(s) de BC généré(s) au webhook, uniquement si status == charge_fix(e).
+        Un échec du webhook ne remet pas en cause le BC déjà créé dans Sage X3.
+
+        Returns:
+            {'status': bool, 'resultat': code HTTP ou message}
+        """
+        if status not in STATUS_CHARGE_FIXE:
+            return {'status': False, 'resultat': f"status '{status}' non concerné, webhook ignoré"}
+
+        if not bc_numbers:
+            return {'status': False, 'resultat': "aucun numéro de BC à envoyer"}
+
+        if not self.webhook_bc_url:
+            self.logger.error("❌ Webhook BC charge_fix: URL non configurée")
+            return {'status': False, 'resultat': "URL webhook non configurée"}
+
+        # Lignes d'origine du fournisseur (Numero_DA, Code_Article, Montant, Marque si présentes)
+        sous_df = self._sous_df_fournisseur(df, code_fournisseur)
+        colonnes = [c for c in (self._col(sous_df, n) for n in
+                    ('numero_da', 'code_article', 'montant', 'marque')) if c is not None]
+        lignes = json.loads(sous_df[colonnes].to_json(orient='records', force_ascii=False)) if colonnes else []
+
+        payload = {
+            'type': 'bc_charge_fixe',
+            'status': status,
+            'code_fournisseur': code_fournisseur,
+            'numeros_bc': [str(n) for n in bc_numbers],
+            'email_expediteur': email_expediteur,
+            'lignes': lignes,
+        }
+
+        derniere_erreur = ""
+        for tentative in range(1, 4):
+            try:
+                r = requests.post(self.webhook_bc_url, json=payload, timeout=30)
+                if r.ok:
+                    self.logger.info(
+                        f"📤 Webhook BC charge_fix OK: {payload['numeros_bc']} "
+                        f"(fournisseur {code_fournisseur}, HTTP {r.status_code})"
+                    )
+                    return {'status': True, 'resultat': r.status_code}
+                derniere_erreur = f"HTTP {r.status_code}: {r.text[:200]}"
+                if 400 <= r.status_code < 500:  # erreur client : inutile de réessayer
+                    break
+            except requests.RequestException as e:
+                derniere_erreur = str(e)
+
+            self.logger.warning(f"⚠️ Webhook BC tentative {tentative}/3 échouée: {derniere_erreur}")
+            if tentative < 3:
+                time.sleep(2 * tentative)
+
+        self.logger.error(f"❌ Webhook BC KO pour {bc_numbers}: {derniere_erreur}")
+        return {'status': False, 'resultat': derniere_erreur} 
