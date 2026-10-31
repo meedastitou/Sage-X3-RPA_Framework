@@ -10,17 +10,20 @@ from pathlib import Path
 # Ajouter le dossier parent au path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from modules.signature_da.Signature_DA import SignatureDARobot
 from modules.demmande_achat.demmandeAchatRobot import DemmandeAchatRobot
 from modules.imputation.ImputationRobot import ImputationRobot
 from modules.regelement.VairementRobot import VairementRobot
 from modules.regelement.VairementInternationalRobot import VairementInternationalRobot
 from modules.regelement.RegelementRobot_V3 import RegelementRobot
+from modules.articles.changeTarifRobot import ChangeTarifRobot
 from utils.queue_manager import get_next_task, update_task, is_task_type_in_cooldown, has_pending_tasks_of_type
 from modules.bonne_commande.bonne_commande_robot import BonneCommandeRobot
 from modules.receiption.ReceiptionRobot_v3 import ReceiptionRobot
 # from modules.facturation.FacturationRobot import FacturationRobot
 from modules.facturation.FacturationRobot_V2 import FacturationRobotV2
 from modules.depot_facture.AnulationControl import AnulationControl
+from modules.update_bon_commande.UpdateBonCommandeRobot import UpdateBonCommandeRobot
 from core.logger import Logger
 
 logger = Logger.get_logger('WorkerRPA', 'workers')
@@ -98,10 +101,22 @@ def main():
                         logger.info("Lancement du DemmandeAchatRobot...")
                         robot = DemmandeAchatRobot()
                         robot.run(excel_file=task['file'])
+                    elif task_type == 'signature_da':
+                        logger.info("Lancement du SignatureDARobot...")
+                        robot = SignatureDARobot()
+                        robot.run(excel_file=task['file'])
                     elif task_type == 'dff_annulation_control':
                         logger.info("Lancement du DFFAnnulationControl...")
                         robot = AnulationControl()
                         robot.run(excel_file=task['file'])
+                    elif task_type == 'change_tarif':
+                        logger.info("Lancement du ChangeTarifRobot...")
+                        robot = ChangeTarifRobot()
+                        robot.run(excel_file=task['file'])
+                    elif task_type == 'update_bon_commande':
+                        logger.info("Lancement du UpdateBonCommandeRobot...")
+                        robot = UpdateBonCommandeRobot()
+                        robot.execute(task_data=task)
                     else:
                         raise ValueError(f"Type de tâche inconnu: {task_type}")
 
