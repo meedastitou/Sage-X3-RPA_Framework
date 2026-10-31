@@ -7,7 +7,7 @@ Version 3:
     - pour regelemt de l'avancement sans facture 
     - date réel et date d'échéance c'est la date d'aujourd'hui 
 """
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 import pandas as pd
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -16,7 +16,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from datetime import datetime
 from collections import defaultdict
 import time
-
+import pyodbc
 from core.base_robot import BaseRobot
 from core.web_result_mixin import WebResultMixin
 from utils.db_handler import DBHandler
@@ -116,6 +116,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                 # Vérifier si ce règlement existe déjà (fait récemment)
                 if self.db and num_facture:
                     check_result = self.db.check_regelement_exists(num_facture, days_threshold=3)
+
                     if check_result['exists'] and not check_result['can_retry']:
                         self.logger.info(f"⏭️ Ligne {idx + 1} - Règlement déjà effectué il y a {check_result['days_ago']} jour(s)")
                         resultat = {
@@ -368,6 +369,23 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             avance = False if num_facture.startswith("FF") else True
             self.logger.info(f" Type de règlement: {'Avance sans facture' if avance else 'Règlement avec facture'}")
 
+            # =================================================================
+            # Déterminer le N° de bon de commande à saisir
+            #  - Avance sans facture : le bon de commande = num_facture
+            #  - Règlement avec facture (FF...) : XCMD_0 récupéré depuis SQL
+            # =================================================================
+            if avance:
+                bon_commande = num_facture
+            else:
+                bon_commande = self._get_bon_commande_from_db(num_facture)
+
+            self.logger.info(f" Bon de commande: {bon_commande} ({'avance' if avance else 'depuis facture ' + num_facture})")
+
+            if not bon_commande:
+                self.logger.warning(f" Bon de commande introuvable pour {num_facture}")
+                resultat['message'] = f'Bon de commande introuvable pour {num_facture}'
+                return resultat
+
             # =====================================================================================
             # Comparer le montant de la facture FF avec le montant de la facture fournisseur DFF
             # si y une ecart de montant entre la facture FF et la facture fournisseur DFF entre 5dh ou -5dh alors robot va prendre le montant de la facture fournisseur DFF 
@@ -385,7 +403,18 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                     else:
                         self.logger.info(f" Écart de montant de {ecart} DH pour {num_facture}, ajustement du montant au montant de la facture fournisseur DFF.")
                         montant = str(montant_facture_frs)
-
+            # =====================================================================
+            # Vérifier qu'aucun règlement n'existe déjà pour cette facture / ce BC
+            # =====================================================================
+            check = self._check_deja_regle([num_facture, bon_commande], float(montant))
+            if check['same_amount']:
+                self.logger.warning(f" Règlement déjà existant pour {num_facture} / {bon_commande} (même montant)")
+                resultat['statut'] = 'Skip'
+                resultat['message'] = (
+                    f"Un règlement existe déjà pour {num_facture} (BC: {bon_commande}) "
+                    f"avec le même montant ({montant} DH)."
+                )
+                return resultat
             
             # 1. CRÉER LE RÈGLEMENT
             if not self._cree_regelement():
@@ -555,6 +584,17 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                 resultat['error_info'] = error_info
                 return resultat
 
+            # 4.bis REMPLIR LE BON DE COMMANDE
+            self.logger.info(f" REMPLIR le Bon de commande: {bon_commande}")
+            bc_input = self.get_input_by_label("Bon de commande")
+            bc_input.click()
+            time.sleep(0.5)
+            bc_input.clear()
+            bc_input.send_keys(bon_commande)
+            bc_input.send_keys(Keys.TAB)
+            time.sleep(0.5)
+            self.wait_stabilite()
+
             # self.wait_for_spinner_to_disappear(driver=driver)
             self.wait_stabilite()
             # =================================================================
@@ -663,6 +703,73 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             resultat['error_info'] = error_info
         
         return resultat
+
+    import os
+    import pyodbc
+
+    def _get_sage_connection(self):
+        """Ouvre une connexion pyodbc vers SQL Server (Sage X3). À fermer par l'appelant."""
+        conn_str = (
+            "DRIVER={ODBC Driver 17 for SQL Server};"
+            "SERVER=192.168.1.241\\ERPX3;"
+            "DATABASE=x3;"
+            "UID=X3U;"
+            "PWD=SQL@2019;"
+        )
+        return pyodbc.connect(conn_str, timeout=15)
+
+
+    def _check_deja_regle(self, references: List[str], montant: float, tolerance: float = 0.01) -> Dict[str, Any]:
+        """
+        Vérifie si un règlement existe déjà dans BASE1.PAYMENTH pour l'une des références
+        (n° de facture ou n° de bon de commande : YCOM_0 peut contenir l'un ou l'autre).
+        """
+        resultat = {'exists': False, 'same_amount': False, 'rows': []}
+
+        # Nettoyer et dédoublonner (en avance, facture == bon de commande)
+        refs = list({r.strip() for r in references if r and r.strip()})
+        if not refs:
+            return resultat
+
+        placeholders = ",".join("?" * len(refs))
+        query = f"""
+            SELECT YCOM_0, AMTCUR_0
+            FROM BASE1.PAYMENTH
+            WHERE YCOM_0 IN ({placeholders}) AND CREUSR_0 = 'RPA'
+        """
+
+        conn = None
+        cursor = None
+        try:
+            conn = self._get_sage_connection()
+            cursor = conn.cursor()
+            cursor.execute(query, refs)
+            rows = cursor.fetchall()
+
+            for ycom, amt in rows:
+                amt = float(amt or 0)
+                resultat['rows'].append((ycom, amt))
+                if abs(amt - float(montant)) <= tolerance:
+                    resultat['same_amount'] = True
+
+            resultat['exists'] = len(rows) > 0
+            self.logger.info(
+                f" Check règlement existant {refs}: {len(rows)} trouvé(s) "
+                f"| même montant: {resultat['same_amount']}"
+            )
+            return resultat
+
+        except Exception as e:
+            self.logger.error(f" Erreur check règlement existant {refs}: {e}")
+            raise
+        finally:
+            try:
+                if cursor:
+                    cursor.close()
+                if conn:
+                    conn.close()
+            except Exception:
+                pass
     
     def _saisir_date_echeance_v2(self, date_echeance: str, num_facture: str, resultat: dict, montant_facture: float = 0.0) -> bool:
         """
@@ -845,7 +952,6 @@ class RegelementRobot(BaseRobot, WebResultMixin):
         if date_echeance_calculee is None:
             date_echeance_calculee = mois_plus(today, 6)
             self.logger.info(f" Aucun mois valide (M+0→M+5), fallback M+6: {date_echeance_calculee}")
-
         # Saisir dans Sage avec gestion popup Décaissements-30
         date_echeance_input = self.get_input_by_label("Date échéance")
         date_str = date_echeance_calculee.strftime("%d/%m/%Y")
@@ -1079,7 +1185,6 @@ class RegelementRobot(BaseRobot, WebResultMixin):
     def _enregistrer_regelement(self) -> bool:
         """Enregistrer le règlement"""
         driver = self.driver_manager.driver
-        input("Appuyez sur Entrée pour continuer...")
         try:
             time.sleep(2)
             save_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_check")
@@ -1313,8 +1418,10 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             if len(cells_fixed) > 0:
                 cell_dec = cells_fixed[0]
                 cell_dec.click()
-                time.sleep(0.3)
+                time.sleep(1)
+                self.wait_stabilite()
                 cell_dec.clear()
+                self.wait_stabilite()
                 cell_dec.send_keys("DEC")
                 cell_dec.send_keys(Keys.TAB)
                 time.sleep(0.3)
@@ -1380,7 +1487,6 @@ class RegelementRobot(BaseRobot, WebResultMixin):
 
                 
                 time.sleep(1)
-            input("Appuyez sur Entrée pour continuer...")
             self.logger.info(f"Remplissage auto montant:...")
             if len(cells_scrool) > 5:
                 cell_facture = cells_scrool[5]
@@ -1438,7 +1544,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             )
             cursor = conn.cursor()
             print("Connected to SQL Server successfully!")
-            cursor.execute(f"select TOP 1 XNUM_0, L.NSER_0, XPAM_0 as ModReg from BASE1.XACRCAL L WHERE FLG_0<>2 AND XPAM_0={mode} ORDER BY L.ROWID ASC")
+            cursor.execute(f"select TOP 1 XNUM_0, L.NSER_0, XPAM_0 as ModReg from BASE1.XACRCAL L WHERE FLG_0<>2 AND L.NSER_0<>'TLM0674881' AND XPAM_0={mode} ORDER BY L.ROWID ASC")
             row = cursor.fetchone()
             if row:
                 num_cheque = row[1]
@@ -1496,7 +1602,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
         Retourne un dict {(annee, mois): total_mnt} pour tous les mois
         à partir du mois de la facture jusqu'à M+6.
         """
-        import pyodbc
+
 
         annee_facture = date_facture.year if hasattr(date_facture, 'year') else int(str(date_facture)[:4])
         mois_facture = date_facture.month if hasattr(date_facture, 'month') else int(str(date_facture)[5:7])
@@ -1651,7 +1757,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
 
     def _get_montant_facture_frs(self, num_facture: str) -> float:
         """Récupérer le montant de la facture depuis SQL"""
-        import pyodbc
+
         query_montant_dff = f"""SELECT XMNT_0 AS MONTANT_DFF FROM BASE1.PINVOICE PIN
                                 LEFT JOIN BASE1.XDEPFACT DPF ON DPF.XNUM_0 = PIN.XDFF_0
                                 WHERE NUM_0 = ' {num_facture}'"""
@@ -1680,3 +1786,39 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                 conn.close()
             except:
                 pass
+
+    def _get_bon_commande_from_db(self, num_facture: str) -> Optional[str]:
+        """Récupérer le n° de bon de commande (XCMD_0) depuis SQL"""
+
+        query_bc = """SELECT FACT.XCMD_0 AS BON_COMMANDE
+                    FROM BASE1.PINVOICE PIN
+                    LEFT JOIN BASE1.XDEPFACT FACT ON FACT.XNUM_0 = PIN.XDFF_0
+                    WHERE PIN.NUM_0 = ?"""
+        conn = None
+        cursor = None
+        try:
+            conn = pyodbc.connect(
+                "DRIVER={ODBC Driver 17 for SQL Server};"
+                "SERVER=192.168.1.241\\ERPX3;"
+                "DATABASE=x3;"
+                "UID=X3U;"
+                "PWD=SQL@2019;"
+            )
+            cursor = conn.cursor()
+            cursor.execute(query_bc, (num_facture.strip(),))
+            row = cursor.fetchone()
+            if row and row[0] is not None and str(row[0]).strip():
+                return str(row[0]).strip()
+            self.logger.warning(f"Aucun bon de commande trouvé pour la facture {num_facture}")
+            return None
+        except Exception as e:
+            self.logger.error(f"Erreur récupération bon de commande {num_facture}: {e}")
+            return None
+        finally:
+            try:
+                if cursor: cursor.close()
+                if conn: conn.close()
+            except Exception:
+                pass
+
+    

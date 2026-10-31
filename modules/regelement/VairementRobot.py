@@ -5,7 +5,8 @@
 #  
 # =====================================================
 
-from typing import Dict, Any, List
+import pyodbc
+from typing import Dict, Any, List, Optional
 import pandas as pd
 from core.sage_connector import SageConnector
 from core.web_result_mixin import WebResultMixin
@@ -23,6 +24,8 @@ from selenium.webdriver.common.keys import Keys
 
 class VairementRobot(BaseRobot, WebResultMixin):
     """Initialiser le robot règlement"""
+
+
     def __init__(self, headless: bool = False):  
         
         BaseRobot.__init__(self, 'vairement')
@@ -66,7 +69,10 @@ class VairementRobot(BaseRobot, WebResultMixin):
             # =================================================================
             # RECUPERER LE NUMERO D'ORDRE DE VIREMENT
             # =================================================================
-            Numero_order_virement = self.order_virement_robot.get_numero_order_virement(df)
+
+
+            #Numero_order_virement = self.order_virement_robot.get_numero_order_virement(df)
+            Numero_order_virement="OVI00236"
             self.logger.info(f"Numéro d'ordre de virement: {Numero_order_virement}")
 
             input("Appuyez sur Entrée pour continuer 1...")  # Pause pour vérification manuelle
@@ -231,6 +237,7 @@ class VairementRobot(BaseRobot, WebResultMixin):
             montant = str(row['Montant'])
             num_cheque = self._get_num_cheque_from_db()  # Récupérer le numéro de chèque depuis la base de données
             tva = str(row['TVA']) if not pd.isna(row['TVA']) else ""
+            bon_commande = self._get_bon_commande_from_db(num_facture)
 
             # date reel c'est date d'aujourd'hui
             date_reel = datetime.now().strftime('%d/%m/%Y')
@@ -318,16 +325,18 @@ class VairementRobot(BaseRobot, WebResultMixin):
             libelle_input.send_keys(Keys.TAB)
             time.sleep(0.5)
 
-            banque_input = self.get_input_by_label("Banque", 95)
+            banque_input = self.get_input_by_label("Banque", 96)
             banque_input.click()
             time.sleep(0.5)
             banque_input.send_keys("B01")
+            input("attend un peu")
             banque_input.send_keys(Keys.TAB)
             time.sleep(0.5)
 
-            # =================================================================
+            # ================================$=================================
             # =================================================================
             # 6. REMPLIR MONTANT
+            
             self.logger.info(f"🔍 REMPLIR le Montant: {montant}")
             montant_input = self.get_input_by_label("Montant Tiers")
             montant_input.click()
@@ -401,6 +410,20 @@ class VairementRobot(BaseRobot, WebResultMixin):
             date_reel_input.send_keys(numero_order_vairement)
             date_reel_input.send_keys(Keys.TAB)
             time.sleep(0.5)
+
+           
+
+            self.logger.info(f"REMPLIR le Bon de commande: {bon_commande}")
+            if bon_commande:
+                bc_input = self.get_input_by_label("Bon de commande")
+                bc_input.click()
+                time.sleep(0.5)
+                bc_input.clear()
+                bc_input.send_keys(bon_commande)
+                bc_input.send_keys(Keys.TAB)
+                time.sleep(0.5)
+            else:
+                self.logger.warning("Pas de bon de commande, champ laissé vide")
 
             # =================================================================
             # =================================================================
@@ -691,4 +714,41 @@ class VairementRobot(BaseRobot, WebResultMixin):
                 conn.close()
             except:
                 pass
+
+    def _get_bon_commande_from_db(self, num_facture: str) -> Optional[str]:
+        """Récupérer le n° de bon de commande (XCMD_0) depuis SQL"""
+
+        query_bc = """SELECT FACT.XCMD_0 AS BON_COMMANDE
+                    FROM BASE1.PINVOICE PIN
+                    LEFT JOIN BASE1.XDEPFACT FACT ON FACT.XNUM_0 = PIN.XDFF_0
+                    WHERE PIN.NUM_0 = ?"""
+        conn = None
+        cursor = None
+        try:
+            conn = pyodbc.connect(
+                "DRIVER={ODBC Driver 17 for SQL Server};"
+                "SERVER=192.168.1.241\\ERPX3;"
+                "DATABASE=x3;"
+                "UID=X3U;"
+                "PWD=SQL@2019;"
+            )
+            cursor = conn.cursor()
+            cursor.execute(query_bc, (num_facture.strip(),))
+            row = cursor.fetchone()
+            if row and row[0] is not None and str(row[0]).strip():
+                return str(row[0]).strip()
+            self.logger.warning(f"Aucun bon de commande trouvé pour la facture {num_facture}")
+            return None
+        except Exception as e:
+            self.logger.error(f"Erreur récupération bon de commande {num_facture}: {e}")
+            return None
+        finally:
+            try:
+                if cursor: cursor.close()
+                if conn: conn.close()
+            except Exception:
+                pass
+
+
+
    

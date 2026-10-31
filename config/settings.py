@@ -92,6 +92,18 @@ _TYPE_REGLEMENT_ = {
     "CHQ": 2,
     "VIR": 3,
 }
+
+DA_CHARGE_FIXE ={
+    'URL_WEBHOOK_CHARGE_FIXE' : os.getenv('WEBHOOK_DA_CHARGE_FIXE_URL','192.168.1.211:5678/dsdsdsdsd')
+}
+GENERATION_BC ={
+    'URL_WEBHOOK_GENERATION_BC' : os.getenv('WEBHOOK_DA_GENERATION_BC','192.168.1.211:5678/dsdsdsdsd')
+}
+GENERATION_BR ={
+    'URL_WEBHOOK_GENERATION_BR' : os.getenv('WEBHOOK_DA_GENERATION_BR','192.168.1.211:5678/dsdsdsdsd')
+}
+
+
 # Créer les dossiers s'ils n'existent pas
 for directory in [DATA_DIR, INPUT_DIR, OUTPUT_DIR, LOGS_DIR]:
     directory.mkdir(parents=True, exist_ok=True)

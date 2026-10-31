@@ -1,5 +1,5 @@
 query_ff = """
-        WITH 
+WITH 
     -- 1. CTE pour identifier les fournisseurs ayant un règlement
     Fournisseurs_Avec_Reglement AS (
         SELECT DISTINCT pay.BPR_0
@@ -44,7 +44,16 @@ query_ff = """
             AND (F.enReception + F.enFacturation + F.facture 
                 + F.retourNF + F.Soldedépart + F.Réglement) > 0
             AND G.NUM_0 LIKE 'FF%'
-            AND P.BPR_0<>'T3691'
+            AND P.BPR_0<>'T3691' and P.BPR_0<>'T6775'
+            AND G.NUM_0 NOT IN (
+                    'FF173848',
+                    'FF168121',
+                    'FF174056',
+                    'FF174055',
+                    'FF174054',
+                    'FF171579',
+                    'FF173958'
+                )
 
     )
 
@@ -72,9 +81,13 @@ query_ff = """
             PARTITION BY CodeFournisseur 
             ORDER BY ResteAPayer ASC, NumFacture ASC
             ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
-        ) AS Ecart
+        ) AS Ecart,
+        pin.XDFF_0 as DFF,
+        xdff.XFRSE_0 as tier_endosse
 
-    FROM Donnies_De_Base
+    FROM Donnies_De_Base d
+    left join BASE1.PINVOICE pin on d.NumFacture = pin.NUM_0 
+    left join BASE1.XDEPFACT xdff on pin.XDFF_0 = xdff.XNUM_0
 
     ORDER BY 
         CodeFournisseur ASC, 

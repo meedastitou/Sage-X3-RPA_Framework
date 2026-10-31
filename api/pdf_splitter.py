@@ -23,13 +23,14 @@ OUTPUT_DIR = Path("data/output/bulletins")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def extract_matricule(page_text: str) -> str | None:
+def extract_matricule(page_text: str) -> str:
     """
     Extrait le matricule depuis le texte d'une page.
     Le matricule est un nombre de 5 chiffres (ex: 70162, 70163).
     """
     # Pattern: cherche le nombre après le mot "Matricule"
-    match = re.search(r'Matricule\s*[\n\r]*\s*(\d{5,6})', page_text, re.IGNORECASE)
+    # Capture explicitement les deux formats
+    match = re.search(r'(00\d{5,6}|\d{5,6})', page_text, re.IGNORECASE)
     if match:
         return match.group(1)
 
@@ -58,6 +59,7 @@ async def split_pdf(file: UploadFile = File(...)):
     Upload un PDF → retourne un fichier ZIP contenant un PDF par employé,
     chaque fichier nommé avec le matricule (ex: 70162.pdf).
     """
+    print(f"Received file: {file.filename}")
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Le fichier doit être un PDF")
 
@@ -76,9 +78,9 @@ async def split_pdf(file: UploadFile = File(...)):
     with zipfile.ZipFile(zip_buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
         for i, page in enumerate(reader.pages):
             text = page.extract_text() or ""
-
             # Extraire le matricule
             matricule = extract_matricule(text)
+            print(f"Page {i + 1}: Matricule détecté = {matricule}")
             filename = f"{matricule}.pdf" if matricule else f"page_{i + 1}.pdf"
 
             # Créer un PDF d'une seule page

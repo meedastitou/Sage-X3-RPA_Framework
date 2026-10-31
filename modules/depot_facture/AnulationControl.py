@@ -202,15 +202,20 @@ class AnulationControl(BaseRobot, WebResultMixin):
 
             frs_endosse_input = self.get_input_by_label("Frs Endossé")
             frs_endosse_input_value = frs_endosse_input.get_attribute('value')
+            self.logger.info(f"Valeur du champ 'Frs Endossé': {frs_endosse_input_value}")
+            
             if frs_endosse_input_value == '' or frs_endosse_input_value is None:
+                self.logger.info("Le champ 'Frs Endossé' est vide, récupération de la valeur du champ 'Code Frs'")
                 code_frs_input = self.get_input_by_label("Code Frs")
                 code_frs_input_value = code_frs_input.get_attribute('value')
+                self.wait_stabilite()
+                frs_endosse_input.click()
                 frs_endosse_input.clear()
                 self.wait_stabilite()
                 frs_endosse_input.send_keys(code_frs_input_value)
-                frs_endosse_input.send_keys(Keys.TAB)
-                self.wait_stabilite()
+                # frs_endosse_input.send_keys(Keys.TAB)
 
+            self.wait_stabilite()
             if self.enregistrer_dff():
                 resultat["statut"] = "success"
             else:
