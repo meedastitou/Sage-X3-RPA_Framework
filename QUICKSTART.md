@@ -1,6 +1,6 @@
-# 🚀 Guide de Démarrage Rapide
+# Guide de Démarrage Rapide
 
-## ✅ Installation (1 minute)
+## Installation (1 minute)
 
 ```bash
 cd C:\Users\m.astitou\Desktop\selenuim\sage-x3-rpa
@@ -33,7 +33,7 @@ copy "C:\Users\m.astitou\Desktop\selenuim\reglement a annuler.xlsx" data\input\e
 python scripts\run_lettrage.py --file data\input\excel\fournisseurs.xlsx
 ```
 
-## 📊 Format du fichier Excel
+##  Format du fichier Excel
 
 Votre fichier doit contenir ces colonnes :
 - **Compte** (ex: 44110000)
@@ -59,7 +59,7 @@ sage-x3-rpa/
 │   └── logger.py
 ├── modules/
 │   └── lettrage/
-│       └── lettrage_robot.py    # ✅ VOTRE CODE ICI
+│       └── lettrage_robot.py    # VOTRE CODE ICI
 ├── data/
 │   ├── input/excel/             # Vos fichiers Excel
 │   └── output/
@@ -116,10 +116,10 @@ python scripts\run_lettrage.py --file "mon_fichier.xlsx" --url "http://..."
 
 ## 🎯 Prochaines Étapes
 
-1. ✅ **Tester** avec votre fichier Excel
+1. **Tester** avec votre fichier Excel
 2. 📖 **Lire** le README.md complet
 3. 🔧 **Personnaliser** les paramètres dans `.env`
-4. 🚀 **Ajouter** de nouveaux modules (facturation, reporting...)
+4. **Ajouter** de nouveaux modules (facturation, reporting...)
 
 ## 📞 Support
 

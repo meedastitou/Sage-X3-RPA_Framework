@@ -60,7 +60,7 @@ class FacturationRobot(BaseRobot, WebResultMixin):
             if 'email_expediteur' in df.columns:
                 email_f = df.iloc[0]['email_expediteur']
 
-            self.logger.info(f"📊 {len(df)} lignes à traiter")
+            self.logger.info(f" {len(df)} lignes à traiter")
 
             # Connexion Sage
             self.connect_sage()
@@ -105,7 +105,7 @@ class FacturationRobot(BaseRobot, WebResultMixin):
                     self.logger.info(f"📋 Numéro FF: {numero_FF}")
                 except Exception as e:
                     resultat['numero_FF'] = ""
-                    self.logger.warning(f"⚠️ Impossible de récupérer le numéro FF: {e}")
+                    self.logger.warning(f" Impossible de récupérer le numéro FF: {e}")
 
                 # Mettre à jour les compteurs
                 if resultat.get('statut') == 'Succes':
@@ -141,12 +141,12 @@ class FacturationRobot(BaseRobot, WebResultMixin):
 
             self.logger.info("="*80)
             self.logger.info("🎉 PROCESSUS TERMINÉ")
-            self.logger.info(f"✅ {self.factures_traitees} facture(s) traité(s)")
-            self.logger.info(f"❌ {self.factures_echec} facture(s) en échec")
+            self.logger.info(f"{self.factures_traitees} facture(s) traité(s)")
+            self.logger.info(f" {self.factures_echec} facture(s) en échec")
             self.logger.info("="*80)
 
         except Exception as e:
-            self.logger.error(f"❌ ERREUR CRITIQUE: {e}")
+            self.logger.error(f" ERREUR CRITIQUE: {e}")
             import traceback
             self.logger.error(traceback.format_exc())
 
@@ -191,7 +191,7 @@ class FacturationRobot(BaseRobot, WebResultMixin):
                 EC.element_to_be_clickable((By.XPATH, "//a[@title='Sélection réceptions']"))
             )
             reception_btn.click()
-            self.logger.info("✅ Section 'Sélection réceptions' ouverte")
+            self.logger.info("Section 'Sélection réceptions' ouverte")
             time.sleep(1)
             
             # 2. Attendre que le tableau soit chargé
@@ -201,7 +201,7 @@ class FacturationRobot(BaseRobot, WebResultMixin):
             
             # 3. Trouver TOUTES les lignes du tableau (visibles et cachées)
             all_rows = driver.find_elements(By.CSS_SELECTOR, ".s-grid-table-body tr.s-grid-row.s-grid-navig-row")
-            self.logger.info(f"📊 {len(all_rows)} lignes trouvées dans le tableau")
+            self.logger.info(f" {len(all_rows)} lignes trouvées dans le tableau")
             
             # 4. Chercher la ligne contenant le code de réception
             target_row = None
@@ -214,13 +214,13 @@ class FacturationRobot(BaseRobot, WebResultMixin):
                     # Vérifier si c'est la bonne réception (commence par le code BR)
                     if text.startswith(codeReception):
                         target_row = row
-                        self.logger.info(f"✅ Réception trouvée: {text}")
+                        self.logger.info(f"Réception trouvée: {text}")
                         break
                 except:
                     continue
             
             if not target_row:
-                self.logger.error(f"❌ Réception {codeReception} non trouvée dans la liste")
+                self.logger.error(f" Réception {codeReception} non trouvée dans la liste")
                 return False
             
             # 5. Vérifier si la ligne est visible (pas display: none)
@@ -228,7 +228,7 @@ class FacturationRobot(BaseRobot, WebResultMixin):
             is_hidden = "display: none" in style or "display:none" in style
             
             if is_hidden:
-                self.logger.warning(f"⚠️ La réception {codeReception} est cachée, tentative d'expansion...")
+                self.logger.warning(f" La réception {codeReception} est cachée, tentative d'expansion...")
                 # Trouver le bouton d'expansion (parent picker)
                 try:
                     # Chercher la ligne parent (celle qui contient le picker)
@@ -239,11 +239,11 @@ class FacturationRobot(BaseRobot, WebResultMixin):
                             picker = pr.find_element(By.CSS_SELECTOR, ".s-tree-node-picker")
                             if picker.is_displayed():
                                 picker.click()
-                                self.logger.info("✅ Ligne expandée")
+                                self.logger.info("Ligne expandée")
                                 time.sleep(0.5)
                                 break
                 except Exception as e:
-                    self.logger.warning(f"⚠️ Impossible d'expander: {e}")
+                    self.logger.warning(f" Impossible d'expander: {e}")
             
             # 6. Trouver la checkbox dans cette ligne
             try:
@@ -261,18 +261,18 @@ class FacturationRobot(BaseRobot, WebResultMixin):
                         driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", label)
                         time.sleep(0.3)
                         label.click()
-                        self.logger.info(f"✅ Checkbox cochée via label pour {codeReception}")
+                        self.logger.info(f"Checkbox cochée via label pour {codeReception}")
                     except:
                         # Méthode 2: Cliquer directement sur la checkbox
                         driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", checkbox)
                         time.sleep(0.3)
                         driver.execute_script("arguments[0].click();", checkbox)
-                        self.logger.info(f"✅ Checkbox cochée via JavaScript pour {codeReception}")
+                        self.logger.info(f"Checkbox cochée via JavaScript pour {codeReception}")
                     
                     # # 9. Vérifier que c'est bien coché
                     # time.sleep(0.5)
                     # if not checkbox.is_selected():
-                    #     self.logger.warning(f"⚠️ La checkbox n'est pas cochée après le clic")
+                    #     self.logger.warning(f" La checkbox n'est pas cochée après le clic")
                     #     return False
                 
                 # 10. Gérer la popup "Voulez-vous remplacer les données..."
@@ -292,24 +292,24 @@ class FacturationRobot(BaseRobot, WebResultMixin):
                         # Cliquer sur "Oui"
                         oui_btn = popup.find_element(By.XPATH, "//a[@aria-label='Oui']")
                         oui_btn.click()
-                        self.logger.info("✅ Cliqué sur 'Oui' dans la popup")
+                        self.logger.info("Cliqué sur 'Oui' dans la popup")
                         time.sleep(1)
                     else:
-                        self.logger.warning(f"⚠️ Popup inattendue: {popup_text}")
+                        self.logger.warning(f" Popup inattendue: {popup_text}")
                         
                 except Exception as e:
                     # Pas de popup ou déjà fermée
                     self.logger.info("ℹ️ Pas de popup de confirmation (ou déjà gérée)")
                 
-                self.logger.info(f"✅ Réception {codeReception} sélectionnée avec succès")
+                self.logger.info(f"Réception {codeReception} sélectionnée avec succès")
                 return True
                     
             except Exception as e:
-                self.logger.error(f"❌ Erreur lors du cochage de la checkbox: {e}")
+                self.logger.error(f" Erreur lors du cochage de la checkbox: {e}")
                 return False
                 
         except Exception as e:
-            self.logger.error(f"❌ Erreur lors de la sélection de la réception {codeReception}: {e}")
+            self.logger.error(f" Erreur lors de la sélection de la réception {codeReception}: {e}")
             import traceback
             traceback.print_exc()
             return False
@@ -437,10 +437,10 @@ class FacturationRobot(BaseRobot, WebResultMixin):
             referenceIntern_input.send_keys(Keys.TAB)
             time.sleep(1)
 
-            self.logger.info(f"✅ Informations saisies pour le fournisseur {codeFournisseur} ({nom})")
+            self.logger.info(f"Informations saisies pour le fournisseur {codeFournisseur} ({nom})")
             return True
         except Exception as e:
-            self.logger.error(f"❌ Erreur recherche fournisseur: {e}")
+            self.logger.error(f" Erreur recherche fournisseur: {e}")
             return False
 
     def clique_enregistrer(self):
@@ -454,7 +454,7 @@ class FacturationRobot(BaseRobot, WebResultMixin):
             time.sleep(5)
             self.wait_for_spinner_to_disappear(driver, 900000000)
 
-            self.logger.info("✅ Enregistrement clique")
+            self.logger.info("Enregistrement clique")
             confirmation_msg = WebDriverWait(driver, 5).until(
                 EC.presence_of_element_located((By.CLASS_NAME, "s_alertbox_title"))
             )
@@ -465,7 +465,7 @@ class FacturationRobot(BaseRobot, WebResultMixin):
             #         # Cliquer sur "Oui"
             #         oui_button = driver.find_element(By.XPATH, "//a[@aria-label='OK']")
             #         oui_button.click()
-            #         self.logger.info("✅ Avertissement Confirmation abandon cliquée")
+            #         self.logger.info("Avertissement Confirmation abandon cliquée")
             #         time.sleep(1)
             #     except:
             #         # Pas de popup ou autre type de popup
@@ -487,14 +487,14 @@ class FacturationRobot(BaseRobot, WebResultMixin):
                 close_button = header.find_element(By.CLASS_NAME, "s_modal_close")
                 close_button.click()
 
-                self.logger.info(f"✅ Popup de confirmation fermée {confirmation_msg.text}")
+                self.logger.info(f"Popup de confirmation fermée {confirmation_msg.text}")
                 time.sleep(1)
             except:
                 pass
-            self.logger.info(f"✅ Enregistrement reussi: {confirmation_msg.text}")
+            self.logger.info(f"Enregistrement reussi: {confirmation_msg.text}")
             time.sleep(3)
         except Exception as e:
-            self.logger.error(f"❌ Erreur enregistrement: {e}")
+            self.logger.error(f" Erreur enregistrement: {e}")
             driver.save_screenshot("ScreenShot/error_enregistrement.png")
 
     def traiter_fournisseur(self, url, codeFournisseur, factureFournisseur, DFF, Date, codeReception, nom=""):
@@ -519,7 +519,7 @@ class FacturationRobot(BaseRobot, WebResultMixin):
         
         try:
             if not self.saisi_information(typeF="FAF", codeFournisseur=codeFournisseur, factureFournisseur=factureFournisseur, DFF=DFF, Date=Date, codeReception=codeReception, nom=nom):
-                self.logger.warning("⚠️ Erreur recherche, tentative d'actualisation...")
+                self.logger.warning(" Erreur recherche, tentative d'actualisation...")
 
                 if self.sage_connector.refresh_with_popup_handling():
                     if not self.saisi_information(typeF="FAF", codeFournisseur=codeFournisseur, factureFournisseur=factureFournisseur, DFF=DFF, Date=Date, codeReception=codeReception, nom=nom):
@@ -551,7 +551,7 @@ class FacturationRobot(BaseRobot, WebResultMixin):
 
         except Exception as e:
             resultat['message'] = f'Erreur: {str(e)}'
-            self.logger.error(f"❌ Erreur traitement fournisseur: {e}")
+            self.logger.error(f" Erreur traitement fournisseur: {e}")
             error_info = self.handle_error_with_screenshot(
                 error_message=str(e),
                 context=f"Fournisseur {codeFournisseur} - Exception"

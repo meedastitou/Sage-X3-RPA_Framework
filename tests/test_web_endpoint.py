@@ -34,7 +34,7 @@ def test_envoi_simple():
     
     result = sender.send_json(data)
     
-    print(f"\n📊 Résultat:")
+    print(f"\n Résultat:")
     print(f"   Success: {result.get('success')}")
     print(f"   Status: {result.get('status_code')}")
     print(f"   Message: {result.get('message')}")
@@ -67,7 +67,7 @@ def test_envoi_avec_headers():
     
     result = sender.send_json(data, headers)
     
-    print(f"\n📊 Résultat:")
+    print(f"\n Résultat:")
     print(f"   Success: {result.get('success')}")
     print(f"   Status: {result.get('status_code')}")
     print(f"   Message: {result.get('message')}")
@@ -102,7 +102,7 @@ def test_envoi_multipart():
         file_path=str(test_file)
     )
     
-    print(f"\n📊 Résultat:")
+    print(f"\n Résultat:")
     print(f"   Success: {result.get('success')}")
     print(f"   Status: {result.get('status_code')}")
     print(f"   Message: {result.get('message')}")
@@ -138,7 +138,7 @@ def test_envoi_base64():
         file_path=str(test_file)
     )
     
-    print(f"\n📊 Résultat:")
+    print(f"\n Résultat:")
     print(f"   Success: {result.get('success')}")
     print(f"   Status: {result.get('status_code')}")
     print(f"   Message: {result.get('message')}")
@@ -159,7 +159,7 @@ def main():
     print(f"📡 URL: http://jbel-annour.ma/resultat")
     print("="*80 + "\n")
     
-    input("⚠️  Assurez-vous que votre serveur web est démarré.\nAppuyez sur Entrée pour continuer...")
+    input("  Assurez-vous que votre serveur web est démarré.\nAppuyez sur Entrée pour continuer...")
     
     results = []
     
@@ -167,37 +167,37 @@ def main():
     try:
         results.append(('JSON Simple', test_envoi_simple()))
     except Exception as e:
-        print(f"❌ Erreur Test 1: {e}\n")
+        print(f" Erreur Test 1: {e}\n")
         results.append(('JSON Simple', False))
     
     # Test 2
     try:
         results.append(('Avec Auth', test_envoi_avec_headers()))
     except Exception as e:
-        print(f"❌ Erreur Test 2: {e}\n")
+        print(f" Erreur Test 2: {e}\n")
         results.append(('Avec Auth', False))
     
     # Test 3
     try:
         results.append(('Multipart', test_envoi_multipart()))
     except Exception as e:
-        print(f"❌ Erreur Test 3: {e}\n")
+        print(f" Erreur Test 3: {e}\n")
         results.append(('Multipart', False))
     
     # Test 4
     try:
         results.append(('Base64', test_envoi_base64()))
     except Exception as e:
-        print(f"❌ Erreur Test 4: {e}\n")
+        print(f" Erreur Test 4: {e}\n")
         results.append(('Base64', False))
     
     # Résumé
     print("="*80)
-    print("📊 RÉSUMÉ DES TESTS")
+    print(" RÉSUMÉ DES TESTS")
     print("="*80)
     
     for test_name, success in results:
-        status = "✅ PASS" if success else "❌ FAIL"
+        status = "PASS" if success else " FAIL"
         print(f"{status} - {test_name}")
     
     total = len(results)

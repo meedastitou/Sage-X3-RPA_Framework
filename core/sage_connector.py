@@ -162,25 +162,28 @@ class SageConnector:
     def disconnect(self):
         """Se déconnecter et fermer le navigateur"""
         driver = self.driver_manager.driver
+        try:
 
-        driver.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
-        time.sleep(0.5)
-        driver.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
-        time.sleep(1)
-        logout_button = driver.find_element(By.XPATH, f"//a[contains(text(), '{SAGE_CONFIG['titular']}')]")
-        logout_button.click()
-        time.sleep(1)
-        logout_button = driver.find_element(By.XPATH, "//a[contains(text(), 'Déconnexion')]")
-        logout_button.click()
-        time.sleep(2)
+            driver.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
+            time.sleep(0.5)
+            driver.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
+            time.sleep(1)
+            logout_button = driver.find_element(By.XPATH, f"//a[contains(@class, 's_profile_bar_textlink_profile_panel') and contains(text(), '{SAGE_CONFIG['titular']}')]")
+            logout_button.click()
+            time.sleep(1)
+            logout_button = driver.find_element(By.XPATH, "//a[contains(text(), 'Déconnexion')]")
+            logout_button.click()
+            time.sleep(2)
 
-        self.click_oui_if_popup(driver)        
-        wait = WebDriverWait(driver,  100)
-        wait.until(EC.visibility_of_element_located((By.ID, "loginForm")))   
-        if self.driver_manager:
-            self.driver_manager.stop()
-        self.is_connected = False
-        self.logger.info("Déconnexion Sage X3")
+            self.click_oui_if_popup(driver)        
+            wait = WebDriverWait(driver,  100)
+            wait.until(EC.visibility_of_element_located((By.ID, "loginForm")))   
+            if self.driver_manager:
+                self.driver_manager.stop()
+            self.is_connected = False
+            self.logger.info("Déconnexion Sage X3")
+        except Exception as e : 
+            self.logger.info(f"erreur au moment deconexion {e}")
     
     def click_oui_if_popup(self,driver, timeout=3):
         """Clique sur Oui si un popup avec bouton Oui apparaît"""

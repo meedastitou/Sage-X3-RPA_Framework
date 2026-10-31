@@ -244,11 +244,11 @@ POST /api/bonne-commande/data
 
 ## Avantages de Cette Architecture
 
-✅ **Découplage**: L'API ne bloque pas en attendant la fin du robot
-✅ **Scalabilité**: Plusieurs workers peuvent traiter les tâches en parallèle
-✅ **Persistance**: Les tâches restent enqueued si le worker crash
-✅ **Monitoring**: API retourne rapidement, utilisateur peut poller le statut
-✅ **Résilience**: Worker peut être redémarré sans perdre les tâches
+**Découplage**: L'API ne bloque pas en attendant la fin du robot
+**Scalabilité**: Plusieurs workers peuvent traiter les tâches en parallèle
+**Persistance**: Les tâches restent enqueued si le worker crash
+**Monitoring**: API retourne rapidement, utilisateur peut poller le statut
+**Résilience**: Worker peut être redémarré sans perdre les tâches
 
 ## Test et Validation
 
@@ -278,7 +278,7 @@ python tests/test_api_queue_integration.py
 
 ## Notes Importantes
 
-⚠️ **Compatibilité arrière**: Les anciens endpoints qui utilisaient la mémoire (threads) sont conservés
-⚠️ **Fichiers Excel**: Les fichiers créés par l'API doivent rester en place pour le worker
-⚠️ **Worker**: Doit être lancé séparément avec `python workers/worker_rpa.py`
-⚠️ **Queue persistance**: Les tâches restent en attente jusqu'à ce qu'elles soient traitées
+ **Compatibilité arrière**: Les anciens endpoints qui utilisaient la mémoire (threads) sont conservés
+ **Fichiers Excel**: Les fichiers créés par l'API doivent rester en place pour le worker
+ **Worker**: Doit être lancé séparément avec `python workers/worker_rpa.py`
+ **Queue persistance**: Les tâches restent en attente jusqu'à ce qu'elles soient traitées

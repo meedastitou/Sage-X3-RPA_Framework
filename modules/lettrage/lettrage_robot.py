@@ -45,7 +45,7 @@ class LettrageRobot(BaseRobot):
             required_columns=['Compte', 'Code', 'Facture', 'N-Avis']
         )
         
-        self.logger.info(f"📊 {len(df)} lignes à traiter")
+        self.logger.info(f" {len(df)} lignes à traiter")
         
         # Connexion Sage
         self.connect_sage()
@@ -139,7 +139,7 @@ class LettrageRobot(BaseRobot):
                     resultat['lettrage_effectue'] = True
                     resultat['statut'] = 'Succes'
                     resultat['message'] = f"Lettrage effectué: {c['description']}"
-                    self.logger.info("✅ Lettrage réussi")
+                    self.logger.info("Lettrage réussi")
                 else:
                     resultat['message'] = 'Erreur lors du clic sur Lettrage'
                 time.sleep(2)
@@ -148,7 +148,7 @@ class LettrageRobot(BaseRobot):
             
         except Exception as e:
             resultat['message'] = f'Erreur: {str(e)}'
-            self.logger.error(f"❌ Erreur traitement fournisseur: {e}")
+            self.logger.error(f" Erreur traitement fournisseur: {e}")
         
         return resultat
     
@@ -191,11 +191,11 @@ class LettrageRobot(BaseRobot):
                 EC.presence_of_element_located((By.CSS_SELECTOR, ".s-grid-fixed-table-body"))
             )
             
-            self.logger.info("✅ Résultats affichés")
+            self.logger.info("Résultats affichés")
             return True
             
         except Exception as e:
-            self.logger.error(f"❌ Erreur recherche: {e}")
+            self.logger.error(f" Erreur recherche: {e}")
             return False
     
     def extraire_ecritures(self):
@@ -206,7 +206,7 @@ class LettrageRobot(BaseRobot):
         rows_fixed = driver.find_elements(By.CSS_SELECTOR, ".s-grid-fixed-table-body tr.s-grid-row")
         rows_scroll = driver.find_elements(By.CSS_SELECTOR, ".s-grid-table-body tr.s-grid-row")
         
-        self.logger.info(f"📊 Lignes totales: {len(rows_fixed)}")
+        self.logger.info(f" Lignes totales: {len(rows_fixed)}")
         
         for i in range(len(rows_fixed)):
             try:
@@ -241,9 +241,9 @@ class LettrageRobot(BaseRobot):
                 ecritures.append(e)
                 
             except Exception as ex:
-                self.logger.warning(f"⚠️ Erreur ligne {i+1}: {ex}")
+                self.logger.warning(f" Erreur ligne {i+1}: {ex}")
         
-        self.logger.info(f"✅ {len(ecritures)} écritures extraites")
+        self.logger.info(f"{len(ecritures)} écritures extraites")
         return ecritures
     
     def trouver_correspondances_par_numero(self, ecritures, facture, n_avis):
@@ -257,7 +257,7 @@ class LettrageRobot(BaseRobot):
         for e in ecritures:
             if e['numero'].strip().upper() == str(facture).strip().upper():
                 ligne_facture = e
-                self.logger.info(f"✅ Facture trouvée: Ligne {e['index']} | Numero: {e['numero']} | D:{e['debit_str']} C:{e['credit_str']}")
+                self.logger.info(f"Facture trouvée: Ligne {e['index']} | Numero: {e['numero']} | D:{e['debit_str']} C:{e['credit_str']}")
                 break
         
         # Chercher le N-Avis
@@ -265,18 +265,18 @@ class LettrageRobot(BaseRobot):
         for e in ecritures:
             if e['numero'].strip().upper() == str(n_avis).strip().upper():
                 ligne_avis = e
-                self.logger.info(f"✅ N-Avis trouvé: Ligne {e['index']} | Numero: {e['numero']} | D:{e['debit_str']} C:{e['credit_str']}")
+                self.logger.info(f"N-Avis trouvé: Ligne {e['index']} | Numero: {e['numero']} | D:{e['debit_str']} C:{e['credit_str']}")
                 break
         
         if ligne_facture and ligne_avis:
             # Vérifier qu'ils ne sont pas déjà lettrés
-            if ligne_facture['lettre'] and ligne_facture['lettre'].strip():
-                self.logger.warning(f"⚠️ Facture {facture} déjà lettrée (code: {ligne_facture['lettre']})")
-                return []
+            # if ligne_facture['lettre'] and ligne_facture['lettre'].strip():
+            #     self.logger.warning(f" Facture {facture} déjà lettrée (code: {ligne_facture['lettre']})")
+            #     return []
             
-            if ligne_avis['lettre'] and ligne_avis['lettre'].strip():
-                self.logger.warning(f"⚠️ N-Avis {n_avis} déjà lettré (code: {ligne_avis['lettre']})")
-                return []
+            # if ligne_avis['lettre'] and ligne_avis['lettre'].strip():
+            #     self.logger.warning(f" N-Avis {n_avis} déjà lettré (code: {ligne_avis['lettre']})")
+            #     return []
             
             correspondances.append({
                 'indices': [ligne_facture['index'], ligne_avis['index']],
@@ -286,12 +286,12 @@ class LettrageRobot(BaseRobot):
                 'description': f"Facture {facture} (L{ligne_facture['index']}) ↔ N-Avis {n_avis} (L{ligne_avis['index']})"
             })
             
-            self.logger.info(f"✅ Correspondance créée: {correspondances[0]['description']}")
+            self.logger.info(f"Correspondance créée: {correspondances[0]['description']}")
         else:
             if not ligne_facture:
-                self.logger.warning(f"❌ Facture '{facture}' NON TROUVÉE")
+                self.logger.warning(f" Facture '{facture}' NON TROUVÉE")
             if not ligne_avis:
-                self.logger.warning(f"❌ N-Avis '{n_avis}' NON TROUVÉ")
+                self.logger.warning(f" N-Avis '{n_avis}' NON TROUVÉ")
         
         return correspondances
     
@@ -313,24 +313,24 @@ class LettrageRobot(BaseRobot):
                 
                 try:
                     cb.click()
-                    self.logger.info(f"✅ Coché (normal): {cb_id}")
+                    self.logger.info(f"Coché (normal): {cb_id}")
                     ok += 1
                 except:
                     driver.execute_script("arguments[0].click();", cb)
-                    self.logger.info(f"✅ Coché (JS): {cb_id}")
+                    self.logger.info(f"Coché (JS): {cb_id}")
                     ok += 1
                 
                 time.sleep(0.3)
             except Exception as e:
-                self.logger.warning(f"⚠️ Impossible {cb_id}: {e}")
+                self.logger.warning(f" Impossible {cb_id}: {e}")
         
-        self.logger.info(f"📊 TOTAL: {ok}/{len(checkbox_ids)} sélectionné(s)")
+        self.logger.info(f" TOTAL: {ok}/{len(checkbox_ids)} sélectionné(s)")
         return ok
     
     def cliquer_lettrage(self):
         """Cliquer sur le bouton Lettrage"""
         driver = self.driver_manager.driver
-        
+        self.logger.info("clique lettrage start")
         try:
             selectors = [
                 "//a[@title='Lettrage' and contains(@class, 's-mn-prefer-link')]",
@@ -342,7 +342,7 @@ class LettrageRobot(BaseRobot):
             for sel in selectors:
                 try:
                     btn = driver.find_element(By.XPATH, sel)
-                    self.logger.info(f"✅ Bouton Lettrage trouvé avec: {sel}")
+                    self.logger.info(f"Bouton Lettrage trouvé avec: {sel}")
                     break
                 except:
                     continue
@@ -353,32 +353,39 @@ class LettrageRobot(BaseRobot):
                 
                 try:
                     btn.click()
-                    self.logger.info("✅ Clic sur Lettrage (normal)")
+                    self.logger.info("Clic sur Lettrage (normal)")
                 except:
                     driver.execute_script("arguments[0].click();", btn)
-                    self.logger.info("✅ Clic sur Lettrage (JavaScript)")
+                    self.logger.info("Clic sur Lettrage (JavaScript)")
                 
                 time.sleep(2)
                 
                 # Gérer popup de confirmation
                 try:
-                    confirm_btn = WebDriverWait(driver, 3).until(
-                        EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'OK')] | //button[contains(text(), 'Confirmer')] | //button[contains(text(), 'Valider')]"))
+                    modal = WebDriverWait(driver, 5).until(
+                        EC.presence_of_element_located((By.CLASS_NAME, "s_modal_dialog"))
                     )
-                    confirm_btn.click()
-                    self.logger.info("✅ Confirmation cliquée")
+                    
+                    print("Modale détectée, recherche du bouton OK...")
+                    
+                    # Chercher et cliquer sur le bouton OK
+                    ok_button = WebDriverWait(driver, 3).until(
+                        EC.element_to_be_clickable((By.XPATH, "//a[@title='OK' and contains(@class, 's-mn-main-link')]"))
+                    )
+                    ok_button.click()
+                    print("Bouton OK cliqué")
                 except:
                     self.logger.info("ℹ️ Pas de popup de confirmation")
                 
                 time.sleep(1)
-                self.logger.info("✅ Lettrage validé")
+                self.logger.info("Lettrage validé")
                 return True
             else:
-                self.logger.error("❌ Bouton Lettrage non trouvé")
+                self.logger.error(" Bouton Lettrage non trouvé")
                 self.driver_manager.take_screenshot("error_bouton_lettrage.png")
                 return False
             
         except Exception as e:
-            self.logger.error(f"❌ Erreur lettrage: {e}")
+            self.logger.error(f" Erreur lettrage: {e}")
             self.driver_manager.take_screenshot("error_lettrage_exception.png")
             return False

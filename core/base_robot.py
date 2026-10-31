@@ -385,12 +385,14 @@ class BaseRobot(ABC):
             
         driver = self.driver_manager.driver
         try:
+            print(f"📢 Gestion popup: bouton='{button_text}', message='{message}'")
             WebDriverWait(driver, 2).until(
                 EC.visibility_of_element_located((By.XPATH, f"//pre[@class='s_alertbox_msg' and contains(text(), '{message}')]"))
             )
             popup_button = driver.find_element(By.XPATH, f"//a[@aria-label='{button_text}']")
             popup_button.click()
             time.sleep(1)
+            print(f"✅ Popup gérée: bouton='{button_text}', message='{message}'")
             return True
         except:
             # Pas de popup ou autre type de popup

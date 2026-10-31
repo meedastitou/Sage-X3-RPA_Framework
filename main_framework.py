@@ -24,7 +24,7 @@ def main():
         robot.run(excel_file=FICHIER_EXCEL, url=URL)
         input("\n⏸️ Appuyez sur Entree pour fermer...")
     except Exception as e:
-        print(f"❌ Erreur fatale: {e}")
+        print(f" Erreur fatale: {e}")
         import traceback
         traceback.print_exc()
         input("\n⏸️ Appuyez sur Entree...")

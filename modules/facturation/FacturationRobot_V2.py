@@ -114,6 +114,8 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
                 nom = str(first_row.get('Nom', ''))
                 type_f = str(first_row['TypeF']).strip() if 'TypeF' in first_row and str(first_row.get('TypeF', '')).strip() != '' else 'FAF'
                 dossier_import = first_row.get("DossierImport", "")
+                ht = first_row.get("HT", "")
+                taxex = first_row.get("Taxes", "")
                 try:
                     if pd.api.types.is_numeric_dtype(type(first_row['Date'])):
                         date_obj = pd.Timestamp('1899-12-30') + pd.Timedelta(days=float(first_row['Date']))
@@ -150,7 +152,10 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
                     list_codeReception=list_br,
                     nom=nom,
                     typeF=type_f,
-                    dossier_import=dossier_import
+                    dossier_import=dossier_import,
+                    ht=ht,
+                    taxex=taxex
+                    
                 )
 
                 # Mettre a jour le resultat en DB apres traitement
@@ -555,7 +560,7 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
     # ------------------------------------------------------------------
 
     def saisi_information(self, typeF, codeFournisseur, factureFournisseur, DFF, Date,
-                          list_codeReception: List[str], nom="", dossier_import=""):
+                          list_codeReception: List[str], nom="", dossier_import="", ht="", taxex=""):
         """
         Saisit les informations de la facture et selectionne TOUS les codes reception.
 
@@ -655,33 +660,52 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
 
             time.sleep(2)
 
-            # HT calcule -> HT saisi
-            HT_input = self.get_input_by_label("HT calculé")
-            ht_value = HT_input.get_attribute('value')
-            time.sleep(1)
+            if typeF == 'FCF':
+                HT_saisi_input = self.get_input_by_label("HT saisi")
+                HT_saisi_input.click()
+                time.sleep(0.5)
+                HT_saisi_input.clear()
+                HT_saisi_input.send_keys(ht)
+                HT_saisi_input.send_keys(Keys.TAB)
+                time.sleep(1)
 
-            HT_saisi_input = self.get_input_by_label("HT saisi")
-            HT_saisi_input.click()
-            time.sleep(0.5)
-            HT_saisi_input.clear()
-            HT_saisi_input.send_keys(ht_value)
-            HT_saisi_input.send_keys(Keys.TAB)
-            time.sleep(1)
+                Taxe_saisi_input = self.get_input_by_label("Total taxes saisi")
+                Taxe_saisi_input.click()
+                time.sleep(0.5)
+                Taxe_saisi_input.clear()
+                Taxe_saisi_input.send_keys(taxex)
+                Taxe_saisi_input.send_keys(Keys.TAB)
+                time.sleep(1)
+            else:
 
-            # Ecart taxes -> Total taxes saisi
-            Taxe = self.get_input_by_label("Ecart taxes")
-            taxe_value = Taxe.get_attribute('value')
-            if taxe_value and taxe_value.startswith('-'):
-                taxe_value = taxe_value.lstrip('-')
-            time.sleep(1)
 
-            Taxe_saisi_input = self.get_input_by_label("Total taxes saisi")
-            Taxe_saisi_input.click()
-            time.sleep(0.5)
-            Taxe_saisi_input.clear()
-            Taxe_saisi_input.send_keys(taxe_value)
-            Taxe_saisi_input.send_keys(Keys.TAB)
-            time.sleep(1)
+                # HT calcule -> HT saisi
+                HT_input = self.get_input_by_label("HT calculé")
+                ht_value = HT_input.get_attribute('value')
+                time.sleep(1)
+
+                HT_saisi_input = self.get_input_by_label("HT saisi")
+                HT_saisi_input.click()
+                time.sleep(0.5)
+                HT_saisi_input.clear()
+                HT_saisi_input.send_keys(ht_value)
+                HT_saisi_input.send_keys(Keys.TAB)
+                time.sleep(1)
+
+                # Ecart taxes -> Total taxes saisi
+                Taxe = self.get_input_by_label("Ecart taxes")
+                taxe_value = Taxe.get_attribute('value')
+                if taxe_value and taxe_value.startswith('-'):
+                    taxe_value = taxe_value.lstrip('-')
+                time.sleep(1)
+
+                Taxe_saisi_input = self.get_input_by_label("Total taxes saisi")
+                Taxe_saisi_input.click()
+                time.sleep(0.5)
+                Taxe_saisi_input.clear()
+                Taxe_saisi_input.send_keys(taxe_value)
+                Taxe_saisi_input.send_keys(Keys.TAB)
+                time.sleep(1)
 
             # Date facture fournisseur
             date_input = self.get_input_by_label("Date fact.fou")
@@ -738,6 +762,7 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
     # ------------------------------------------------------------------
 
     def clique_enregistrer(self):
+        input("test test")
         driver = self.driver_manager.driver
         try:
             save_btn = driver.find_element(By.CSS_SELECTOR, "div.s_page_action_i.s_page_action_i_check")
@@ -775,7 +800,7 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
     # ------------------------------------------------------------------
 
     def traiter_fournisseur(self, url, codeFournisseur, factureFournisseur, DFF, Date,
-                            list_codeReception: List[str], nom="", typeF="FAF", dossier_import=""):
+                            list_codeReception: List[str], nom="", typeF="FAF", dossier_import="", ht="", taxex=""):
         """
         Traite un groupe : une facture fournisseur avec plusieurs codes reception.
 
@@ -809,7 +834,9 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
                 Date=Date,
                 list_codeReception=list_codeReception,
                 nom=nom,
-                dossier_import=dossier_import
+                dossier_import=dossier_import,
+                ht=ht,
+                taxex=taxex
             ):
                 self.logger.warning("Erreur saisie, tentative d'actualisation...")
 
@@ -822,7 +849,9 @@ class FacturationRobotV2(BaseRobot, WebResultMixin):
                         Date=Date,
                         list_codeReception=list_codeReception,
                         nom=nom,
-                        dossier_import=dossier_import
+                        dossier_import=dossier_import,
+                        ht=ht,
+                        taxex=taxex
                     ):
                         resultat['message'] = 'Erreur saisie apres actualisation'
                         error_info = self.handle_error_with_screenshot(

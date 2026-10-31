@@ -25,7 +25,7 @@ class SageRPAClient:
         Returns:
             dict avec path, filename, etc.
         """
-        print(f"📤 Upload du fichier: {file_path}")
+        print(f" Upload du fichier: {file_path}")
         
         with open(file_path, 'rb') as f:
             response = requests.post(
@@ -35,7 +35,7 @@ class SageRPAClient:
         
         if response.status_code == 200:
             result = response.json()
-            print(f"✅ Fichier uploadé: {result['saved_as']}")
+            print(f"Fichier uploadé: {result['saved_as']}")
             return result
         else:
             raise Exception(f"Erreur upload: {response.text}")
@@ -47,7 +47,7 @@ class SageRPAClient:
         Returns:
             task_id
         """
-        print(f"🚀 Déclenchement lettrage...")
+        print(f"Déclenchement lettrage...")
         
         payload = {
             'excel_file': excel_file,
@@ -65,7 +65,7 @@ class SageRPAClient:
         if response.status_code == 200:
             result = response.json()
             task_id = result['task_id']
-            print(f"✅ Tâche créée: {task_id}")
+            print(f"Tâche créée: {task_id}")
             return task_id
         else:
             raise Exception(f"Erreur déclenchement: {response.text}")
@@ -77,7 +77,7 @@ class SageRPAClient:
         Returns:
             task_id
         """
-        print(f"🚀 Déclenchement bonne commande...")
+        print(f"Déclenchement bonne commande...")
         
         payload = {
             'excel_file': excel_file,
@@ -92,7 +92,7 @@ class SageRPAClient:
         if response.status_code == 200:
             result = response.json()
             task_id = result['task_id']
-            print(f"✅ Tâche créée: {task_id}")
+            print(f"Tâche créée: {task_id}")
             return task_id
         else:
             raise Exception(f"Erreur déclenchement: {response.text}")
@@ -122,15 +122,15 @@ class SageRPAClient:
         while True:
             status = self.get_task_status(task_id)
             
-            print(f"📊 Statut: {status['status']}")
+            print(f" Statut: {status['status']}")
             
             if status['status'] == 'completed':
-                print(f"✅ Tâche terminée avec succès!")
-                print(f"📊 Résultats: {json.dumps(status['result'], indent=2)}")
+                print(f"Tâche terminée avec succès!")
+                print(f" Résultats: {json.dumps(status['result'], indent=2)}")
                 return status
             
             elif status['status'] == 'failed':
-                print(f"❌ Tâche échouée: {status['error']}")
+                print(f" Tâche échouée: {status['error']}")
                 return status
             
             time.sleep(poll_interval)
@@ -173,7 +173,7 @@ def exemple_lettrage_simple():
     result = client.wait_for_completion(task_id)
     
     print("\n" + "="*80)
-    print("✅ EXEMPLE 1 TERMINÉ")
+    print("EXEMPLE 1 TERMINÉ")
     print("="*80)
 
 
@@ -196,7 +196,7 @@ def exemple_upload_puis_lettrage():
     result = client.wait_for_completion(task_id)
     
     print("\n" + "="*80)
-    print("✅ EXEMPLE 2 TERMINÉ")
+    print("EXEMPLE 2 TERMINÉ")
     print("="*80)
 
 
@@ -218,7 +218,7 @@ def exemple_bonne_commande():
     result = client.wait_for_completion(task_id)
     
     print("\n" + "="*80)
-    print("✅ EXEMPLE 3 TERMINÉ")
+    print("EXEMPLE 3 TERMINÉ")
     print("="*80)
 
 
@@ -233,13 +233,13 @@ def exemple_lister_taches():
     # Lister toutes les tâches
     tasks = client.list_tasks()
     
-    print(f"\n📊 {tasks['total']} tâche(s) totale(s)\n")
+    print(f"\n {tasks['total']} tâche(s) totale(s)\n")
     
     for task in tasks['tasks']:
         print(f"  • {task['task_id'][:8]}... | {task['module']:15} | {task['status']}")
     
     print("\n" + "="*80)
-    print("✅ EXEMPLE 4 TERMINÉ")
+    print("EXEMPLE 4 TERMINÉ")
     print("="*80)
 
 
@@ -265,9 +265,9 @@ def exemple_async_multiple():
             task_id = client.trigger_lettrage(file, headless=True)
             task_ids.append(task_id)
         except Exception as e:
-            print(f"⚠️ Erreur fichier {file}: {e}")
+            print(f" Erreur fichier {file}: {e}")
     
-    print(f"\n✅ {len(task_ids)} tâche(s) lancée(s)")
+    print(f"\n{len(task_ids)} tâche(s) lancée(s)")
     
     # Attendre que toutes soient terminées
     print("\n⏳ Attente de la fin de toutes les tâches...")
@@ -287,19 +287,19 @@ def exemple_async_multiple():
         time.sleep(10)
     
     # Afficher les résultats
-    print("\n📊 RÉSULTATS:")
+    print("\n RÉSULTATS:")
     for task_id in task_ids:
         status = client.get_task_status(task_id)
         print(f"  • {task_id[:8]}... → {status['status']}")
     
     print("\n" + "="*80)
-    print("✅ EXEMPLE 5 TERMINÉ")
+    print("EXEMPLE 5 TERMINÉ")
     print("="*80)
 
 
 if __name__ == "__main__":
     print("\n" + "="*80)
-    print("🚀 CLIENT API SAGE X3 RPA - EXEMPLES")
+    print("CLIENT API SAGE X3 RPA - EXEMPLES")
     print("="*80)
     
     print("\nChoisissez un exemple:")
@@ -323,10 +323,10 @@ if __name__ == "__main__":
         elif choix == "5":
             exemple_async_multiple()
         else:
-            print("❌ Choix invalide")
+            print(" Choix invalide")
     
     except Exception as e:
-        print(f"\n❌ Erreur: {e}")
+        print(f"\n Erreur: {e}")
         import traceback
         traceback.print_exc()
     

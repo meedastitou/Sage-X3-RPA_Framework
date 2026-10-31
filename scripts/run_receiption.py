@@ -14,7 +14,7 @@ from pathlib import Path
 # Ajouter le dossier parent au PYTHONPATH
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from modules.receiption.ReceiptionRobot import ReceiptionRobot
+from modules.receiption.ReceiptionRobot_v2 import ReceiptionRobot
 from core.logger import Logger
 
 # URL par défaut du module réception Sage X3
@@ -49,7 +49,7 @@ def main():
     
     try:
         logger.info("="*80)
-        logger.info("🚀 DÉMARRAGE RÉCEPTION SAGE X3")
+        logger.info("DÉMARRAGE RÉCEPTION SAGE X3")
         logger.info("="*80)
         logger.info(f"Fichier: {args.file}")
         logger.info(f"Headless: {args.headless}")
@@ -64,16 +64,16 @@ def main():
         )
         
         logger.info("="*80)
-        logger.info("✅ RÉCEPTION TERMINÉE AVEC SUCCÈS")
+        logger.info("RÉCEPTION TERMINÉE AVEC SUCCÈS")
         logger.info("="*80)
         
         
     except KeyboardInterrupt:
-        logger.warning("⚠️ Interruption par l'utilisateur")
+        logger.warning(" Interruption par l'utilisateur")
         sys.exit(1)
         
     except Exception as e:
-        logger.error(f"❌ Erreur: {e}")
+        logger.error(f" Erreur: {e}")
         import traceback
         logger.error(traceback.format_exc())
         sys.exit(1)

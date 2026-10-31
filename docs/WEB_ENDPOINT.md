@@ -34,7 +34,7 @@ WEB_ENDPOINT_API_KEY=votre_api_key_ici
 | `multipart` | Form-data avec fichier | Résultats + Excel |
 | `base64` | JSON avec fichier encodé | Résultats + Excel en base64 |
 
-## 📤 Formats d'Envoi
+##  Formats d'Envoi
 
 ### **Mode: `json` (sans fichier)**
 
@@ -103,7 +103,7 @@ Content-Type: application/json
 }
 ```
 
-## 🚀 Utilisation dans le Code
+## Utilisation dans le Code
 
 ### **Option 1: Automatique (Recommandé)**
 
@@ -132,9 +132,9 @@ robot.run(excel_file='commandes.xlsx')
 result = robot.send_results_to_web(force=True)
 
 if result and result['success']:
-    print("✅ Résultats envoyés avec succès")
+    print("Résultats envoyés avec succès")
 else:
-    print(f"❌ Échec envoi: {result.get('message')}")
+    print(f" Échec envoi: {result.get('message')}")
 ```
 
 ### **Option 3: Standalone**
@@ -196,16 +196,16 @@ X-API-Key: sk-1234567890abcdef
 Si l'envoi échoue, le système réessaie automatiquement :
 
 ```
-📤 Tentative 1/3
-❌ Erreur: Connection timeout
+ Tentative 1/3
+ Erreur: Connection timeout
 ⏳ Nouvelle tentative dans 5s...
 
-📤 Tentative 2/3
-❌ Erreur: Connection timeout
+ Tentative 2/3
+ Erreur: Connection timeout
 ⏳ Nouvelle tentative dans 5s...
 
-📤 Tentative 3/3
-✅ Envoi réussi
+ Tentative 3/3
+Envoi réussi
 ```
 
 **Configuration :**
@@ -215,7 +215,7 @@ WEB_ENDPOINT_RETRY_COUNT=3
 WEB_ENDPOINT_RETRY_DELAY=5
 ```
 
-## 📊 Structure des Données Envoyées
+##  Structure des Données Envoyées
 
 ### **Bonne de Commande**
 
@@ -279,7 +279,7 @@ def recevoir_resultat():
     # JSON seulement
     if request.is_json:
         data = request.get_json()
-        print(f"✅ Résultat reçu: {data['module']} - {data['statut']}")
+        print(f"Résultat reçu: {data['module']} - {data['statut']}")
         
         # Sauvegarder en base de données...
         
@@ -293,7 +293,7 @@ def recevoir_resultat():
         if file:
             filename = f"rapport_{data['module']}_{data['timestamp']}.xlsx"
             file.save(f'uploads/{filename}')
-            print(f"✅ Fichier sauvegardé: {filename}")
+            print(f"Fichier sauvegardé: {filename}")
         
         return jsonify({'success': True, 'message': 'Résultat et fichier reçus'})
     
@@ -317,12 +317,12 @@ app.use(express.json());
 app.post('/resultat', upload.single('file'), (req, res) => {
   // Avec fichier
   if (req.file) {
-    console.log(`✅ Fichier reçu: ${req.file.originalname}`);
-    console.log(`📊 Données: ${JSON.stringify(req.body)}`);
+    console.log(`Fichier reçu: ${req.file.originalname}`);
+    console.log(` Données: ${JSON.stringify(req.body)}`);
   }
   // JSON seulement
   else {
-    console.log(`✅ Résultat reçu: ${req.body.module} - ${req.body.statut}`);
+    console.log(`Résultat reçu: ${req.body.module} - ${req.body.statut}`);
   }
   
   res.json({ success: true, message: 'Résultat reçu' });
@@ -340,7 +340,7 @@ header('Content-Type: application/json');
 // JSON
 if ($_SERVER['CONTENT_TYPE'] === 'application/json') {
     $data = json_decode(file_get_contents('php://input'), true);
-    error_log("✅ Résultat reçu: " . $data['module'] . " - " . $data['statut']);
+    error_log("Résultat reçu: " . $data['module'] . " - " . $data['statut']);
     
     // Sauvegarder en BDD...
     
@@ -355,7 +355,7 @@ else if (isset($_FILES['file'])) {
     $filename = "uploads/rapport_{$module}_" . time() . ".xlsx";
     move_uploaded_file($file['tmp_name'], $filename);
     
-    error_log("✅ Fichier sauvegardé: $filename");
+    error_log("Fichier sauvegardé: $filename");
     echo json_encode(['success' => true, 'message' => 'Résultat et fichier reçus']);
 }
 ?>
@@ -374,10 +374,10 @@ Exemple de log :
 🌐 ENVOI DES RÉSULTATS VERS L'ENDPOINT WEB
 ================================================================================
 📡 URL: http://jbel-annour.ma/resultat
-📊 Mode: json
-📤 Envoi JSON vers: http://jbel-annour.ma/resultat
-✅ Envoi réussi (Status: 200)
-✅ Envoi réussi (tentative 1/3)
+ Mode: json
+ Envoi JSON vers: http://jbel-annour.ma/resultat
+Envoi réussi (Status: 200)
+Envoi réussi (tentative 1/3)
 ================================================================================
 ```
 
@@ -410,4 +410,4 @@ robot.run(excel_file='commandes.xlsx')
 
 ---
 
-✅ **Envoi automatique des résultats configuré !**
+**Envoi automatique des résultats configuré !**

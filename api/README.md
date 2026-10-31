@@ -1,4 +1,4 @@
-# 🚀 API REST Sage X3 RPA
+# API REST Sage X3 RPA
 
 API REST pour déclencher les robots d'automatisation Sage X3 via HTTP.
 
@@ -11,7 +11,7 @@ cd C:\Users\m.astitou\Desktop\selenuim\sage-x3-rpa
 pip install fastapi uvicorn python-multipart
 ```
 
-## 🚀 Démarrage
+## Démarrage
 
 ```bash
 # Depuis le dossier sage-x3-rpa
@@ -197,7 +197,7 @@ with open('mon_fichier.xlsx', 'rb') as f:
         files={'file': f}
     )
     file_path = upload_response.json()['path']
-    print(f"✅ Fichier uploadé: {file_path}")
+    print(f"Fichier uploadé: {file_path}")
 
 # 2. Déclencher le lettrage
 trigger_response = requests.post(
@@ -208,20 +208,20 @@ trigger_response = requests.post(
     }
 )
 task_id = trigger_response.json()['task_id']
-print(f"✅ Tâche créée: {task_id}")
+print(f"Tâche créée: {task_id}")
 
 # 3. Vérifier le statut (polling)
 while True:
     status_response = requests.get(f'http://localhost:8000/api/task/{task_id}')
     status = status_response.json()
     
-    print(f"📊 Statut: {status['status']}")
+    print(f" Statut: {status['status']}")
     
     if status['status'] in ['completed', 'failed']:
         if status['status'] == 'completed':
-            print(f"✅ Succès: {status['result']}")
+            print(f"Succès: {status['result']}")
         else:
-            print(f"❌ Erreur: {status['error']}")
+            print(f" Erreur: {status['error']}")
         break
     
     time.sleep(5)  # Attendre 5 secondes avant de revérifier
@@ -245,7 +245,7 @@ while True:
 6. Copier le `task_id` de la réponse
 7. Aller sur `/api/task/{task_id}` pour vérifier le statut
 
-## 📊 Statuts des Tâches
+##  Statuts des Tâches
 
 | Statut | Description |
 |--------|-------------|
@@ -256,7 +256,7 @@ while True:
 
 ## 🔒 Sécurité
 
-⚠️ **ATTENTION** : Cette API n'a **pas d'authentification** par défaut !
+ **ATTENTION** : Cette API n'a **pas d'authentification** par défaut !
 
 Pour la production, ajoutez :
 1. **Authentification** (JWT, OAuth2)
@@ -264,7 +264,7 @@ Pour la production, ajoutez :
 3. **Rate limiting** (limite de requêtes)
 4. **CORS** configuré
 
-## 🚀 Déploiement en Production
+## Déploiement en Production
 
 ### Avec Gunicorn (Linux)
 
@@ -330,4 +330,4 @@ Modifier `api/main.py` pour :
 
 ---
 
-✅ **Votre API REST est prête !**
+**Votre API REST est prête !**

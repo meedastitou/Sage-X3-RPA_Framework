@@ -92,16 +92,16 @@ class OrderVairementRobot:
 
             if "s-disabled" in add_button.get_attribute("class"):
                 # Bouton désactivé 
-                self.logger.info("❌ Bouton Add désactivé, impossible de créer un nouveau ordre de virement")
+                self.logger.info(" Bouton Add désactivé, impossible de créer un nouveau ordre de virement")
                 return False
             else:
                 # Bouton activé
-                self.logger.info("✅ Nouvel ordre de virement créé")
+                self.logger.info("Nouvel ordre de virement créé")
                 add_button.click()
                 time.sleep(2)
                 return True
         except Exception as e:
-            self.logger.error(f"❌ Erreur création ordre de virement: {e}")
+            self.logger.error(f" Erreur création ordre de virement: {e}")
             return False
 
     def select_operation_type(self, driver : webdriver.Chrome, value="virement ordinaire"):
@@ -147,7 +147,7 @@ class OrderVairementRobot:
         try:
             type_operation = self._switch_to_type_operation(type_vairement)
             if not self.select_operation_type(driver, value=type_operation):
-                self.logger.error("❌ Impossible de sélectionner le type d'opération")
+                self.logger.error(" Impossible de sélectionner le type d'opération")
                 return False
 
             ref_input = self.parent.get_input_by_label("Réference")
@@ -197,7 +197,7 @@ class OrderVairementRobot:
                 self.parent.capture_error_screenshot()
             return True
         except Exception as e:
-            self.logger.error(f"❌ Erreur enregistrement: {e}")
+            self.logger.error(f" Erreur enregistrement: {e}")
             return False
         
     def read_numero_order_virement(self, driver, label: str = "N°Demande", timeout: int = 20) -> str | None:

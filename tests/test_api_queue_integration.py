@@ -346,20 +346,20 @@ def run_all_tests():
 
             try:
                 method()
-                print(f"  ✅ {method_name}")
+                print(f"  {method_name}")
                 passed += 1
             except AssertionError as e:
-                print(f"  ❌ {method_name}: {e}")
+                print(f"   {method_name}: {e}")
                 failed += 1
             except Exception as e:
-                print(f"  ❌ {method_name}: Exception - {e}")
+                print(f"   {method_name}: Exception - {e}")
                 traceback.print_exc()
                 failed += 1
 
     print("\n" + "=" * 60)
     print(f"RÉSULTATS: {passed}/{total} tests passés")
     if failed > 0:
-        print(f"⚠️  {failed} tests échoués")
+        print(f"  {failed} tests échoués")
     else:
         print("🎉 Tous les tests sont passés!")
     print("=" * 60)

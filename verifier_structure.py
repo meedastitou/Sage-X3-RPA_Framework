@@ -35,18 +35,18 @@ for file in files_to_check:
     full_path = os.path.join(base, file)
     if os.path.exists(full_path):
         present.append(file)
-        print(f"✅ {file}")
+        print(f"{file}")
     else:
         missing.append(file)
-        print(f"❌ {file} MANQUANT")
+        print(f" {file} MANQUANT")
 
-print(f"\n📊 Résumé:")
-print(f"   ✅ Présents: {len(present)}/{len(files_to_check)}")
-print(f"   ❌ Manquants: {len(missing)}/{len(files_to_check)}")
+print(f"\n Résumé:")
+print(f"   Présents: {len(present)}/{len(files_to_check)}")
+print(f"    Manquants: {len(missing)}/{len(files_to_check)}")
 
 if len(missing) == 0:
     print("\n🎉 STRUCTURE COMPLÈTE !")
 else:
-    print(f"\n⚠️  Fichiers manquants: {missing}")
+    print(f"\n  Fichiers manquants: {missing}")
 
 input("\nAppuyez sur Entrée pour fermer...")

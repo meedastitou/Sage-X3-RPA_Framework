@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+0# -*- coding: utf-8 -*-
 """
 Gestionnaire centralisé de Selenium WebDriver
 Supporte Chrome (par défaut) et Firefox, selon le paramètre `browser`.
@@ -181,7 +181,7 @@ class DriverManager:
             )
             return element
         except Exception as e:
-            self.logger.error(f"❌ Élément non trouvé: {value}")
+            self.logger.error(f" Élément non trouvé: {value}")
             raise
 
     def wait_for_clickable(self, by: By, value: str, timeout: int = 10):
@@ -191,7 +191,7 @@ class DriverManager:
             )
             return element
         except Exception as e:
-            self.logger.error(f"❌ Élément non cliquable: {value}")
+            self.logger.error(f" Élément non cliquable: {value}")
             raise
 
     def safe_click(self, element, use_js: bool = False):
@@ -221,7 +221,7 @@ class DriverManager:
             self.logger.info(f"📸 Screenshot: {filepath}")
             return filepath
         except Exception as e:
-            self.logger.error(f"❌ Erreur screenshot: {e}")
+            self.logger.error(f" Erreur screenshot: {e}")
             return None
 
     def stop(self):
@@ -231,7 +231,7 @@ class DriverManager:
                 self.driver.quit()
                 self.logger.info(f"✅ Driver {self.browser.capitalize()} arrêté")
             except Exception as e:
-                self.logger.error(f"❌ Erreur arrêt driver: {e}")
+                self.logger.error(f" Erreur arrêt driver: {e}")
             finally:
                 self.driver = None
 

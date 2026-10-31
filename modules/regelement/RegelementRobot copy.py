@@ -55,7 +55,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             email_f = df.iloc[0]['email_expediteur'] if 'email_expediteur' in df.columns else ""
 
             self.logger.info(f"{'='*80}")
-            self.logger.info(f"📊 {len(df)} ligne(s) à traiter")
+            self.logger.info(f" {len(df)} ligne(s) à traiter")
             self.logger.info(f"{'='*80}")
             
             # 2. CONNEXION SAGE
@@ -79,7 +79,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                     self.fournisseurs_traites += 1
                 else:
                     self.fournisseurs_echec += 1
-                    self.logger.warning(f"⚠️ Échec ligne {idx + 1}, mais on continue...")
+                    self.logger.warning(f" Échec ligne {idx + 1}, mais on continue...")
                 
                 time.sleep(1)
             
@@ -101,13 +101,13 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             
             self.logger.info("="*80)
             self.logger.info("🎉 PROCESSUS TERMINÉ")
-            self.logger.info(f"✅ {self.fournisseurs_traites} ligne(s) traitée(s)")
-            self.logger.info(f"❌ {self.fournisseurs_echec} ligne(s) en échec")
+            self.logger.info(f"{self.fournisseurs_traites} ligne(s) traitée(s)")
+            self.logger.info(f" {self.fournisseurs_echec} ligne(s) en échec")
             self.logger.info(f"💳 {self.total_factures} règlement(s) créé(s)")
             self.logger.info("="*80)
             
         except Exception as e:
-            self.logger.error(f"❌ ERREUR CRITIQUE: {e}")
+            self.logger.error(f" ERREUR CRITIQUE: {e}")
             import traceback
             self.logger.error(traceback.format_exc())
             
@@ -144,7 +144,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
         
         df = self.excel_handler.read_excel(excel_file, required_columns=colonnes_requises)
         
-        self.logger.info(f"✅ {len(df)} ligne(s) lues")
+        self.logger.info(f"{len(df)} ligne(s) lues")
         
         # Validation des colonnes importantes
         lignes_invalides = []
@@ -156,13 +156,13 @@ class RegelementRobot(BaseRobot, WebResultMixin):
 
             if colonnes_vides:
                 lignes_invalides.append(idx)
-                self.logger.warning(f"⚠️ Ligne {idx+1} ignorée - Colonnes vides: {', '.join(colonnes_vides)}")
+                self.logger.warning(f" Ligne {idx+1} ignorée - Colonnes vides: {', '.join(colonnes_vides)}")
         
         if lignes_invalides:
             df = df.drop(df.index[lignes_invalides])
-            self.logger.warning(f"⚠️ {len(lignes_invalides)} ligne(s) invalide(s) ignorée(s)")
+            self.logger.warning(f" {len(lignes_invalides)} ligne(s) invalide(s) ignorée(s)")
         
-        self.logger.info(f"✅ {len(df)} ligne(s) valides à traiter")
+        self.logger.info(f"{len(df)} ligne(s) valides à traiter")
         return df
     
     def _regrouper_donnees(self, df: pd.DataFrame) -> Dict[str, Any]:
@@ -203,7 +203,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             
             # 1. CRÉER LE RÈGLEMENT
             if not self._cree_regelement():
-                self.logger.warning(f"❌ Échec création règlement pour {num_facture}")
+                self.logger.warning(f" Échec création règlement pour {num_facture}")
                 error_info = self.handle_error_with_screenshot(
                     error_message='Erreur création règlement',
                     context=f"Facture {num_facture} - Création"
@@ -212,7 +212,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                 resultat['message'] = 'Erreur création règlement'
                 return resultat
             
-            self.logger.info(f"✅ Règlement créé")
+            self.logger.info(f"Règlement créé")
             
             # 2. REMPLIR LES CHAMPS HEADER
             self.logger.info("📝 Remplissage header...")
@@ -276,7 +276,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
 
 
             # if not self._selectionner_facture_simple(num_facture):
-            #     self.logger.warning(f"❌ Facture {num_facture} non trouvée")
+            #     self.logger.warning(f" Facture {num_facture} non trouvée")
             #     error_info = self.handle_error_with_screenshot(
             #         error_message=f'Facture {num_facture} non trouvée',
             #         context=f"Facture {num_facture} - Sélection"
@@ -290,9 +290,9 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             
             if self._remplir_detail_simple(num_facture):
                 self.total_factures += 1
-                self.logger.info(f"✅ Détail OK")
+                self.logger.info(f"Détail OK")
             else:
-                self.logger.warning(f"⚠️ Détail échec")
+                self.logger.warning(f" Détail échec")
                 error_info = self.handle_error_with_screenshot(
                     error_message=f'Échec remplissage détail paiement',
                     context=f"Chèque {num_cheque} - Détail paiement"
@@ -303,7 +303,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             if self._enregistrer_regelement():
                 resultat['statut'] = 'Succes'
                 resultat['message'] = f'Règlement créé pour {num_facture}'
-                self.logger.info(f"✅ Règlement enregistré")
+                self.logger.info(f"Règlement enregistré")
             else:
                 error_info = self.handle_error_with_screenshot(
                     error_message='Erreur enregistrement règlement',
@@ -314,7 +314,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             
         except Exception as e:
             resultat['message'] = f'Erreur: {str(e)}'
-            self.logger.error(f"❌ Erreur traitement ligne: {e}")
+            self.logger.error(f" Erreur traitement ligne: {e}")
             import traceback
             self.logger.error(traceback.format_exc())
             error_info = self.handle_error_with_screenshot(
@@ -342,7 +342,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
     def _afficher_resume(self, structure: Dict):
         """Afficher un résumé de la structure"""
         self.logger.info("="*80)
-        self.logger.info("📊 RÉSUMÉ DU TRAITEMENT")
+        self.logger.info(" RÉSUMÉ DU TRAITEMENT")
         self.logger.info("="*80)
         
         self.logger.info(f"🏢 {len(structure)} Fournisseur(s):")
@@ -398,11 +398,11 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             else:
                 resultat['message'] = f'{resultat["factures_traitees"]} factures OK, {resultat["factures_echec"]} factures échec'
             
-            self.logger.info(f"✅ Fournisseur {code_frs}: {resultat['message']}")
+            self.logger.info(f"Fournisseur {code_frs}: {resultat['message']}")
             
         except Exception as e:
             resultat['message'] = f'Erreur: {str(e)}'
-            self.logger.error(f"❌ Erreur fournisseur {code_frs}: {e}")
+            self.logger.error(f" Erreur fournisseur {code_frs}: {e}")
         finally:
             # Fermer le module avec confirmation d'abandon
             self.close_module(confirm_abandon=True)
@@ -427,9 +427,9 @@ class RegelementRobot(BaseRobot, WebResultMixin):
         try:
             # 1. CRÉER LE RÈGLEMENT
             if self._cree_regelement():
-                self.logger.info(f"✅ Règlement créé pour facture {num_facture}")
+                self.logger.info(f"Règlement créé pour facture {num_facture}")
             else:
-                self.logger.warning(f"❌ Échec création règlement pour facture {num_facture}")
+                self.logger.warning(f" Échec création règlement pour facture {num_facture}")
                 resultat['message'] = 'Erreur création règlement'
                 return resultat
             
@@ -451,7 +451,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             self.logger.info(f"🔍 Sélection facture: {num_facture}")
 
             if not self._selectionner_facture(num_facture, details):
-                self.logger.warning(f"❌ Facture {num_facture} non trouvée")
+                self.logger.warning(f" Facture {num_facture} non trouvée")
                 resultat['message'] = f'Facture {num_facture} non trouvée'
                 return resultat
             
@@ -462,9 +462,9 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                 if self._remplir_detail_paiement(detail, idx):
                     resultat['details_traites'] += 1
                     self.total_factures += 1
-                    self.logger.info(f"   ✅ Détail {detail['num_cheque']} OK")
+                    self.logger.info(f"   Détail {detail['num_cheque']} OK")
                 else:
-                    self.logger.warning(f"   ⚠️ Détail {detail['num_cheque']} échec")
+                    self.logger.warning(f"    Détail {detail['num_cheque']} échec")
 
                 time.sleep(0.5)
 
@@ -472,13 +472,13 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             if self._enregistrer_regelement():
                 resultat['statut'] = 'Succes'
                 resultat['message'] = f'{resultat["details_traites"]}/{len(details)} détail(s) traité(s)'
-                self.logger.info(f"✅ Facture {num_facture} enregistrée")
+                self.logger.info(f"Facture {num_facture} enregistrée")
             else:
                 resultat['message'] = 'Erreur enregistrement'
             
         except Exception as e:
             resultat['message'] = f'Erreur: {str(e)}'
-            self.logger.error(f"❌ Erreur facture {num_facture}: {e}")
+            self.logger.error(f" Erreur facture {num_facture}: {e}")
         
         return resultat
     
@@ -491,16 +491,16 @@ class RegelementRobot(BaseRobot, WebResultMixin):
 
             if "s-disabled" in add_button.get_attribute("class"):
                 # Bouton désactivé 
-                self.logger.info("❌ Bouton Add désactivé, impossible de créer un nouveau règlement")
+                self.logger.info(" Bouton Add désactivé, impossible de créer un nouveau règlement")
                 return False
             else:
                 # Bouton activé
-                self.logger.info("✅ Nouveau règlement créé")
+                self.logger.info("Nouveau règlement créé")
                 add_button.click()
                 time.sleep(2)
                 return True
         except Exception as e:
-            self.logger.error(f"❌ Erreur création règlement: {e}")
+            self.logger.error(f" Erreur création règlement: {e}")
             return False
 
     def _selectionner_facture(self, num_facture: str, details: List[Dict]) -> bool:
@@ -525,10 +525,10 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                     EC.element_to_be_clickable((By.XPATH, "//a[@title='Sélection factures']"))
                 )
                 factures_btn.click()
-                self.logger.info("✅ Section 'Sélection factures' ouverte")
+                self.logger.info("Section 'Sélection factures' ouverte")
                 time.sleep(1)
             except:
-                self.logger.warning("⚠️ Bouton 'Sélection factures' non trouvé, tableau déjà ouvert")
+                self.logger.warning(" Bouton 'Sélection factures' non trouvé, tableau déjà ouvert")
             
             # 2. Attendre le tableau
             WebDriverWait(driver, 10).until(
@@ -538,7 +538,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             
             # 3. Récupérer toutes les lignes
             rows = driver.find_elements(By.CSS_SELECTOR, ".s-grid-table-body tr.s-grid-row")
-            self.logger.info(f"📊 {len(rows)} ligne(s) trouvée(s) dans le tableau")
+            self.logger.info(f" {len(rows)} ligne(s) trouvée(s) dans le tableau")
             
             # 4. Parcourir les lignes pour trouver la facture
             for idx, row in enumerate(rows):
@@ -553,7 +553,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                     
                     # Vérifier si c'est notre facture
                     if num_facture in ligne_text:
-                        self.logger.info(f"✅ Facture trouvée: {ligne_text}")
+                        self.logger.info(f"Facture trouvée: {ligne_text}")
                         
                         # Récupérer la checkbox
                         checkbox = row.find_element(By.CSS_SELECTOR, "input[type='checkbox']")
@@ -587,7 +587,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                                 EC.element_to_be_clickable((By.XPATH, "//a[@aria-label='Oui']"))
                             )
                             oui_btn.click()
-                            self.logger.info("✅ Popup 'Oui' cliquée")
+                            self.logger.info("Popup 'Oui' cliquée")
                             time.sleep(1)
                         except:
                             self.logger.debug("ℹ️ Pas de popup de confirmation")
@@ -595,14 +595,14 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                         return True
                 
                 except Exception as e:
-                    self.logger.debug(f"⚠️ Erreur ligne {idx}: {e}")
+                    self.logger.debug(f" Erreur ligne {idx}: {e}")
                     continue
             
-            self.logger.error(f"❌ Facture {num_facture} non trouvée dans le tableau")
+            self.logger.error(f" Facture {num_facture} non trouvée dans le tableau")
             return False
             
         except Exception as e:
-            self.logger.error(f"❌ Erreur sélection facture: {e}")
+            self.logger.error(f" Erreur sélection facture: {e}")
             import traceback
             self.logger.error(traceback.format_exc())
             return False
@@ -624,7 +624,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             )
             # Trouver toutes les lignes
             rows = table.find_elements(By.CSS_SELECTOR, ".s-grid-table-body tr.s-grid-row")
-            self.logger.info(f"📊 {len(rows)} ligne(s) dans le tableau pour remplissage")
+            self.logger.info(f" {len(rows)} ligne(s) dans le tableau pour remplissage")
             
             # Chercher la bonne ligne (par numéro de ligne)
             target_row = None
@@ -717,7 +717,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             
             return True
         except Exception as e:
-            self.logger.error(f"❌ Erreur enregistrement: {e}")
+            self.logger.error(f" Erreur enregistrement: {e}")
             return False
         
     def _gere_popup_fournisseur(self):
@@ -733,7 +733,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             # Cliquer sur OK
             ok_button = dialog.find_element(By.LINK_TEXT, "OK")
             ok_button.click()
-            self.logger.info("✅ Popup 'OK' cliquée")
+            self.logger.info("Popup 'OK' cliquée")
             time.sleep(1)
         except:
             # Pas de popup
@@ -754,10 +754,10 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                     EC.element_to_be_clickable((By.XPATH, "//a[@title='Sélection factures']"))
                 )
                 factures_btn.click()
-                self.logger.info("✅ Section 'Sélection factures' ouverte")
+                self.logger.info("Section 'Sélection factures' ouverte")
                 time.sleep(1)
             except:
-                self.logger.warning("⚠️ Bouton 'Sélection factures' non trouvé, tableau déjà ouvert")
+                self.logger.warning(" Bouton 'Sélection factures' non trouvé, tableau déjà ouvert")
             
             # 2. Attendre le tableau
             WebDriverWait(driver, 10).until(
@@ -767,7 +767,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             
             # 3. Récupérer toutes les lignes
             rows = driver.find_elements(By.CSS_SELECTOR, ".s-grid-table-body tr.s-grid-row")
-            self.logger.info(f"📊 {len(rows)} ligne(s) trouvée(s)")
+            self.logger.info(f" {len(rows)} ligne(s) trouvée(s)")
             
             # 4. Chercher la facture
             for row in rows:
@@ -779,7 +779,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                     ligne_text = row.text.strip()
                     
                     if num_facture in ligne_text:
-                        self.logger.info(f"✅ Facture trouvée: {ligne_text}")
+                        self.logger.info(f"Facture trouvée: {ligne_text}")
                         
                         # Cocher la facture
                         checkbox = row.find_element(By.CSS_SELECTOR, "input[type='checkbox']")
@@ -805,11 +805,11 @@ class RegelementRobot(BaseRobot, WebResultMixin):
                 except:
                     continue
             
-            self.logger.error(f"❌ Facture {num_facture} non trouvée")
+            self.logger.error(f" Facture {num_facture} non trouvée")
             return False
             
         except Exception as e:
-            self.logger.error(f"❌ Erreur sélection facture: {e}")
+            self.logger.error(f" Erreur sélection facture: {e}")
             self.handle_error_with_screenshot(
                 error_message=str(e),
                 context="Sélection facture - Exception"
@@ -839,7 +839,7 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             target_row = rows[0]
             cells = target_row.find_elements(By.CSS_SELECTOR, ".s-inplace-input")
             
-            self.logger.info(f"📊 {len(cells)} cellules trouvées")
+            self.logger.info(f" {len(cells)} cellules trouvées")
             
             # Numéro de Facture
             self.logger.info("Remplissage facture...")

@@ -54,7 +54,7 @@ class VairementInternationalRobot(BaseRobot, WebResultMixin):
             # email_f = df.iloc[0]['email_expediteur'] if 'email_expediteur' in df.columns else "astitoumd@gmail.com"
 
             self.logger.info(f"{'='*80}")
-            # self.logger.info(f"📊 {len(df)} ligne(s) à traiter")
+            # self.logger.info(f" {len(df)} ligne(s) à traiter")
             self.logger.info(f"{'='*80}")
             
             # 2. CONNEXION SAGE
@@ -71,7 +71,7 @@ class VairementInternationalRobot(BaseRobot, WebResultMixin):
             # # 3. TRAITER CHAQUE LIGNE
             for idx, row in df.iterrows():
                
-                self.logger.info(f"🚀 Ligne {idx + 1} - FIN rencontrée, arrêt du traitement.")
+                self.logger.info(f"Ligne {idx + 1} - FIN rencontrée, arrêt du traitement.")
                 time.sleep(5)
                 self.wait_for_spinner_to_disappear(self.driver_manager.driver, timeout=90000)
                 self.wait_for_element_to_appear(self.driver_manager.driver, By.CSS_SELECTOR, "div.s-page-content-slot", timeout=60000)
@@ -86,7 +86,7 @@ class VairementInternationalRobot(BaseRobot, WebResultMixin):
                     self.fournisseurs_traites += 1
                 else:
                     self.fournisseurs_echec += 1
-                    self.logger.warning(f"⚠️ Échec ligne {idx + 1}, mais on continue...")
+                    self.logger.warning(f" Échec ligne {idx + 1}, mais on continue...")
                 
                 time.sleep(1)
             
@@ -108,13 +108,13 @@ class VairementInternationalRobot(BaseRobot, WebResultMixin):
             
             self.logger.info("="*80)
             self.logger.info("🎉 PROCESSUS TERMINÉ")
-            self.logger.info(f"✅ {self.fournisseurs_traites} ligne(s) traitée(s)")
-            self.logger.info(f"❌ {self.fournisseurs_echec} ligne(s) en échec")
+            self.logger.info(f"{self.fournisseurs_traites} ligne(s) traitée(s)")
+            self.logger.info(f" {self.fournisseurs_echec} ligne(s) en échec")
             self.logger.info(f"💳 {self.total_factures} règlement(s) créé(s)")
             self.logger.info("="*80)
             
         except Exception as e:
-            self.logger.error(f"❌ ERREUR CRITIQUE: {e}")
+            self.logger.error(f" ERREUR CRITIQUE: {e}")
             import traceback
             self.logger.error(traceback.format_exc())
             
@@ -156,7 +156,7 @@ class VairementInternationalRobot(BaseRobot, WebResultMixin):
         
         df = self.excel_handler.read_excel(excel_file, required_columns=colonnes_requises)
         
-        self.logger.info(f"✅ {len(df)} ligne(s) lues")
+        self.logger.info(f"{len(df)} ligne(s) lues")
         
         # Validation des colonnes importantes
         lignes_invalides = []
@@ -168,13 +168,13 @@ class VairementInternationalRobot(BaseRobot, WebResultMixin):
 
             if colonnes_vides:
                 lignes_invalides.append(idx)
-                self.logger.warning(f"⚠️ Ligne {idx+1} ignorée - Colonnes vides: {', '.join(colonnes_vides)}")
+                self.logger.warning(f" Ligne {idx+1} ignorée - Colonnes vides: {', '.join(colonnes_vides)}")
         
         if lignes_invalides:
             df = df.drop(df.index[lignes_invalides])
-            self.logger.warning(f"⚠️ {len(lignes_invalides)} ligne(s) invalide(s) ignorée(s)")
+            self.logger.warning(f" {len(lignes_invalides)} ligne(s) invalide(s) ignorée(s)")
         
-        self.logger.info(f"✅ {len(df)} ligne(s) valides à traiter")
+        self.logger.info(f"{len(df)} ligne(s) valides à traiter")
         return df
     
     def _choisir_mode_regelement(self, mode: str) -> bool:
@@ -232,7 +232,7 @@ class VairementInternationalRobot(BaseRobot, WebResultMixin):
             self.logger.info(f"🏢 Fournisseur: {code_frs}")
             self.logger.info(f"📋 Facture: {num_facture} - ")
             self.logger.info(f"💰 Montant: {montant} | Chèque: {num_cheque}")
-            self.logger.info(f"📅 Date Réel: {date_reel} | Date Échéance: {date_echeance}")
+            self.logger.info(f" Date Réel: {date_reel} | Date Échéance: {date_echeance}")
 
             # =================================================================
             # verfier est-ce c'est un reglement de l'avancement sans facture ou pas
@@ -243,7 +243,7 @@ class VairementInternationalRobot(BaseRobot, WebResultMixin):
             input("Vérifier le type de règlement, puis appuyer sur Entrée pour continuer...")
             # 1. CRÉER LE RÈGLEMENT
             if not self._cree_regelement():
-                self.logger.warning(f"❌ Échec création règlement pour {num_facture}")
+                self.logger.warning(f" Échec création règlement pour {num_facture}")
                 error_info = self.handle_error_with_screenshot(
                     error_message='Erreur création règlement',
                     context=f"Facture {num_facture} - Création"
@@ -252,7 +252,7 @@ class VairementInternationalRobot(BaseRobot, WebResultMixin):
                 resultat['message'] = 'Erreur création règlement'
                 return resultat
             
-            self.logger.info(f"✅ Règlement créé")
+            self.logger.info(f"Règlement créé")
 
             # =================================================================
             # =================================================================
@@ -344,7 +344,7 @@ class VairementInternationalRobot(BaseRobot, WebResultMixin):
             time.sleep(0.5)
 
             if self._check_num_cheque_deja_utilise(num_cheque):
-                self.logger.warning(f"⚠️ Numéro de chèque {num_cheque} déjà utilisé")
+                self.logger.warning(f" Numéro de chèque {num_cheque} déjà utilisé")
                 error_info = self.handle_error_with_screenshot(
                     error_message=f'Numéro de chèque {num_cheque} déjà utilisé',
                     context=f"Chèque {num_cheque}"
@@ -405,9 +405,9 @@ class VairementInternationalRobot(BaseRobot, WebResultMixin):
                 self.logger.info(f"🔍 REMPLIR les détails de paiement pour la facture ")       
                 if self._remplir_detail_simple(num_facture):
                     self.total_factures += 1
-                    self.logger.info(f"✅ Détail OK")
+                    self.logger.info(f"Détail OK")
                 else:
-                    self.logger.warning(f"⚠️ Détail échec")
+                    self.logger.warning(f" Détail échec")
                     error_info = self.handle_error_with_screenshot(
                         error_message=f'Échec remplissage détail paiement',
                         context=f"Chèque {num_cheque} - Détail paiement"
@@ -428,7 +428,7 @@ class VairementInternationalRobot(BaseRobot, WebResultMixin):
                 reg_num = input_reg.get_attribute("value")
                 resultat['statut'] = 'Succes'
                 resultat['message'] = f'Règlement créé pour {num_facture}, N° Règlement: {reg_num}'
-                self.logger.info(f"✅ Règlement enregistré")
+                self.logger.info(f"Règlement enregistré")
             else:
                 error_info = self.handle_error_with_screenshot(
                     error_message='Erreur enregistrement règlement',
@@ -439,7 +439,7 @@ class VairementInternationalRobot(BaseRobot, WebResultMixin):
             
         except Exception as e:
             resultat['message'] = f'Erreur: {str(e)}'
-            self.logger.error(f"❌ Erreur traitement ligne: {e}")
+            self.logger.error(f" Erreur traitement ligne: {e}")
             import traceback
             self.logger.error(traceback.format_exc())
             error_info = self.handle_error_with_screenshot(
@@ -481,7 +481,7 @@ class VairementInternationalRobot(BaseRobot, WebResultMixin):
     def _afficher_resume(self, structure: Dict):
         """Afficher un résumé de la structure"""
         self.logger.info("="*80)
-        self.logger.info("📊 RÉSUMÉ DU TRAITEMENT")
+        self.logger.info(" RÉSUMÉ DU TRAITEMENT")
         self.logger.info("="*80)
         
         self.logger.info(f"🏢 {len(structure)} Fournisseur(s):")
@@ -505,16 +505,16 @@ class VairementInternationalRobot(BaseRobot, WebResultMixin):
 
             if "s-disabled" in add_button.get_attribute("class"):
                 # Bouton désactivé 
-                self.logger.info("❌ Bouton Add désactivé, impossible de créer un nouveau règlement")
+                self.logger.info(" Bouton Add désactivé, impossible de créer un nouveau règlement")
                 return False
             else:
                 # Bouton activé
-                self.logger.info("✅ Nouveau règlement créé")
+                self.logger.info("Nouveau règlement créé")
                 add_button.click()
                 time.sleep(2)
                 return True
         except Exception as e:
-            self.logger.error(f"❌ Erreur création règlement: {e}")
+            self.logger.error(f" Erreur création règlement: {e}")
             return False
 
     def _enregistrer_regelement(self) -> bool:
@@ -539,7 +539,7 @@ class VairementInternationalRobot(BaseRobot, WebResultMixin):
             
             return True
         except Exception as e:
-            self.logger.error(f"❌ Erreur enregistrement: {e}")
+            self.logger.error(f" Erreur enregistrement: {e}")
             return False
         
     def _gere_popup_fournisseur(self):
@@ -555,7 +555,7 @@ class VairementInternationalRobot(BaseRobot, WebResultMixin):
             # Cliquer sur OK
             ok_button = dialog.find_element(By.LINK_TEXT, "OK")
             ok_button.click()
-            self.logger.info("✅ Popup 'OK' cliquée")
+            self.logger.info("Popup 'OK' cliquée")
             time.sleep(1)
         except:
             # Pas de popup
@@ -585,7 +585,7 @@ class VairementInternationalRobot(BaseRobot, WebResultMixin):
             target_row = rows_fixed[0]
             cells_fixed = target_row.find_elements(By.CSS_SELECTOR, ".s-inplace-input")
             
-            self.logger.info(f"📊 {len(cells_fixed)} cellules trouvées")
+            self.logger.info(f" {len(cells_fixed)} cellules trouvées")
             time.sleep(5)
             # Cellule 1: DEC
             self.logger.info("Remplissage DEC...")
@@ -600,7 +600,7 @@ class VairementInternationalRobot(BaseRobot, WebResultMixin):
             
             time.sleep(5)
             rows_scrool = driver.find_elements(By.CSS_SELECTOR, ".s-page-content-slot .s-grid-slot-table-scroll .s-grid-table-body tr.s-grid-row")
-            self.logger.info(f"📊 {len(rows_scrool)} ligne(s) trouvée(s) dans la partie scroll du tableau")
+            self.logger.info(f" {len(rows_scrool)} ligne(s) trouvée(s) dans la partie scroll du tableau")
             if not rows_scrool:
                 self.logger.warning("Aucune ligne trouvée dans le tableau")
                 return False
@@ -609,7 +609,7 @@ class VairementInternationalRobot(BaseRobot, WebResultMixin):
             target_row = rows_scrool[0]
             cells_scrool = target_row.find_elements(By.CSS_SELECTOR, ".s-inplace-input")
             
-            self.logger.info(f"📊 {len(cells_scrool)} cellules trouvées")
+            self.logger.info(f" {len(cells_scrool)} cellules trouvées")
             # Cellule 2: FAFOU
             self.logger.info("Remplissage FAFOU...")
             if len(cells_scrool) > 0:

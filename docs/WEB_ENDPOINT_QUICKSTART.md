@@ -31,7 +31,7 @@ pip install requests
 python tests/test_web_endpoint.py
 ```
 
-## 🚀 Utilisation
+## Utilisation
 
 ### **Automatique (Recommandé)**
 
@@ -131,4 +131,4 @@ Voir `docs/WEB_ENDPOINT.md` pour :
 
 ---
 
-✅ **Configuration terminée en 3 minutes !**
+**Configuration terminée en 3 minutes !**

@@ -50,7 +50,7 @@ def main():
     
     try:
         logger.info("="*80)
-        logger.info("🚀 DÉMARRAGE LETTRAGE SAGE X3")
+        logger.info("DÉMARRAGE LETTRAGE SAGE X3")
         logger.info("="*80)
         logger.info(f"Fichier: {args.file}")
         logger.info(f"Headless: {args.headless}")
@@ -65,17 +65,17 @@ def main():
         )
         
         logger.info("="*80)
-        logger.info("✅ LETTRAGE TERMINÉ AVEC SUCCÈS")
+        logger.info("LETTRAGE TERMINÉ AVEC SUCCÈS")
         logger.info("="*80)
         
         input("\n⏸️ Appuyez sur Entrée pour fermer...")
         
     except KeyboardInterrupt:
-        logger.warning("\n⚠️ Interruption par l'utilisateur")
+        logger.warning("\n Interruption par l'utilisateur")
         sys.exit(1)
         
     except Exception as e:
-        logger.error(f"❌ Erreur: {e}")
+        logger.error(f" Erreur: {e}")
         import traceback
         logger.error(traceback.format_exc())
         input("\n⏸️ Appuyez sur Entrée...")

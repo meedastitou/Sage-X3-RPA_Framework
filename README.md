@@ -4,7 +4,7 @@ Framework professionnel et scalable pour l'automatisation de Sage X3.
 
 ## 🎯 Modules Disponibles
 
-- ✅ **Lettrage** : Lettrage automatique des fournisseurs (Excel, SQL, IA)
+- **Lettrage** : Lettrage automatique des fournisseurs (Excel, SQL, IA)
 - 🔜 **Facturation** : Génération automatique de factures
 - 🔜 **Reporting** : Génération de rapports automatisés
 
@@ -21,7 +21,7 @@ sage-x3-rpa/
 └── tests/           # Tests unitaires
 ```
 
-## 🚀 Installation
+## Installation
 
 ### 1. Installer les dépendances
 ```bash
@@ -44,7 +44,7 @@ python scripts\run_lettrage.py --file data\input\excel\fournisseurs.xlsx
 python scripts\run_lettrage.py --file data\input\excel\fournisseurs.xlsx --headless
 ```
 
-## 📊 Format des fichiers Excel
+##  Format des fichiers Excel
 
 ### Lettrage
 Le fichier Excel doit contenir les colonnes suivantes :
@@ -101,9 +101,9 @@ Les logs sont sauvegardés dans `data/output/logs/` avec :
 
 ## 🔐 Sécurité
 
-- ❌ Ne jamais committer `.env` ou `credentials.json`
-- ✅ Utiliser des variables d'environnement
-- ✅ Ajouter les fichiers sensibles dans `.gitignore`
+-  Ne jamais committer `.env` ou `credentials.json`
+- Utiliser des variables d'environnement
+- Ajouter les fichiers sensibles dans `.gitignore`
 
 ## 🎯 Roadmap
 

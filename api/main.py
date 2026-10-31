@@ -102,6 +102,7 @@ class ImputationDataRequest(BaseModel):
     donnees: List[Dict[str, Any]]
     email_expediteur: str
     headless: bool = True
+
 class DFFAnnulationControlRequest(BaseModel):
     """Requête pour déclencher l'annulation Control avec données JSON"""
     donnees: List[Dict[str, Any]]
@@ -558,6 +559,7 @@ async def root():
             "regelement_data": "/api/regelement/data",
             "receiption_data": "/api/receiption/data",
             "imputation_data": "/api/imputation/data",
+            "update_bon_commande_data": "/api/update-bon-commande/data",
             "upload": "/api/upload",
             "status": "/api/task/{task_id}",
             "tasks": "/api/tasks"
@@ -1340,6 +1342,137 @@ async def trigger_dff_annulation_control_from_data(request : DFFAnnulationContro
         task_id=task_id,
         status='pending',
         module='dff_annulation_control',
+        started_at=None,
+        completed_at=None,
+        result=None,
+        error=None
+    )
+
+@app.post("/api/change_tarif/data", response_model=TaskStatus)
+async def trigger_change_tarif_from_data(request: ChangeTarifRequest):
+    """
+    Déclencher une tâche de changement de tarif avec données JSON
+    Les données sont converties en Excel et enqueued pour le worker
+    """
+    if not request.email_expediteur:
+        raise HTTPException(status_code=400, detail="email_expediteur est requis")
+
+    required_columns = ['code_article', 'tarif_achat']
+    if request.donnees:
+        first_row = request.donnees[0]
+        missing = [col for col in required_columns if col not in first_row]
+        if missing:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Colonnes manquantes: {', '.join(missing)}. Requises: {', '.join(required_columns)}"
+            )
+
+    excel_file = save_change_tarif_to_excel(request.donnees, request.email_expediteur)
+
+    task_id = add_task(
+        file_path=excel_file,
+        email=request.email_expediteur,
+        task_type="change_tarif"
+    )
+
+    logger.info(f"📋 Tâche changement de tarif (JSON) enqueued: {task_id}")
+
+    return TaskStatus(
+        task_id=task_id,
+        status='pending',
+        module='change_tarif',
+        started_at=None,
+        completed_at=None,
+        result=None,
+        error=None
+    )
+
+@app.post("/api/update-bon-commande/data", response_model=TaskStatus)
+async def trigger_update_bon_commande_from_data(request: UpdateBonCommandeRequest):
+    """
+    Déclencher une tâche de mise à jour de bon de commande avec données JSON
+    Les données sont validées puis enqueued pour le worker
+
+    Exemple:
+    ```json
+    {
+        "bon_commande": {
+            "numero": "BC2024-00123"
+        },
+        "actions": [
+            {
+                "type": "UPDATE_FLAG",
+                "target": { "bon_commande": "BC2024-00123" },
+                "payload": { "flag": "solde", "value": true }
+            },
+            {
+                "type": "UPDATE_LIGNE_PRIX",
+                "target": { "bon_commande": "BC2024-00123", "ligne": 1, "article": "ART001" },
+                "payload": { "nouveau_prix": 95.5 }
+            },
+            {
+                "type": "UPDATE_LIGNE_QTE",
+                "target": { "bon_commande": "BC2024-00123", "ligne": 2, "article": "ART045" },
+                "payload": { "nouvelle_qte": 15 }
+            }
+        ],
+        "email_expediteur": "user@example.com",
+        "mode": "permissif",
+        "headless": true
+    }
+    ```
+    """
+    # Valider email
+    if not request.email_expediteur:
+        raise HTTPException(status_code=400, detail="email_expediteur est requis")
+
+    # Valider bon_commande
+    if not request.bon_commande or 'numero' not in request.bon_commande:
+        raise HTTPException(status_code=400, detail="bon_commande.numero est requis")
+
+    # Valider actions
+    if not request.actions or len(request.actions) == 0:
+        raise HTTPException(status_code=400, detail="Au moins une action est requise")
+
+    # Valider mode
+    if request.mode not in ["strict", "permissif"]:
+        raise HTTPException(status_code=400, detail="mode doit être 'strict' ou 'permissif'")
+
+    # Importer le validator pour validation approfondie
+    from modules.update_bon_commande.validators import ActionValidator
+
+    validator = ActionValidator()
+
+    # Valider chaque action
+    for idx, action in enumerate(request.actions, 1):
+        is_valid, error = validator.validate(action)
+        if not is_valid:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Action #{idx} invalide: {error}"
+            )
+
+    # Préparer les détails pour la tâche (liste des types d'actions)
+    details = [action['type'] for action in request.actions]
+
+    # Enqueue la tâche avec les données JSON directement
+    task_id = add_task(
+        email=request.email_expediteur,
+        task_type="update_bon_commande",
+        details=details,
+        # Données supplémentaires passées via **extra_data
+        bon_commande=request.bon_commande,
+        actions=request.actions,
+        mode=request.mode,
+        headless=request.headless
+    )
+
+    logger.info(f"📋 Tâche update_bon_commande enqueued: {task_id} (BC: {request.bon_commande['numero']}, {len(request.actions)} actions)")
+
+    return TaskStatus(
+        task_id=task_id,
+        status='pending',
+        module='update_bon_commande',
         started_at=None,
         completed_at=None,
         result=None,

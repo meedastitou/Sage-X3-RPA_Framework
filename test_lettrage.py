@@ -36,13 +36,13 @@ def main():
         )
         
         logger.info("="*80)
-        logger.info("✅ TEST TERMINÉ")
+        logger.info("TEST TERMINÉ")
         logger.info("="*80)
         
         input("\n⏸️ Appuyez sur Entrée pour fermer...")
         
     except Exception as e:
-        logger.error(f"❌ Erreur: {e}")
+        logger.error(f" Erreur: {e}")
         import traceback
         traceback.print_exc()
         input("\n⏸️ Appuyez sur Entrée...")
