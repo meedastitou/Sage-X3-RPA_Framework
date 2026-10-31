@@ -11,20 +11,22 @@ QUEUE_FILE = BASE_DIR / 'data' / 'queue' / 'tasks.json'
 # S'assurer que le dossier existe
 QUEUE_FILE.parent.mkdir(parents=True, exist_ok=True)
 
-def add_task(file_path, email, task_type="bon_commande", societe=None, details=None):
+def add_task(file_path=None, email=None, task_type="bon_commande", societe=None, details=None, **extra_data):
     """Ajouter une tâche à la file
 
     Args:
-        file_path: Chemin du fichier Excel
+        file_path: Chemin du fichier Excel (optionnel pour certains types)
         email: Email du destinataire
-        task_type: Type de tâche - "bon_commande" ou "receiption"
+        task_type: Type de tâche - "bon_commande", "receiption", "update_bon_commande", etc.
         societe: Société (optionnel)
         details: Liste de valeurs (ex: ["da123", "da213"] ou ["ff123", "ff586"])
+        **extra_data: Données supplémentaires à ajouter à la tâche (ex: bon_commande, actions, mode)
     """
     tasks = load_queue()
 
     # Valider le type de tâche
-    valid_types = ["bon_commande", "receiption", "facturation", "regelement", "vairement", "imputation", "demmande_achat", "dff_annulation_control"]
+    valid_types = ["bon_commande", "receiption", "facturation", "regelement", "vairement", "imputation",
+                   "demmande_achat", "dff_annulation_control", "change_tarif", "update_bon_commande", "signature_da"]
     if task_type not in valid_types:
         raise ValueError(f"Type de tâche invalide. Doit être: {', '.join(valid_types)}")
 
@@ -32,16 +34,24 @@ def add_task(file_path, email, task_type="bon_commande", societe=None, details=N
         "id": str(uuid.uuid4()),
         "status": "pending",
         "task_type": task_type,
-        "file": file_path,
         "email": email,
         "created_at": datetime.now().isoformat(),
         "started_at": None,
         "completed_at": None
     }
+
+    # Ajouter le file_path seulement s'il est fourni
+    if file_path:
+        task["file"] = file_path
+
     if societe:
         task["societe"] = societe
     if details:
         task["details"] = details
+
+    # Ajouter toutes les données supplémentaires
+    task.update(extra_data)
+
     tasks.append(task)
     save_queue(tasks)
     print(f"Tâche ajoutée: {task['id']} (type: {task_type})")
