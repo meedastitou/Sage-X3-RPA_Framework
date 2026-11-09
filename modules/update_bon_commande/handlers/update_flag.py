@@ -38,63 +38,21 @@ class UpdateFlagHandler(ActionHandler):
         self.logger.info(f"🔄 Modification du flag '{flag_name}' à {value}")
 
         try:
-            # 1. Trouver le checkbox par son label
-            checkbox = self.robot.get_input_by_label(flag_name)
-
-            if checkbox is None:
-                return self.build_result(
-                    'UPDATE_FLAG',
-                    'Echec',
-                    f"Checkbox '{flag_name}' introuvable",
-                    flag=flag_name,
-                    value=value
-                )
-
-            # 2. Vérifier l'état actuel
-            is_checked = checkbox.is_selected()
-            self.logger.info(f"État actuel du flag '{flag_name}': {is_checked}")
-
-            # 3. Si l'état est déjà correct, ne rien faire
-            if is_checked == value:
-                self.logger.info(f"✅ Flag '{flag_name}' déjà à la valeur souhaitée: {value}")
-                return self.build_result(
-                    'UPDATE_FLAG',
-                    'Succes',
-                    f"Flag '{flag_name}' déjà à la valeur {value} (aucune modification nécessaire)",
-                    flag=flag_name,
-                    value=value,
-                    modified=False
-                )
-
-            # 4. Cliquer sur le label pour changer l'état
-            label = self.driver.find_element(
-                By.CSS_SELECTOR,
-                f"label[for='{checkbox.get_attribute('id')}']"
+            # 1. Trouver le button par son text
+            button_solder_commande = self.driver.find_element(
+                By.XPATH,
+                "//a[contains(text(), 'Solder commande')]"
             )
-            label.click()
-            time.sleep(0.5)
 
-            # 5. Vérifier que le changement a bien été appliqué
-            new_state = checkbox.is_selected()
-            if new_state == value:
-                self.logger.info(f"✅ Flag '{flag_name}' modifié avec succès à {value}")
-                return self.build_result(
-                    'UPDATE_FLAG',
-                    'Succes',
-                    f"Flag '{flag_name}' modifié de {is_checked} à {value}",
-                    flag=flag_name,
-                    value=value,
-                    modified=True,
-                    ancien_etat=is_checked
-                )
-            else:
+            if button_solder_commande is None:
                 return self.build_result(
                     'UPDATE_FLAG',
                     'Echec',
-                    f"Le flag '{flag_name}' n'a pas changé (état: {new_state}, attendu: {value})",
+                    f"Button '{flag_name}' introuvable",
                     flag=flag_name,
                     value=value
                 )
 
+            input(f"Appuyez sur Entrée pour continuer après avoir modifié le flag '{flag_name}' dans l'interface...")
         except Exception as e:
             return self.handle_error('UPDATE_FLAG', e, f"Modification flag '{flag_name}'")
