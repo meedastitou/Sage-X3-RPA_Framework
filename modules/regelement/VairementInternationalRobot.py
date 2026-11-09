@@ -99,6 +99,8 @@ class VairementInternationalRobot(BaseRobot, WebResultMixin):
                 'total_regelements': self.total_factures,
                 'message': f'{self.fournisseurs_traites} ligne(s) traitée(s), {self.total_factures} règlement(s)'
             })
+
+            
             
             # 5. SAUVEGARDER RAPPORT
             self.save_report()

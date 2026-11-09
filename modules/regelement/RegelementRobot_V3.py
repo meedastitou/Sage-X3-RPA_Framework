@@ -435,6 +435,16 @@ class RegelementRobot(BaseRobot, WebResultMixin):
             self.logger.info("📝 Remplissage header...")
 
             # Fournisseur
+            fournisseur_input = self.get_input_by_label("Site")
+            fournisseur_input.click()
+            time.sleep(0.5)
+            fournisseur_input.clear()
+            fournisseur_input.send_keys("101")
+            fournisseur_input.send_keys(Keys.TAB)
+            time.sleep(1)
+
+
+            # Fournisseur
             fournisseur_input = self.get_input_by_label("Tiers")
             fournisseur_input.click()
             time.sleep(0.5)
@@ -733,9 +743,10 @@ class RegelementRobot(BaseRobot, WebResultMixin):
 
         placeholders = ",".join("?" * len(refs))
         query = f"""
-            SELECT YCOM_0, AMTCUR_0
-            FROM BASE1.PAYMENTH
-            WHERE YCOM_0 IN ({placeholders}) AND CREUSR_0 = 'RPA'
+            SELECT PAY.YCOM_0, PAY.AMTCUR_0
+            FROM BASE1.PAYMENTH PAY
+            LEFT JOIN BASE1.XREGLEMENTF XREG ON XREG.AVIS_0=PAY.NUM_0
+            WHERE PAY.YCOM_0 IN ({placeholders}) AND PAY.CREUSR_0 = 'RPA' AND XREG.ETAT_0<>12
         """
 
         conn = None

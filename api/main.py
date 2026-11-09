@@ -1348,8 +1348,8 @@ async def trigger_dff_annulation_control_from_data(request : DFFAnnulationContro
         error=None
     )
 
-@app.post("/api/change_tarif/data", response_model=TaskStatus)
-async def trigger_change_tarif_from_data(request: ChangeTarifRequest):
+#@app.post("/api/change_tarif/data", response_model=TaskStatus)
+#async def trigger_change_tarif_from_data(request: ChangeTarifRequest):
     """
     Déclencher une tâche de changement de tarif avec données JSON
     Les données sont converties en Excel et enqueued pour le worker
@@ -1387,8 +1387,8 @@ async def trigger_change_tarif_from_data(request: ChangeTarifRequest):
         error=None
     )
 
-@app.post("/api/update-bon-commande/data", response_model=TaskStatus)
-async def trigger_update_bon_commande_from_data(request: UpdateBonCommandeRequest):
+#@app.post("/api/update-bon-commande/data", response_model=TaskStatus)
+#async def trigger_update_bon_commande_from_data(request: UpdateBonCommandeRequest):
     """
     Déclencher une tâche de mise à jour de bon de commande avec données JSON
     Les données sont validées puis enqueued pour le worker
