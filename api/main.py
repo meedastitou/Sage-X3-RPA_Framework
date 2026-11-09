@@ -125,6 +125,23 @@ class SignatureDADataRequest(BaseModel):
     headless: bool = True
 
 
+class UpdateBonCommandeRequest(BaseModel):
+    """
+    Requête pour mettre à jour un bon de commande existant.
+
+    - bon_commande: {"numero": "BC2024-00123"}
+    - actions: liste d'actions {"type", "target", "payload"}
+      types supportés: UPDATE_FLAG, UPDATE_LIGNE_PRIX, UPDATE_LIGNE_QTE
+      (validation détaillée faite par ActionValidator dans l'endpoint)
+    - mode: "strict" (arrêt au premier échec) ou "permissif" (défaut)
+    """
+    bon_commande: Dict[str, Any]
+    actions: List[Dict[str, Any]]
+    email_expediteur: str
+    mode: str = "permissif"
+    headless: bool = True
+
+
 class TaskStatus(BaseModel):
     """Statut d'une tâche"""
     task_id: str
@@ -1348,47 +1365,47 @@ async def trigger_dff_annulation_control_from_data(request : DFFAnnulationContro
         error=None
     )
 
-#@app.post("/api/change_tarif/data", response_model=TaskStatus)
-#async def trigger_change_tarif_from_data(request: ChangeTarifRequest):
-    """
-    Déclencher une tâche de changement de tarif avec données JSON
-    Les données sont converties en Excel et enqueued pour le worker
-    """
-    if not request.email_expediteur:
-        raise HTTPException(status_code=400, detail="email_expediteur est requis")
+# @app.post("/api/change_tarif/data", response_model=TaskStatus)
+# async def trigger_change_tarif_from_data(request: ChangeTarifRequest):
+#     """
+#     Déclencher une tâche de changement de tarif avec données JSON
+#     Les données sont converties en Excel et enqueued pour le worker
+#     """
+#     if not request.email_expediteur:
+#         raise HTTPException(status_code=400, detail="email_expediteur est requis")
 
-    required_columns = ['code_article', 'tarif_achat']
-    if request.donnees:
-        first_row = request.donnees[0]
-        missing = [col for col in required_columns if col not in first_row]
-        if missing:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Colonnes manquantes: {', '.join(missing)}. Requises: {', '.join(required_columns)}"
-            )
+#     required_columns = ['code_article', 'tarif_achat']
+#     if request.donnees:
+#         first_row = request.donnees[0]
+#         missing = [col for col in required_columns if col not in first_row]
+#         if missing:
+#             raise HTTPException(
+#                 status_code=400,
+#                 detail=f"Colonnes manquantes: {', '.join(missing)}. Requises: {', '.join(required_columns)}"
+#             )
 
-    excel_file = save_change_tarif_to_excel(request.donnees, request.email_expediteur)
+#     excel_file = save_change_tarif_to_excel(request.donnees, request.email_expediteur)
 
-    task_id = add_task(
-        file_path=excel_file,
-        email=request.email_expediteur,
-        task_type="change_tarif"
-    )
+#     task_id = add_task(
+#         file_path=excel_file,
+#         email=request.email_expediteur,
+#         task_type="change_tarif"
+#     )
 
-    logger.info(f"📋 Tâche changement de tarif (JSON) enqueued: {task_id}")
+#     logger.info(f"📋 Tâche changement de tarif (JSON) enqueued: {task_id}")
 
-    return TaskStatus(
-        task_id=task_id,
-        status='pending',
-        module='change_tarif',
-        started_at=None,
-        completed_at=None,
-        result=None,
-        error=None
-    )
+#     return TaskStatus(
+#         task_id=task_id,
+#         status='pending',
+#         module='change_tarif',
+#         started_at=None,
+#         completed_at=None,
+#         result=None,
+#         error=None
+#     )
 
-#@app.post("/api/update-bon-commande/data", response_model=TaskStatus)
-#async def trigger_update_bon_commande_from_data(request: UpdateBonCommandeRequest):
+@app.post("/api/update-bon-commande/data", response_model=TaskStatus)
+async def trigger_update_bon_commande_from_data(request: UpdateBonCommandeRequest):
     """
     Déclencher une tâche de mise à jour de bon de commande avec données JSON
     Les données sont validées puis enqueued pour le worker

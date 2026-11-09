@@ -331,32 +331,36 @@ class UpdateBonCommandeRobot(BaseRobot, WebResultMixin):
         try:
             # Naviguer vers le module BC
             self.navigate_to_module(self.url_bon_commande)
-            time.sleep(2)
+            self.wait_stabilite()
 
-            # Trouver la section de recherche
+            self.handle_popup("OK", " ")
+            self.wait_stabilite()
+
+            # Trouver la section "Commandes d’achat" (apostrophe ’ ou ')
             bc_section = driver.find_element(
                 By.XPATH,
-                "//header[.//a[contains(text(), 'Bons de commande')]]/following-sibling::div[1]"
+                "//header[.//a[contains(normalize-space(.), 'Commandes d')"
+                " and contains(normalize-space(.), 'achat')]]/following-sibling::div[1]"
             )
             table_head = bc_section.find_element(By.CLASS_NAME, "s-grid-table-head")
 
             # Trouver le champ de recherche par numéro
             filter_row = table_head.find_element(By.XPATH, ".//tr[2]")
-            chercher_bc = filter_row.find_element(By.XPATH, ".//td[1]//input")
+            chercher_bc = filter_row.find_element(By.XPATH, ".//td[2]//input")
 
             # Rechercher le BC
             chercher_bc.click()
-            time.sleep(0.5)
+            self.wait_stabilite()
             chercher_bc.clear()
             chercher_bc.send_keys(bc_numero)
             chercher_bc.send_keys(Keys.TAB)
-            time.sleep(2)
+            self.wait_stabilite()
 
             # Cliquer sur le BC trouvé
             table_body = bc_section.find_element(By.CLASS_NAME, "s-grid-table-body")
             premier_ligne = table_body.find_element(By.XPATH, ".//tr[1]")
             premier_ligne.click()
-            time.sleep(2)
+            self.wait_stabilite()
 
             self.logger.info(f"✅ BC {bc_numero} ouvert")
             return True

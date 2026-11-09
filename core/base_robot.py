@@ -151,7 +151,8 @@ class BaseRobot(ABC):
             result: Dictionnaire contenant les résultats
         """
         self.resultats.append(result)
-        self.logger.warning(f"Résultat ajouté: {result}")
+        # filtered = {k: v for k, v in result.items() if k != 'screenshot'}
+        # self.logger.warning(f"Résultat ajouté: {filtered}")
     
     def save_report(self, filename: str = None, incremental: bool = False) -> Path:
         """

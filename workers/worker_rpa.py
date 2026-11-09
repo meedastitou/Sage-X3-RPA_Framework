@@ -64,7 +64,10 @@ def main():
                 logger.info(f"📋 Tâche trouvée: {task['id']}")
                 logger.info(f"🤖 Type: {task_type}")
                 logger.info(f"📧 Email: {task['email']}")
-                logger.info(f"📄 Fichier: {task['file']}")
+                if task.get('file') :
+                    logger.info(f"📄 Fichier: {task['file']}")
+                if task.get('payload'):
+                    logger.info(f"Payload: {task['payload']}")
                 logger.info(f"{'='*80}")
 
                 update_task(task['id'], "processing")
